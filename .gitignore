@@ -1,0 +1,6 @@
+__pycache__/
+data/
+example/graphs*
+example/*.tsv
+example/*.png
+example/*.pdf
