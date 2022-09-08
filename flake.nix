@@ -1,5 +1,6 @@
 {
-  description = "Package for disambiguating ondes in a graph";
+  description =
+    "A python package for storing and working with publication data in graph form.";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-22.05";
@@ -19,22 +20,43 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
         python = pkgs.python3;
+        pubnet = python.pkgs.buildPythonPackage rec {
+          pname = "pubnet";
+          version = "0.1.0";
+          src = ./.;
+          propagatedBuildInputs = (with python.pkgs; [ numpy pandas ]);
+          preBuild = ''
+            cat >setup.py <<_EOF_
+            from setuptools import setup
+            setup(
+                name='${pname}',
+                version='${version}',
+                license='MIT',
+                description="A package for storing and working with publication data in graph form.",
+                packages={'${pname}'},
+                install_requires=[
+                'numpy',
+                'pandas'
+                ]
+            )
+            _EOF_
+          '';
+        };
       in {
+        packages.pubnet = pubnet;
+        defaultPackage = self.packages.${system}.pubnet;
         devShell = pkgs.mkShell {
           packages = [
             (python.withPackages (p:
-              with p; [
-                # development dependencies
+              with p;
+              [
                 ipython
                 pytest
                 python-lsp-server
                 pyls-isort
                 python-lsp-black
                 pylsp-mypy
-
-                # runtime dependencies
-                numpy
-              ]))
+              ] ++ pubnet.propagatedBuildInputs))
             pkgs.astyle
             pkgs.bear
             pubmedparser.defaultPackage.${system}
