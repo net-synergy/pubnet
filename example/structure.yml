@@ -1,0 +1,22 @@
+root: "PubmedArticleSet"
+
+key: {
+  Publication: "/PubmedArticle/MedlineCitation/PMID"
+}
+
+key_features: {
+  Year: "/PubmedArticle/MedlineCitation/Article/Journal/JournalIssue/PubDate/Year",
+  Language: "/PubmedArticle/MedlineCitation/Article/Language"
+}
+
+nodes: {
+  Author: "/PubmedArticle/MedlineCitation/Article/AuthorList/Author/{LastName,ForeName}",
+  Grant: "/PubmedArticle/MedlineCitation/Article/GrantList/Grant/GrantID",
+  Chemical: "/PubmedArticle/MedlineCitation/ChemicalList/Chemical/NameOfSubstance/@UI",
+  Qualifier: "/PubmedArticle/MedlineCitation/MeshHeadingList/MeshHeading/QualifierName/@UI",
+  Descriptor: "/PubmedArticle/MedlineCitation/MeshHeadingList/MeshHeading/DescriptorName/@UI",
+}
+
+edges: {
+  Reference: "/PubmedArticle/PubmedData/ReferenceList/Reference/ArticleIdList/ArticleId/[@IdType='pubmed']"
+}
