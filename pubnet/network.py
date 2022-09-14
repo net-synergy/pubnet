@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 
-class Pubnet:
+class PubNet:
     """Store publication network as a graph.
 
     Constructing:
@@ -26,7 +26,7 @@ class Pubnet:
     look for files in both orders.
 
     Example:
-        Pubnet(
+        PubNet(
             ("Author", "Descriptor", "Publication"),
             (("Author" "Publication") ("Descriptor" "Publication")),
             data_dir = "./data"
@@ -36,7 +36,7 @@ class Pubnet:
     def __init__(self, nodes, edges, data_dir="."):
         if "Publication" not in nodes:
             warn(
-                "Constructing Pubnet object without Publication \
+                "Constructing PubNet object without Publication \
 nodes. This will limit the functionality of the data type."
             )
 
@@ -69,7 +69,7 @@ nodes. This will limit the functionality of the data type."
         return np.asarray(pub_ids, dtype=np.int64)
 
     def slice(self, pub_ids):
-        """If mutate is False return a new `Pubnet` object otherwise
+        """If mutate is False return a new `PubNet` object otherwise
         return nothing and mutate the current object to only contain
         the parts for the subset of pub_ids."""
 
@@ -80,10 +80,10 @@ nodes. This will limit the functionality of the data type."
         # have known IDs (PMID, DOI, etc) and use a lookup table for
         # joining. Potentially create a universal ID that is prefered
         # in this data type.
-        # Probably for the best if different Pubnet objects don't
+        # Probably for the best if different PubNet objects don't
         # share nodes / edges (other than Publication).
-        # Intend on using this to ease generation of a Pubnet that
-        # combines data from multiple sources (Pubnet, crossref).
+        # Intend on using this to ease generation of a PubNet that
+        # combines data from multiple sources (pubmed, crossref).
 
         pass
 
@@ -93,7 +93,7 @@ def _edge_key(n1, n2):
 
 
 class Node:
-    """Class for storing node data for Pubnet class.
+    """Class for storing node data for PubNet class.
 
     Provides a wrapper around a panda dataframe adding in information
     about the ID column, which is identified by the special syntax
@@ -130,7 +130,7 @@ class Node:
 
 
 class Edge:
-    """Provides a class for storing edges for Pubnet.
+    """Provides a class for storing edges for PubNet.
 
     For know this is a wrapper around a numpy array with two
     columns. In the future it may support weighted edges (three
