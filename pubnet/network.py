@@ -1,6 +1,7 @@
 """Object for storing publication data as a network. """
 
 
+import copy
 import os
 import re
 from warnings import warn
@@ -49,11 +50,11 @@ nodes. This will limit the functionality of the data type."
         if isinstance(args, str):
             return self._node_data[args]
 
-        if len(args) == 2:
-            return self._edge_data[_edge_key(args[0], args[1])]
-
         if isinstance(args, np.ndarray):
             return self.slice(args)
+
+        if len(args) == 2:
+            return self._edge_data[_edge_key(args[0], args[1])]
 
         raise KeyError(*args)
 
@@ -68,12 +69,21 @@ nodes. This will limit the functionality of the data type."
         pub_ids = self["Publication", node_type]["Publication"][pub_idx]
         return np.asarray(pub_ids, dtype=np.int64)
 
-    def slice(self, pub_ids):
-        """If mutate is False return a new `PubNet` object otherwise
-        return nothing and mutate the current object to only contain
-        the parts for the subset of pub_ids."""
+    def slice(self, pub_ids, mutate=False):
+        """Filter all the PubNet object's edges to those connecting to pub_ids.
 
-        pass
+        If mutate is False return a new `PubNet` object otherwise
+        return self after mutating the edges."""
+
+        if not mutate:
+            new_pubnet = copy.deepcopy(self)
+            new_pubnet.slice(pub_ids, mutate=True)
+            return new_pubnet
+
+        for e in self.edges:
+            self[e]._set(self[e][np.isin(self[e]["Publication"], pub_ids)])
+
+        return self
 
     def merge(self, other, mutate=True):
         # Should handle different publication IDs somehow. Probably
@@ -176,6 +186,9 @@ class Edge:
 
         self.start_id = self._start_id_re.search(header_line).groups()[0]
         self.end_id = self._end_id_re.search(header_line).groups()[0]
+
+    def _set(self, new_data):
+        self.data = new_data
 
     def __str__(self):
         return f"col 0: {self.start_id}\ncol 1: {self.end_id}\n{str(self.data)}"
