@@ -8,6 +8,7 @@ from warnings import warn
 
 import numpy as np
 import pandas as pd
+from pandas.core.dtypes.common import is_list_like
 
 
 class PubNet:
@@ -60,8 +61,39 @@ nodes. This will limit the functionality of the data type."
 
         raise KeyError(*args)
 
-    def publications_where(self, node_type, cond, steps=1):
-        pass
+    def publications_where(self, node_type, func):
+        """Get a list of publications that match a condition.
+
+        Input arguments:
+            node_type (string): Name of the type of nodes to perform
+              the search on.
+            func (function handle): a function that accepts a
+            pandas.dataframe and returns a list of indices.
+
+        Returns
+            Publication IDs (np.array)
+
+        Example:
+        pubnet.publications_where(
+            "Author",
+            lambda x: x["LastName" == "Smith"]
+        )
+
+        See also: `publications_containing`
+        """
+
+        nodes = self[node_type]
+        node_idx = func(nodes)
+
+        node_ids = nodes[nodes.id][node_idx]
+        publication_idx = np.isin(
+            self["Publication", node_type][node_type], node_ids
+        )
+        publication_ids = self["Publication", node_type]["Publication"][
+            publication_idx
+        ]
+
+        return np.asarray(publication_ids, dtype=np.int64)
 
     def publications_containing(self, node_type, node_feature, value, steps=1):
         """Get a list of publications connected to nodes with a given value.
@@ -94,21 +126,32 @@ nodes. This will limit the functionality of the data type."
               "Smith".
         Returns
             Publication IDs (np.array)
+
+        See also: publications_where
         """
 
         assert (
             isinstance(steps, int) and steps >= 1
         ), f"Steps most be a positive integer, got {steps} instead."
 
-        if isinstance(value, str):
-            node_idx = self[node_type][node_feature] == value
+        if is_list_like(value):
+            func = lambda x: x[node_feature].isin(value)
         else:
-            node_idx = self[node_type][node_feature].isin(value)
+            func = lambda x: x[node_feature] == value
 
-        node_ids = self[node_type][self[node_type].id][node_idx]
-        pub_idx = np.isin(self["Publication", node_type][node_type], node_ids)
-        pub_ids = self["Publication", node_type]["Publication"][pub_idx]
-        return np.asarray(pub_ids, dtype=np.int64)
+        publication_ids = self.publications_where(node_type, func)
+        while steps > 1:
+            node_ids = self["Publication", node_type][node_type][
+                np.isin(
+                    self["Publication", node_type]["Publication"],
+                    publication_ids,
+                )
+            ]
+            func = lambda x: x[x.id].isin(node_ids)
+            publication_ids = self.publications_where(node_type, func)
+            steps -= 1
+
+        return publication_ids
 
     def slice(self, pub_ids, mutate=False):
         """Filter all the PubNet object's edges to those connecting to pub_ids.

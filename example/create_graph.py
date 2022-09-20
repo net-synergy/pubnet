@@ -10,7 +10,7 @@ edges = (
 
 publications = PubNet(nodes, edges, data_dir)
 pubids = publications.publications_containing(
-    "Author", "LastName", "Szymanski"
+    "Author", "LastName", ["Szymanski", "Smith"], steps=2
 )
 
 new_publications = publications[pubids]
