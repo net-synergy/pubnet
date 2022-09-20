@@ -42,7 +42,9 @@ nodes. This will limit the functionality of the data type."
             )
 
         self._node_data = {n: Node(n, data_dir) for n in nodes}
-        self._edge_data = {_edge_key(e[0], e[1]): Edge(e, data_dir) for e in edges}
+        self._edge_data = {
+            _edge_key(e[0], e[1]): Edge(e, data_dir) for e in edges
+        }
         self.nodes = nodes
         self.edges = edges
 
@@ -191,10 +193,14 @@ class Edge:
         self.data = new_data
 
     def __str__(self):
-        return f"col 0: {self.start_id}\ncol 1: {self.end_id}\n{str(self.data)}"
+        return (
+            f"col 0: {self.start_id}\ncol 1: {self.end_id}\n{str(self.data)}"
+        )
 
     def __repr__(self):
-        return f"col 0: {self.start_id}\ncol 1: {self.end_id}\n{repr(self.data)}"
+        return (
+            f"col 0: {self.start_id}\ncol 1: {self.end_id}\n{repr(self.data)}"
+        )
 
     def __getitem__(self, key):
         if isinstance(key, str):
