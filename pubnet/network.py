@@ -60,7 +60,46 @@ nodes. This will limit the functionality of the data type."
 
         raise KeyError(*args)
 
-    def publications_containing(self, node_type, node_feature, value):
+    def publications_where(self, node_type, cond, steps=1):
+        pass
+
+    def publications_containing(self, node_type, node_feature, value, steps=1):
+        """Get a list of publications connected to nodes with a given value.
+
+        Input arguments:
+            node_type (string): Name of the type of nodes to perform
+              the search on.
+            node_feature (string): Which feature to compare.
+            value (any): the value of the feature to find.
+        Optional arguments:
+            steps (positive int): number of steps away from the
+              original value.
+              Defaults to 1, only publications with direct edges to
+              the desired node(s). If `steps > 1`, includes publications
+              with indirect edges up to `steps` steps away. For `steps
+              == 2`, all direct publications will be returned as well
+              as all publications with a node in common to that
+              publication.
+
+              For example:
+                pubnet.publications_containing(
+                    "Author",
+                    "LastName",
+                    "Smith",
+                    steps=2
+                )
+              Will return publications with authors that have last
+              name "Smith" and publications by authors who have
+              coauthored a paper with an author with last name
+              "Smith".
+        Returns
+            Publication IDs (np.array)
+        """
+
+        assert (
+            isinstance(steps, int) and steps >= 1
+        ), f"Steps most be a positive integer, got {steps} instead."
+
         if isinstance(value, str):
             node_idx = self[node_type][node_feature] == value
         else:
