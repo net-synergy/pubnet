@@ -24,7 +24,7 @@
           pname = "pubnet";
           version = "0.1.0";
           src = ./.;
-          propagatedBuildInputs = (with python.pkgs; [ numpy pandas ]);
+          propagatedBuildInputs = (with python.pkgs; [ numpy pandas scipy ]);
           preBuild = ''
             cat >setup.py <<_EOF_
             from setuptools import setup

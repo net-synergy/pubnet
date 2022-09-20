@@ -13,4 +13,9 @@ pubids = publications.publications_containing(
     "Author", "LastName", ["Szymanski", "Smith"], steps=2
 )
 
-new_publications = publications[pubids]
+subnet = publications[pubids]
+subnet["Author", "Publication"].similarity(
+    publications.publications_containing(
+        "Author", "LastName", ["Szymanski", "Smith"]
+    )
+)

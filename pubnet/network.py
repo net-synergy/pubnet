@@ -10,6 +10,8 @@ import numpy as np
 import pandas as pd
 from pandas.core.dtypes.common import is_list_like
 
+from ._similarity import numpy_metrics as np_similarity
+
 
 class PubNet:
     """Store publication network as a graph.
@@ -297,3 +299,13 @@ class Edge:
             return self.data[:, key]
 
         return self.data[key]
+
+    @property
+    def overlap(self):
+        if not hasattr(self, "_overlap"):
+            setattr(self, "_overlap", np_similarity.overlap(self.data))
+
+        return self._overlap
+
+    def similarity(self, target_publications):
+        return np_similarity.shortest_path(target_publications, self.overlap)
