@@ -1,4 +1,4 @@
-from pubnet.network import PubNet
+from pubnet import PubNet
 
 data_dir = "example/graphs"
 nodes = ("Author", "Publication", "Descriptor", "Chemical")
