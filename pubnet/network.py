@@ -338,7 +338,7 @@ class Edge:
         return self._overlap
 
     def shortest_path(self, target_publications, overlap):
-        np_similarity.shortest_path(target_publications, overlap)
+        return np_similarity.shortest_path(target_publications, overlap)
 
     def similarity(self, func, target_publications):
         """Calculate similarity between publications based on edge's overlap.

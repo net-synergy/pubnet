@@ -70,7 +70,7 @@ def shortest_path(target_nodes, edges):
     max_row = max(edges_col.indices)
     max_col = max(edges_row.indices)
     for src in range(target_nodes.shape[0]):
-        dist = np.zeros((all_nodes.shape[0],), dtype=float)
+        dist = np.zeros((all_nodes.shape[0],), dtype=float) + np.inf
         unmarked = list(range(all_nodes.shape[0]))
         dist[src] = 0
         while len(unmarked) > 0:
@@ -103,7 +103,7 @@ def shortest_path(target_nodes, edges):
             if target_dist[i, j] < np.Inf:
                 out[count, 0] = target_nodes[i]
                 out[count, 1] = target_nodes[j]
-                out[count, 2] = dist[i, j]
+                out[count, 2] = target_dist[i, j]
                 count += 1
 
     return out
