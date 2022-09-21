@@ -14,8 +14,10 @@ pubids = publications.publications_containing(
 )
 
 subnet = publications[pubids]
+similarity_metric = subnet["Author", "Publication"].shortest_path
 subnet["Author", "Publication"].similarity(
+    similarity_metric,
     publications.publications_containing(
         "Author", "LastName", ["Szymanski", "Smith"]
-    )
+    ),
 )
