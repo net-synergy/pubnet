@@ -9,13 +9,22 @@ from scipy.stats import rankdata
 def overlap(edges, weights=None):
     """Calculate the neighbor overlap between nodes.
 
-    edges is a two column array of edges with node ids.
-    If weights are not given, edges are treated as unweighted.
+    For all pairs of nodes in column 0, calculate the number of nodes
+    both are connected to.
 
-    Returns a three column array with the node ids in the first two
-    columns and the overlap between them in the third, where overlap
-    is a count of the number of neighbors the two nodes have in
-    common.
+    Arguments
+    ---------
+    edges : array, two column array of edges.
+    weights : array or None, if not None, weights is a array of the
+        same length of edges. Otherwise, edges is assumed to be
+        unweighted.
+
+    Returns
+    -------
+    overlap : a three column array with the node ids in the first two
+        columns and the overlap between them in the third, where
+        overlap is a count of the number of neighbors the two nodes
+        have in common.
     """
 
     data_type = edges.dtype
