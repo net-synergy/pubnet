@@ -16,25 +16,28 @@ from ._similarity import numpy_metrics as np_similarity
 class PubNet:
     """Store publication network as a graph.
 
-    Constructing:
-        nodes: a list of nodes to read in (should contain Publication).
-        edges: a list of pairs of nodes to read in.
-        data_dir: location of the files.
+    Arguments
+    ----------
+    nodes : a list of nodes to read in (should contain Publication).
+    edges : a list of pairs of nodes to read in.
+    data_dir: location of the files (default `.`).
 
     Expects node and edge files to conform to a standard naming
     convention and all be under the same directory (specified by
     `data_dir`).
+
     Node files should be of the form: f"{node_name}_nodes.tsv".
     Edge files should be of the form: f"{node_1_name}_{node_2_name}_edges.tsv".
     The order nodes are supplied for edges does not matter, it will
     look for files in both orders.
 
-    Example:
-        PubNet(
-            ("Author", "Descriptor", "Publication"),
-            (("Author" "Publication") ("Descriptor" "Publication")),
-            data_dir = "./data"
-        )
+    Example
+    -------
+    net = PubNet(
+        ("Author", "Descriptor", "Publication"),
+        (("Author" "Publication") ("Descriptor" "Publication")),
+        data_dir = "./data"
+    )
     """
 
     def __init__(self, nodes, edges, data_dir="."):
@@ -66,22 +69,27 @@ nodes. This will limit the functionality of the data type."
     def publications_where(self, node_type, func):
         """Get a list of publications that match a condition.
 
-        Input arguments:
-            node_type (string): Name of the type of nodes to perform
-              the search on.
-            func (function handle): a function that accepts a
-            pandas.dataframe and returns a list of indices.
+        Arguments
+        ---------
+        node_type : str, name of the type of nodes to perform
+            the search on.
+        func : function, a function that accepts a
+        pandas.dataframe and returns a list of indices.
 
         Returns
-            Publication IDs (np.array)
+        -------
+        publication_ids : array, list of publication IDs
 
-        Example:
-        pubnet.publications_where(
+        Example
+        -------
+        publication_ids = net.publications_where(
             "Author",
             lambda x: x["LastName" == "Smith"]
         )
 
-        See also: `publications_containing`
+        See also
+        --------
+        publications_containing
         """
 
         nodes = self[node_type]
@@ -100,36 +108,39 @@ nodes. This will limit the functionality of the data type."
     def publications_containing(self, node_type, node_feature, value, steps=1):
         """Get a list of publications connected to nodes with a given value.
 
-        Input arguments:
-            node_type (string): Name of the type of nodes to perform
-              the search on.
-            node_feature (string): Which feature to compare.
-            value (any): the value of the feature to find.
-        Optional arguments:
-            steps (positive int): number of steps away from the
-              original value.
-              Defaults to 1, only publications with direct edges to
-              the desired node(s). If `steps > 1`, includes publications
-              with indirect edges up to `steps` steps away. For `steps
-              == 2`, all direct publications will be returned as well
-              as all publications with a node in common to that
-              publication.
+        Parameters
+        ----------
+        node_type : str, name of the type of nodes to perform
+            the search on.
+        node_feature : str, which feature to compare.
+        value : any, the value of the feature to find.
+        steps : positive int, number of steps away from the original
+            value. Defaults to 1, only publications with direct edges
+            to the desired node(s). If `steps > 1`, includes
+            publications with indirect edges up to `steps` steps
+            away. For `steps == 2`, all direct publications will be
+            returned as well as all publications with a node in common
+            to that publication.
 
-              For example:
-                pubnet.publications_containing(
-                    "Author",
-                    "LastName",
-                    "Smith",
-                    steps=2
-                )
-              Will return publications with authors that have last
-              name "Smith" and publications by authors who have
-              coauthored a paper with an author with last name
-              "Smith".
+            For example:
+            pubnet.publications_containing(
+                "Author",
+                "LastName",
+                "Smith",
+                steps=2
+            )
+            Will return publications with authors that have last
+            name "Smith" and publications by authors who have
+            coauthored a paper with an author with last name
+            "Smith".
+
         Returns
-            Publication IDs (np.array)
+        -------
+        publication_ids : array, list of publication IDs
 
-        See also: publications_where
+        See also
+        --------
+        publications_where
         """
 
         assert (
@@ -157,6 +168,8 @@ nodes. This will limit the functionality of the data type."
 
     def slice(self, pub_ids, mutate=False):
         """Filter all the PubNet object's edges to those connecting to pub_ids.
+
+        Primarily called through indexing with `__getitem__`.
 
         If mutate is False return a new `PubNet` object otherwise
         return self after mutating the edges."""
@@ -193,8 +206,8 @@ class Node:
 
     Provides a wrapper around a panda dataframe adding in information
     about the ID column, which is identified by the special syntax
-    f"{name}:ID({namespace})" in order to be compatible with Neo4j data.
-    Here the value `namespace` refers to the node so it's not
+    f"{name}:ID({namespace})" in order to be compatible with Neo4j
+    data.  Here the value `namespace` refers to the node so it's not
     important since we already know the the node.
     """
 
@@ -307,5 +320,28 @@ class Edge:
 
         return self._overlap
 
-    def similarity(self, target_publications):
-        return np_similarity.shortest_path(target_publications, self.overlap)
+    def shortest_path(self, target_publications, overlap):
+        np_similarity.shortest_path(target_publications, overlap)
+
+    def similarity(self, func, target_publications):
+        """Calculate similarity between publications based on edge's overlap.
+
+        Arguments
+        ---------
+        func : function, must take two arguments
+            `func(target_publications, overlap)`. Where
+            target_publications is described below and overlap is a 3
+            column 2d array listing overlap (3rd column) between two
+            publications (1st--2nd column).
+        target_publication : array, an array of publications to return
+            similarity between which must be a subset of all edges in
+            `self.overlap`.
+
+        Returns
+        -------
+        similarity : a 3 column 2d array, listing the similarity (3rd
+        column) between all pairs of publications (1st--2nd column) in
+        target_publications. Only non-zero similarities are listed.
+        """
+
+        return func(target_publications, self.overlap)
