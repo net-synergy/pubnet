@@ -9,15 +9,16 @@ edges = (
 )
 
 publications = PubNet(nodes, edges, data_dir)
-pubids = publications.publications_containing(
-    "Author", "LastName", ["Szymanski", "Smith"], steps=2
+authors = publications["Author"].get_random(n=4, seed=1)
+publication_ids = publications.publications_containing(
+    "Author", "LastName", list(authors["LastName"]), steps=2
 )
 
-subnet = publications[pubids]
+subnet = publications[publication_ids]
 similarity_metric = subnet["Author", "Publication"].shortest_path
-subnet["Author", "Publication"].similarity(
+sim = subnet["Author", "Publication"].similarity(
     similarity_metric,
     publications.publications_containing(
-        "Author", "LastName", ["Szymanski", "Smith"]
+        "Author", "LastName", list(authors["LastName"])
     ),
 )

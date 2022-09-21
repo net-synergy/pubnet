@@ -237,6 +237,23 @@ class Node:
     def __getitem__(self, key):
         return self.data[key]
 
+    def get_random(self, n=1, seed=None):
+        """Sample n nodes.
+
+        Arguments
+        ---------
+        n : positive int, number of nodes to sample (default 1).
+        seed : positive int, random seed for reproducibility (default None).
+            If None seed is select at random.
+
+        Returns
+        -------
+        nodes : dataframe, subset of nodes.
+        """
+
+        rng = np.random.default_rng(seed=seed)
+        return self.data.loc[rng.integers(0, self.data.shape[0], size=(n,))]
+
 
 class Edge:
     """Provides a class for storing edges for PubNet.
