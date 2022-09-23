@@ -1,0 +1,25 @@
+#+TITLE: Contributing
+
+To guide contribution there are tests, examples, issues, and benchmarks.
+Failing tests indicate expected behavior that has not yet been implemented and are a good place to look for next steps.
+New tests should be added were appropriate to demonstrate use of new code and ensure that future changes does not break tested code.
+Before any pull requests are accepted, all previously passing tests should still pass, relevant failing tests should now pass, and the example scripts should still run as expected.
+
+** Tests and issues
+In addition to tests, issues describe known unexpected behaviors/bugs in the package.
+Commits that resolve issues should reference the issue they are solving (i.e. something along the lines of "close issue #1" in the header or body of the commit message) so that the commit will be visible in the issue.
+Before resolving an issue a failing test should be created that encompasses the unexpected behavior.
+This can be in the same commit as the fix itself or in a separate commit based on personal judgment, or the test can be added with issue creation.
+If something does not behave correctly, add an issue describing the current behavior vs expected behavior and how to produce the error.
+
+** Benchmarks
+Benchmark scripts will be used to compare methods.
+The bottlenecks in this project are likely to be in the edges so these benchmarks should primarily revolve around edge methods.
+Edge storage can be implemented in different methods (such as ~numpy~ and ~igraph~ as well as any number of other ways).
+The differences in the methods should be contained internally such that code that runs performs actions on edges should not depend on the method chosen and should therefore not need to know about the internal representation on the nodes.
+For example, if ~net~ is a ~PubNet~ object and ~publications~ is a list of publication IDs, ~net[publications]~ should filter to the network to edges containing the provided publications and ~net[node1, node2].similarity(publications)~ should provide the same results no matter which method of representing the edges is used.
+Based on this, we can perform the same computations on the same networks using different edge representations and compare the time and memory required do different actions on networks of different size to optimize choice of edge representation under different conditions.
+
+** Formatting
+Preferably, use the [[https://github.com/psf/black][black]] code formatter before commiting code.
+Should be able to integrate it with your text editor so it automatically runs on save.
