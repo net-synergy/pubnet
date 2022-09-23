@@ -15,9 +15,7 @@ publication_ids = publications.publications_containing(
 )
 
 subnet = publications[publication_ids]
-similarity_metric = subnet["Author", "Publication"].shortest_path
 sim = subnet["Author", "Publication"].similarity(
-    similarity_metric,
     publications.publications_containing(
         "Author", "LastName", list(authors["LastName"])
     ),
