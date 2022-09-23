@@ -44,6 +44,8 @@ class Edge:
         self.start_id = self._start_id_re.search(header_line).groups()[0]
         self.end_id = self._end_id_re.search(header_line).groups()[0]
         self._data = None
+        # Weighted edges implemented yet.
+        self.isweighted = False
 
     def set(self, new_data):
         self._data = new_data
@@ -68,9 +70,45 @@ class Edge:
 
     @property
     def overlap(self):
+        """Pairwise number of neighbors nodes have in common."""
+        if not hasattr(self, "_overlap"):
+            setattr(self, "_overlap", self._calc_overlap())
+
+        return self._overlap
+
+    def _calc_overlap(self):
         raise NotImplementedError
 
-    def similarity(self, target_publications):
+    def similarity(self, target_publications, method="shortest_path"):
+        """Calculate similarity between publications based on edge's overlap.
+
+        Arguments
+        ---------
+        target_publication : array, an array of publications to return
+            similarity between which must be a subset of all edges in
+            `self.overlap`.
+        method : {'shortest_path'}, the method to use for
+            calculating similarity.
+
+        Returns
+        -------
+        similarity : a 3 column 2d array, listing the similarity (3rd
+            column) between all pairs of publications (1st--2nd
+            column) in target_publications. Only non-zero similarities
+            are listed.
+        """
+
+        all_methods = {
+            "shortest_path": self._shortest_path,
+            "pagerank": self._pagerank,
+        }
+
+        return all_methods[method](target_publications)
+
+    def _shortest_path(self, target_publications):
+        raise NotImplementedError
+
+    def _pagerank(self, target_publications):
         raise NotImplementedError
 
 
