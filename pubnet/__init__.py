@@ -1,1 +1,1 @@
-from pubnet.network import PubNet
+from pubnet.network.pubnet import PubNet
