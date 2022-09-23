@@ -64,4 +64,4 @@ class Node:
         """
 
         rng = np.random.default_rng(seed=seed)
-        return self._data.loc[rng.integers(0, self.data.shape[0], size=(n,))]
+        return self._data.loc[rng.integers(0, self._data.shape[0], size=(n,))]
