@@ -20,28 +20,32 @@ class Node:
     _id_re = re.compile("(.*):ID\\(.*?\\)")
 
     def __init__(self, node, data_dir):
-        self.data = pd.read_csv(
+        self._data = pd.read_csv(
             os.path.join(data_dir, f"{node}_nodes.tsv"),
             delimiter="\t",
         )
         id_column = list(
             filter(
                 lambda x: x is not None,
-                [self._id_re.search(name) for name in self.data.columns],
+                [self._id_re.search(name) for name in self._data.columns],
             )
         )[0]
         old_id = id_column.group().replace("(", "\\(").replace(")", "\\)")
         self.id = id_column.groups()[0]
-        self.data.columns = self.data.columns.str.replace(old_id, self.id)
+        self._data.columns = self._data.columns.str.replace(old_id, self.id)
 
     def __str__(self):
-        return str(self.data)
+        return str(self._data)
 
     def __repr__(self):
-        return repr(self.data)
+        return repr(self._data)
 
     def __getitem__(self, key):
-        return self.data[key]
+        return self._data[key]
+
+    @property
+    def shape(self):
+        return self._data.shape
 
     def get_random(self, n=1, seed=None):
         """Sample n nodes.
@@ -58,4 +62,4 @@ class Node:
         """
 
         rng = np.random.default_rng(seed=seed)
-        return self.data.loc[rng.integers(0, self.data.shape[0], size=(n,))]
+        return self._data.loc[rng.integers(0, self.data.shape[0], size=(n,))]

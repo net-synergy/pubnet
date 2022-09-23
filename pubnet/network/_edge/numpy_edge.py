@@ -64,6 +64,10 @@ class Edge(_AbstractEdge):
         return np.isin(self[column], test_elements)
 
     @property
+    def shape(self):
+        return self._data.shape[0]
+
+    @property
     def overlap(self):
         """Pairwise number of neighbors nodes have in common."""
         if not hasattr(self, "_overlap"):

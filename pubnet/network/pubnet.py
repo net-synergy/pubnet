@@ -70,6 +70,17 @@ nodes. This will limit the functionality of the data type."
 
         raise KeyError(*args)
 
+    def __repr__(self):
+        res = "PubNet"
+        res += "\nNodes (number of nodes)"
+        for n in self.nodes:
+            res += f"\n\t{n}\t({self._node_data[n].shape[0]})"
+        res += "\n\n Edges (number of edges)"
+        for e in self._edge_data.values():
+            res += f"\n\t{e.start_id}-{e.end_id}\t({e.shape})"
+
+        return res
+
     def publications_where(self, node_type, func):
         """Get a list of publications that match a condition.
 

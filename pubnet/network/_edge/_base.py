@@ -67,6 +67,11 @@ class Edge:
         raise NotImplementedError
 
     @property
+    def shape(self):
+        """Find number of edges."""
+        raise NotImplementedError
+
+    @property
     def overlap(self):
         raise NotImplementedError
 
