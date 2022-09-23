@@ -3,8 +3,6 @@
 import os
 import re
 
-import numpy as np
-
 
 class Edge:
     """Provides a class for storing edges for PubNet.
@@ -57,9 +55,6 @@ class Edge:
         raise NotImplementedError
 
     def __getitem__(self, key):
-        raise NotImplementedError
-
-    def _read_from_file(path):
         raise NotImplementedError
 
     def isin(self, column, test_elements):
