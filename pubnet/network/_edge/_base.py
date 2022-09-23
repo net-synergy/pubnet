@@ -5,22 +5,31 @@ import re
 
 import numpy as np
 
-from ..._similarity import numpy_metrics as _np_similarity
-
 
 class Edge:
     """Provides a class for storing edges for PubNet.
 
-    For now this is a wrapper around a numpy array with two
-    columns. In the future it may support weighted edges (three
-    columns) and directed columns. It may also switch to/add a compressed
-    graph format for performance.
+    Reads the data in from a file. The file should be in the form
+    f"{edge[0]}_{edge[1]}_edges.tsv, where the order the node types
+    are given in the edge argument is not important.
 
     As with the Node class it expects ID columns to be in Neo4j format
     f":START_ID({namespace})" and f":END_ID({namespace})". Start and
     end will be important only if the graph is directed. The
     `namespace` value provides the name of the node and will link to
     that node's ID column.
+
+    In the future it may support weighted edges and directed columns.
+
+    Arguments
+    ---------
+    edge : a list of two node types.
+    data_dir : the directory the edge file is in.
+
+    Attributes
+    ----------
+    start_id : the node type in column 0.
+    end_id : the node type in column 1.
     """
 
     _start_id_re = re.compile(":START_ID\\((.*?)\\)")
@@ -29,89 +38,63 @@ class Edge:
     def __init__(self, edge, data_dir):
         assert len(edge) == 2, "Edge is defined by exactly two nodes."
 
-        def edge_file_path(n1, n2):
-            return os.path.join(data_dir, f"{n1}_{n2}_edges.tsv")
+        self._file_path = _edge_path(edge[0], edge[1], data_dir)
 
-        if os.path.exists(edge_file_path(edge[0], edge[1])):
-            file_path = edge_file_path(edge[0], edge[1])
-        elif os.path.exists(edge_file_path(edge[1], edge[0])):
-            file_path = edge_file_path(edge[1], edge[0])
-        else:
-            raise FileNotFoundError(
-                f"No edge file for edges {edge[0]}, {edge[1]} found in {data_dir}.\
-\n\nExpceted either file {edge_file_path(edge[0], edge[1])} or \
-{edge_file_path(edge[1], edge[0])}"
-            )
-
-        self.data = np.genfromtxt(
-            file_path,
-            # All edge values should be integer IDs.
-            dtype=np.int64,
-            skip_header=1,
-        )
-
-        with open(file_path, "r") as f:
+        with open(self._file_path, "r") as f:
             header_line = f.readline()
 
         self.start_id = self._start_id_re.search(header_line).groups()[0]
         self.end_id = self._end_id_re.search(header_line).groups()[0]
+        self._data = None
 
     def set(self, new_data):
-        self.data = new_data
+        self._data = new_data
 
     def __str__(self):
-        return (
-            f"col 0: {self.start_id}\ncol 1: {self.end_id}\n{str(self.data)}"
-        )
+        raise NotImplementedError
 
     def __repr__(self):
-        return (
-            f"col 0: {self.start_id}\ncol 1: {self.end_id}\n{repr(self.data)}"
-        )
+        raise NotImplementedError
 
     def __getitem__(self, key):
-        if isinstance(key, str):
-            if key == self.start_id:
-                key = 0
-            elif key == self.end_id:
-                key = 1
-            else:
-                raise KeyError(
-                    f'Key "{key}" not one of "{self.start_id}" or "{self.end_id}".'
-                )
-            return self.data[:, key]
+        raise NotImplementedError
 
-        return self.data[key]
+    def _read_from_file(path):
+        raise NotImplementedError
 
     @property
     def overlap(self):
-        if not hasattr(self, "_overlap"):
-            setattr(self, "_overlap", _np_similarity.overlap(self.data))
+        raise NotImplementedError
 
-        return self._overlap
+    def similarity(self, target_publications):
+        raise NotImplementedError
 
-    def shortest_path(self, target_publications, overlap):
-        return _np_similarity.shortest_path(target_publications, overlap)
 
-    def similarity(self, func, target_publications):
-        """Calculate similarity between publications based on edge's overlap.
+def _edge_path(n1, n2, data_dir):
+    """Find the edge file in data_dir for the provided node types.
 
-        Arguments
-        ---------
-        func : function, must take two arguments
-            `func(target_publications, overlap)`. Where
-            target_publications is described below and overlap is a 3
-            column 2d array listing overlap (3rd column) between two
-            publications (1st--2nd column).
-        target_publication : array, an array of publications to return
-            similarity between which must be a subset of all edges in
-            `self.overlap`.
+    Known possible issues:
+        If we need directed edges, the order of nodes in the file name
+        may be important. Add in a weighted keyword argument, if true
+        look for files only with the nodes in the order they were
+        provided otherwise look for both. Another option is to not
+        only check the file name but check the header for the START_ID
+        and END_ID node types.
+    """
 
-        Returns
-        -------
-        similarity : a 3 column 2d array, listing the similarity (3rd
-        column) between all pairs of publications (1st--2nd column) in
-        target_publications. Only non-zero similarities are listed.
-        """
+    def edge_file_path(n1, n2):
+        return os.path.join(data_dir, f"{n1}_{n2}_edges.tsv")
 
-        return func(target_publications, self.overlap)
+    if os.path.exists(edge_file_path(n1, n2)):
+        file_path = edge_file_path(n1, n2)
+    elif os.path.exists(edge_file_path(n2, n1)):
+        file_path = edge_file_path(n2, n1)
+    else:
+        raise FileNotFoundError(
+            f"No edge file for edges {n1}, {n2} found in \
+{data_dir}.\
+\n\nExpceted either file {edge_file_path(n1, n2)} or \
+{edge_file_path(n2, n1)}"
+        )
+
+    return file_path

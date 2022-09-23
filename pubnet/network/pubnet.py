@@ -1,8 +1,6 @@
 """Object for storing publication data as a network."""
 
 import copy
-import os
-import re
 from warnings import warn
 
 import numpy as np
