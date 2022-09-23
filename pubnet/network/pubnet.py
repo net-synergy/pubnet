@@ -4,7 +4,6 @@ import copy
 from warnings import warn
 
 import numpy as np
-import pandas as pd
 from pandas.core.dtypes.common import is_list_like
 
 from ._edge.compressed_edge import Edge as _CompressedEdge
@@ -101,9 +100,10 @@ nodes. This will limit the functionality of the data type."
         node_idx = func(nodes)
 
         node_ids = nodes[nodes.id][node_idx]
-        publication_idx = np.isin(
-            self["Publication", node_type][node_type], node_ids
+        publication_idx = self["Publication", node_type].isin(
+            node_type, node_ids
         )
+
         publication_ids = self["Publication", node_type]["Publication"][
             publication_idx
         ]
@@ -160,9 +160,8 @@ nodes. This will limit the functionality of the data type."
         publication_ids = self.publications_where(node_type, func)
         while steps > 1:
             node_ids = self["Publication", node_type][node_type][
-                np.isin(
-                    self["Publication", node_type]["Publication"],
-                    publication_ids,
+                self["Publication", node_type].isin(
+                    "Publication", publication_ids
                 )
             ]
             func = lambda x: x[x.id].isin(node_ids)
@@ -185,7 +184,7 @@ nodes. This will limit the functionality of the data type."
             return new_pubnet
 
         for e in self.edges:
-            self[e].set(self[e][np.isin(self[e]["Publication"], pub_ids)])
+            self[e].set(self[e][self[e].isin("Publication", pub_ids)])
 
         return self
 

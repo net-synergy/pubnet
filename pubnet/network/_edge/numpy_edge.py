@@ -46,6 +46,23 @@ class Edge(_AbstractEdge):
 
         return self._data[key]
 
+    def isin(self, column, test_elements):
+        """Check which elements of column are members of test_elements.
+
+        Arguments
+        ---------
+        column : the column to test, can be anything accepted by `__getitem__`.
+        test_elements : array, the elemnts to test against.
+
+        Returns
+        -------
+        isin : array, a boolean array of the same size as
+        self[column], such that all elements of self[column][isin] are
+        in the set test_elements.
+        """
+
+        return np.isin(self[column], test_elements)
+
     @property
     def overlap(self):
         """Pairwise number of neighbors nodes have in common."""
@@ -127,10 +144,30 @@ def _shortest_path(target_nodes, overlap):
     will be found.
     """
 
+    def renumber(edges, target_nodes):
+        """Renumber nodes to have values between 0 and all_nodes.shape[0].
+        The target_nodes are brought to the front such that the first
+        target_nodes.shape[0] nodes are the target_nodes."""
+
+        edge_nodes = edges[:, 0:2].T.flatten()
+        target_locs = np.isin(edge_nodes, target_nodes)
+        target_nodes = np.unique(edge_nodes[target_locs])
+        edge_nodes[np.logical_not(target_locs)] = (
+            edge_nodes[np.logical_not(target_locs)] + 999999999
+        )
+
+        edge_ranks = rankdata(edge_nodes, "dense") - 1
+        edge_ranks = edge_ranks.reshape((2, -1)).T
+        new_edges = edges.copy()
+        new_edges[:, 0:2] = edge_ranks
+
+        return new_edges, target_nodes
+
     all_nodes = np.unique(
         np.concatenate((overlap[:, 0:2].flatten(), target_nodes))
     )
-    overlap, target_nodes = _renumber(overlap, target_nodes)
+
+    overlap, target_nodes = renumber(overlap, target_nodes)
 
     weights = 1 / overlap[:, 2].astype(float)
     overlap = sp.coo_matrix((weights, (overlap[:, 0], overlap[:, 1])))
@@ -188,23 +225,3 @@ def _shortest_path(target_nodes, overlap):
                 count += 1
 
     return out
-
-
-def _renumber(edges, target_nodes):
-    """Renumber nodes to have values between 0 and all_nodes.shape[0].
-    The target_nodes are brought to the front such that the first
-    target_nodes.shape[0] nodes are the target_nodes."""
-
-    edge_nodes = edges[:, 0:2].T.flatten()
-    target_locs = np.isin(edge_nodes, target_nodes)
-    target_nodes = np.unique(edge_nodes[target_locs])
-    edge_nodes[np.logical_not(target_locs)] = (
-        edge_nodes[np.logical_not(target_locs)] + 999999999
-    )
-
-    edge_ranks = rankdata(edge_nodes, "dense") - 1
-    edge_ranks = edge_ranks.reshape((2, -1)).T
-    new_edges = edges.copy()
-    new_edges[:, 0:2] = edge_ranks
-
-    return new_edges, target_nodes

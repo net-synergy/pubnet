@@ -62,6 +62,10 @@ class Edge:
     def _read_from_file(path):
         raise NotImplementedError
 
+    def isin(self, column, test_elements):
+        """Find which elements from column are in the set of test_elements."""
+        raise NotImplementedError
+
     @property
     def overlap(self):
         raise NotImplementedError
