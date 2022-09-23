@@ -32,7 +32,9 @@ class Node:
         )[0]
         old_id = id_column.group().replace("(", "\\(").replace(")", "\\)")
         self.id = id_column.groups()[0]
-        self._data.columns = self._data.columns.str.replace(old_id, self.id)
+        self._data.columns = self._data.columns.str.replace(
+            old_id, self.id, regex=True
+        )
 
     def __str__(self):
         return str(self._data)
