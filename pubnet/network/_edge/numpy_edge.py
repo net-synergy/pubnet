@@ -15,6 +15,7 @@ class Edge(_AbstractEdge):
 
     def __init__(self, *args):
         super().__init__(*args)
+        self._representation = "numpy"
         self._data = np.genfromtxt(
             self._file_path,
             # All edge values should be integer IDs.
