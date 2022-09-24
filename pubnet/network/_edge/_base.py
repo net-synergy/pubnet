@@ -51,38 +51,22 @@ class Edge:
         self._data = new_data
 
     def __str__(self):
-        raise NotImplementedError(self._required_msg)
+        raise AbstractMethodError(self)
 
     def __repr__(self):
-        raise NotImplementedError(self._required_msg)
+        raise AbstractMethodError(self)
 
     def __getitem__(self, key):
-        raise NotImplementedError(self._required_msg)
+        raise AbstractMethodError(self)
 
     def isin(self, column, test_elements):
         """Find which elements from column are in the set of test_elements."""
-        raise NotImplementedError(self._required_msg)
-
-    @property
-    def _required_msg(self):
-        return f"Required method not implemented for Edge \
-representation {self.representation}"
-
-    @property
-    def representation(self):
-        """Name of Edge subclass."""
-        try:
-            return self._representation
-        except AttributeError:
-            raise AttributeError(
-                f"{self.__class__} does not initialize \
-'_representation' attribute."
-            )
+        raise AbstractMethodError(self)
 
     @property
     def shape(self):
         """Find number of edges."""
-        raise NotImplementedError(self._required_msg)
+        raise AbstractMethodError(self)
 
     @property
     def overlap(self):
@@ -93,7 +77,7 @@ representation {self.representation}"
         return self._overlap
 
     def _calc_overlap(self):
-        raise NotImplementedError(self._required_msg)
+        raise AbstractMethodError(self)
 
     def similarity(self, target_publications, method="shortest_path"):
         """Calculate similarity between publications based on edge's overlap.
@@ -121,17 +105,17 @@ representation {self.representation}"
 
         try:
             return all_methods[method](target_publications)
-        except NotImplementedError:
+        except AbstractMethodError:
             raise NotImplementedError(
-                f"Similarity method '{method}' not implemented for Edge \
-representation '{self.representation}'"
+                f"Similarity method '{method}' not implemented for "
+                f"'{type(self).__name__}'"
             )
 
     def _shortest_path(self, target_publications):
-        raise NotImplementedError(self._required_msg)
+        raise AbstractMethodError(self)
 
     def _pagerank(self, target_publications):
-        raise NotImplementedError(self._required_msg)
+        raise AbstractMethodError(self)
 
 
 def _edge_path(n1, n2, data_dir):
@@ -155,10 +139,19 @@ def _edge_path(n1, n2, data_dir):
         file_path = edge_file_path(n2, n1)
     else:
         raise FileNotFoundError(
-            f"No edge file for edges {n1}, {n2} found in \
-{data_dir}.\
-\n\nExpceted either file '{edge_file_path(n1, n2)}' or \
-'{edge_file_path(n2, n1)}'"
+            f"No edge file for edges {n1}, {n2} found in {data_dir}"
+            f"\n\nExpceted either file '{edge_file_path(n1, n2)}' or"
+            f"'{edge_file_path(n2, n1)}'"
         )
 
     return file_path
+
+
+class AbstractMethodError(NotImplementedError):
+    """Error for missing required methods in concrete classes."""
+
+    def __init__(self, class_instance):
+        self.class_name = type(class_instance).__name__
+
+    def __str__(self):
+        return f"Required method not implemented for {self.class_name}"

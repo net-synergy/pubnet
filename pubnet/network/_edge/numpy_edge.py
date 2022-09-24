@@ -4,10 +4,10 @@ import numpy as np
 from scipy import sparse as sp
 from scipy.stats import rankdata
 
-from ._base import Edge as _AbstractEdge
+from ._base import Edge
 
 
-class Edge(_AbstractEdge):
+class NumpyEdge(Edge):
     """An impelmentation of the Edge class that stores edges as numpy arrays.
 
     Uses arrays to list the non-zero edges in a sparse matrix form.

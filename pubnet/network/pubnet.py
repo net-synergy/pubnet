@@ -6,9 +6,7 @@ from warnings import warn
 import numpy as np
 from pandas.core.dtypes.common import is_list_like
 
-from ._edge.compressed_edge import Edge as _CompressedEdge
-from ._edge.numpy_edge import Edge as _NumpyEdge
-from ._node import Node as _Node
+from pubnet.network import _edge, _node
 
 
 class PubNet:
@@ -42,16 +40,16 @@ class PubNet:
     def __init__(self, nodes, edges, data_dir=".", compressed=False):
         if "Publication" not in nodes:
             warn(
-                "Constructing PubNet object without Publication \
-nodes. This will limit the functionality of the data type."
+                "Constructing PubNet object without Publication nodes. "
+                "This will limit the functionality of the data type."
             )
 
         if compressed:
-            Edge = _CompressedEdge
+            Edge = _edge.CompressedEdge
         else:
-            Edge = _NumpyEdge
+            Edge = _edge.NumpyEdge
 
-        self._node_data = {n: _Node(n, data_dir) for n in nodes}
+        self._node_data = {n: _node.Node(n, data_dir) for n in nodes}
         self._edge_data = {
             _edge_key(e[0], e[1]): Edge(e, data_dir) for e in edges
         }
