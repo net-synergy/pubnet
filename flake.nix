@@ -24,7 +24,8 @@
           pname = "pubnet";
           version = "0.1.0";
           src = ./.;
-          propagatedBuildInputs = (with python.pkgs; [ numpy pandas scipy ]);
+          propagatedBuildInputs =
+            (with python.pkgs; [ numpy pandas scipy pytest pytest-snapshot ]);
           preBuild = ''
             cat >setup.py <<_EOF_
             from setuptools import setup
@@ -36,8 +37,10 @@
                 packages={'${pname}'},
                 install_requires=[
                 'numpy',
-                'pandas'
+                'pandas',
+                'scipy'
                 ]
+                tests_require=['pytest', 'pytest-snapshot']
             )
             _EOF_
           '';
@@ -51,7 +54,6 @@
               with p;
               [
                 ipython
-                pytest
                 python-lsp-server
                 pyls-isort
                 python-lsp-black
