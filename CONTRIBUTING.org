@@ -1,11 +1,19 @@
 #+TITLE: Contributing
 
 To guide contribution there are tests, examples, issues, and benchmarks.
+Contributions should be made by forking this repo, commiting changes on your own branch, then making a pull request.
+This allows us to review the code and modify the changes if needed before accepting them.
+If you need help on any of this, ask.
+
+** Tests
 Failing tests indicate expected behavior that has not yet been implemented and are a good place to look for next steps.
 New tests should be added were appropriate to demonstrate use of new code and ensure that future changes does not break tested code.
-Before any pull requests are accepted, all previously passing tests should still pass, relevant failing tests should now pass, and the example scripts should still run as expected.
+Before any pull requests will be accepted, all previously passing tests should still pass, relevant failing tests should now pass, and the example scripts should still run as expected.
+To run tests you need the ~pytest~ and ~pytest-snapshot~ (for all required python packages check the ~propagatedBuildInputs~ under the ~pubnet~ assignment in ~flake.nix~).
+Then run at the command line ~pytest~ (you're text editor likely has integration for running ~pytest~ as well).
+See the [[https://docs.pytest.org/en/7.1.x/contents.html][pytest docs]] for more options such as filtering tests run.
 
-** Tests and issues
+** Issues
 In addition to tests, issues describe known unexpected behaviors/bugs in the package.
 Commits that resolve issues should reference the issue they are solving (i.e. something along the lines of "close issue #1" in the header or body of the commit message) so that the commit will be visible in the issue.
 Before resolving an issue a failing test should be created that encompasses the unexpected behavior.
