@@ -28,21 +28,24 @@
             (with python.pkgs; [ numpy pandas scipy pytest pytest-snapshot ]);
           preBuild = ''
             cat >setup.py <<_EOF_
-            from setuptools import setup
+            from setuptools import setup, find_packages
             setup(
                 name='${pname}',
                 version='${version}',
                 license='MIT',
                 description="A package for storing and working with publication data in graph form.",
-                packages={'${pname}'},
+                packages=find_packages(include=['${pname}', '${pname}.*']),
                 install_requires=[
                 'numpy',
                 'pandas',
                 'scipy'
-                ]
+                ],
                 tests_require=['pytest', 'pytest-snapshot']
             )
             _EOF_
+          '';
+          checkPhase = ''
+            python -m pytest
           '';
         };
       in {
