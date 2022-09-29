@@ -20,38 +20,37 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
         python = pkgs.python3;
+        # Nix does not expose `checkInputs` attribute.
+        pubnetCheckInputs = (with python.pkgs; [ pytest pytest-snapshot ]);
         pubnet = python.pkgs.buildPythonPackage rec {
           pname = "pubnet";
           version = "0.1.0";
           src = ./.;
-          propagatedBuildInputs =
-            (with python.pkgs; [ numpy pandas scipy pytest pytest-snapshot ]);
-          preBuild = ''
-            cat >setup.py <<_EOF_
-            from setuptools import setup, find_packages
-            setup(
-                name='${pname}',
-                version='${version}',
-                license='MIT',
-                description="A package for storing and working with publication data in graph form.",
-                packages=find_packages(include=['${pname}', '${pname}.*']),
-                install_requires=[
-                'numpy',
-                'pandas',
-                'scipy'
-                ],
-                tests_require=['pytest', 'pytest-snapshot']
-            )
-            _EOF_
-          '';
+          format = "pyproject";
+          buildInputs = (with python.pkgs; [ poetry ]);
+          propagatedBuildInputs = (with python.pkgs; [ numpy pandas scipy ]);
+          checkInputs = pubnetCheckInputs;
+          authors = [ "David Connell <davidconnell12@gmail.com>" ];
           checkPhase = ''
             python -m pytest
           '';
         };
+        nix2poetryDependency = list:
+          builtins.concatStringsSep "\n" (builtins.map (dep:
+            let
+              pname = if dep.pname == "python3" then "python" else dep.pname;
+              versionList = builtins.splitVersion dep.version;
+              major = builtins.elemAt versionList 0;
+              minor = builtins.elemAt versionList 1;
+              version = if pname == "python" then
+                ''\"~${major}.${minor}\"''
+              else
+                ''\"^${major}.${minor}\"'';
+            in pname + " = " + version) list);
       in {
         packages.pubnet = pubnet;
-        defaultPackage = self.packages.${system}.pubnet;
-        devShell = pkgs.mkShell {
+        packages.default = self.packages.${system}.pubnet;
+        devShells.default = pkgs.mkShell {
           packages = [
             (python.withPackages (p:
               with p;
@@ -61,7 +60,7 @@
                 pyls-isort
                 python-lsp-black
                 pylsp-mypy
-              ] ++ pubnet.propagatedBuildInputs))
+              ] ++ pubnet.propagatedBuildInputs ++ pubnetCheckInputs))
             pkgs.astyle
             pkgs.bear
             pubmedparser.defaultPackage.${system}
@@ -69,6 +68,23 @@
           shellHook = ''
             export PYTHONPATH=.
             export C_INCLUDE_PATH=${python}/include/python3.9
+
+            if [ ! -f pyproject.toml ] || \
+               [ $(date +%s -r flake.nix) -gt $(date +%s -r pyproject.toml) ]; then
+               pname=${pubnet.pname} \
+               version=${pubnet.version} \
+               description='A python package for storing and working with publication data in graph form.' \
+               license=MIT \
+               authors="${
+                 builtins.concatStringsSep ",\n    "
+                 (builtins.map (name: ''\"'' + name + ''\"'') pubnet.authors)
+               }" \
+               dependencies="${
+                 nix2poetryDependency pubnet.propagatedBuildInputs
+               }" \
+               devDependencies="${nix2poetryDependency pubnetCheckInputs}" \
+               ./.pyproject.toml.template
+            fi
           '';
         };
       });
