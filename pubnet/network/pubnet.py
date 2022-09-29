@@ -38,7 +38,7 @@ class PubNet:
     """
 
     def __init__(self, nodes, edges, data_dir=".", compressed=False):
-        if "Publication" not in nodes:
+        if nodes is not None and "Publication" not in nodes:
             warn(
                 "Constructing PubNet object without Publication nodes. "
                 "This will limit the functionality of the data type."
@@ -49,10 +49,18 @@ class PubNet:
         else:
             Edge = _edge.NumpyEdge
 
-        self._node_data = {n: _node.Node(n, data_dir) for n in nodes}
-        self._edge_data = {
-            _edge_key(e[0], e[1]): Edge(e, data_dir) for e in edges
-        }
+        if nodes is not None:
+            self._node_data = {n: _node.Node(n, data_dir) for n in nodes}
+        else:
+            self._node_data = None
+
+        if edges is not None:
+            self._edge_data = {
+                _edge_key(e[0], e[1]): Edge(e, data_dir) for e in edges
+            }
+        else:
+            self._edge_data = None
+
         self.nodes = nodes
         self.edges = edges
 

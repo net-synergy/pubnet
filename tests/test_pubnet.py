@@ -74,23 +74,23 @@ class TestNodes:
 
 
 class TestNetwork:
-    @pytest.mark.xfail
     def test_handles_no_nodes(self):
         net = PubNet(
             None,
-            (("Publication", "Flippedheaders")),
+            (("Publication", "Author"),),
             data_dir="tests/data/simple_pubnet",
             compressed=False,
         )
+        assert net.nodes is None
 
-    @pytest.mark.xfail
     def test_handles_no_edges(self):
         net = PubNet(
-            ("Publication"),
+            ("Publication",),
             None,
             data_dir="tests/data/simple_pubnet",
             compressed=False,
         )
+        assert net.edges is None
 
     def test_filter_to_publicaiton_ids(self, simple_pubnet):
         publication_ids = np.asarray([1, 2], dtype=np.int64)
