@@ -1,6 +1,7 @@
 """Object for storing publication data as a network."""
 
 import copy
+from functools import reduce
 from warnings import warn
 
 import numpy as np
@@ -38,7 +39,12 @@ class PubNet:
     """
 
     def __init__(self, nodes, edges, data_dir=".", compressed=False):
-        if nodes is not None and "Publication" not in nodes:
+        if nodes is None:
+            nodes = ()
+        if edges is None:
+            edges = ()
+
+        if "Publication" not in nodes:
             warn(
                 "Constructing PubNet object without Publication nodes. "
                 "This will limit the functionality of the data type."
@@ -49,17 +55,17 @@ class PubNet:
         else:
             Edge = _edge.NumpyEdge
 
-        if nodes is not None:
-            self._node_data = {n: _node.Node(n, data_dir) for n in nodes}
-        else:
-            self._node_data = None
+        self._edge_data = {
+            _edge_key(e[0], e[1]): Edge(e, data_dir) for e in edges
+        }
+        self._node_data = {n: _node.Node(n, data_dir) for n in nodes}
 
-        if edges is not None:
-            self._edge_data = {
-                _edge_key(e[0], e[1]): Edge(e, data_dir) for e in edges
-            }
-        else:
-            self._edge_data = None
+        nodes_in_edges = reduce(lambda a, b: a + b, edges, ())
+        missing_nodes = tuple(set(nodes_in_edges).difference(set(nodes)))
+        nodes = nodes + missing_nodes
+
+        missing_nodes = {n: _node.Node(None) for n in missing_nodes}
+        self._node_data.update(missing_nodes)
 
         self.nodes = nodes
         self.edges = edges

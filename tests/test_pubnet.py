@@ -74,6 +74,9 @@ class TestNodes:
 
 
 class TestNetwork:
+    @pytest.mark.filterwarnings(
+        "ignore:Constructing PubNet object without Publication nodes."
+    )
     def test_handles_no_nodes(self):
         net = PubNet(
             None,
@@ -81,7 +84,11 @@ class TestNetwork:
             data_dir="tests/data/simple_pubnet",
             compressed=False,
         )
-        assert net.nodes is None
+        assert len(net["Publication"]) == 0
+        assert len(net["Author"]) == 0
+
+    def test_creates_empty_nodes_for_missing_edge_nodes(self, simple_pubnet):
+        assert len(simple_pubnet["Chemical"]) == 0
 
     def test_handles_no_edges(self):
         net = PubNet(
@@ -90,7 +97,7 @@ class TestNetwork:
             data_dir="tests/data/simple_pubnet",
             compressed=False,
         )
-        assert net.edges is None
+        assert len(net.edges) == 0
 
     def test_filter_to_publicaiton_ids(self, simple_pubnet):
         publication_ids = np.asarray([1, 2], dtype=np.int64)

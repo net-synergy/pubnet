@@ -19,7 +19,12 @@ class Node:
 
     _id_re = re.compile("(.*):ID\\(.*?\\)")
 
-    def __init__(self, node, data_dir):
+    def __init__(self, node, data_dir="."):
+        if node is None:
+            self._data = pd.DataFrame()
+            self.id = None
+            return
+
         self._data = pd.read_csv(
             os.path.join(data_dir, f"{node}_nodes.tsv"),
             delimiter="\t",
@@ -44,6 +49,9 @@ class Node:
 
     def __getitem__(self, key):
         return self._data[key]
+
+    def __len__(self):
+        return len(self._data)
 
     @property
     def shape(self):
