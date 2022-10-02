@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import pytest
 from pubnet import PubNet
 
@@ -17,6 +18,11 @@ def simple_pubnet(request):
         )
     except NotImplementedError:
         pytest.skip("Not implemented")
+
+
+@pytest.fixture
+def author_node(simple_pubnet):
+    return simple_pubnet["Author"]
 
 
 class TestEdges:
@@ -66,11 +72,64 @@ class TestEdges:
 
 
 class TestNodes:
-    def test_finds_namespace(self, simple_pubnet):
-        assert simple_pubnet["Author"].id == "AuthorId"
+    def test_finds_namespace(self, author_node):
+        assert author_node.id == "AuthorId"
 
-    def test_shape(self, simple_pubnet):
-        assert simple_pubnet["Author"].shape == (4, 3)
+    def test_shape(self, author_node):
+        assert author_node.shape == (4, 3)
+
+    def test_slice_column(self, author_node):
+        assert author_node["LastName"][0] == "Smith"
+
+    def test_slice_columns(self, author_node):
+        features = ["LastName", "ForeName"]
+        assert (author_node[features].columns.values == features).all()
+
+    def test_slice_column_by_index(self, author_node):
+        assert author_node[0] is author_node["AuthorId"]
+        assert author_node[1] is author_node["LastName"]
+
+    def test_slice_rows_by_index(self, author_node):
+        expected = pd.DataFrame(
+            {
+                "AuthorId": [1, 2],
+                "LastName": ["Smith", "Kim"],
+                "ForeName": ["John", "John"],
+            }
+        )
+        actual = author_node[0:2]
+
+        for feature in author_node.features:
+            assert (actual[feature].values == expected[feature].values).all()
+
+    def test_slice_rows_by_mask(self, author_node):
+        actual = author_node[author_node["LastName"] == "Smith"]
+        expected = pd.DataFrame(
+            {
+                "AuthorId": [1, 3],
+                "LastName": ["Smith", "Smith"],
+                "ForeName": ["John", "Jane"],
+            }
+        )
+
+        for feature in author_node.features:
+            assert (actual[feature].values == expected[feature].values).all()
+
+    def test_slice_rows_and_columns(self, author_node):
+        actual = {
+            "Slices": author_node[0:2, 0:2],
+            "Slice + List": author_node[0:2, ["AuthorId", "LastName"]],
+            "Mask + Slice": author_node[
+                author_node["ForeName"] == "John", 0:2
+            ],
+        }
+        expected = pd.DataFrame(
+            {"AuthorId": [1, 2], "LastName": ["Smith", "Kim"]}
+        )
+
+        for node in actual.values():
+            for feature in expected.columns:
+                assert (node[feature].values == expected[feature].values).all()
 
 
 class TestNetwork:
@@ -103,8 +162,14 @@ class TestNetwork:
         publication_ids = np.asarray([1, 2], dtype=np.int64)
         subnet = simple_pubnet[publication_ids]
 
+        expected_authors = np.asarray([1, 2, 3])
+        expected_chemicals = np.asarray([1, 2, 3])
+
         assert subnet["Author", "Publication"].shape == 5
         assert subnet["Chemical", "Publication"].shape == 4
+        assert np.array_equal(
+            np.unique(subnet["Author"][subnet["Author"].id]), expected_authors
+        )
 
     def test_filter_to_author(self, simple_pubnet):
         publication_ids = simple_pubnet.publications_containing(

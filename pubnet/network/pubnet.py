@@ -209,6 +209,17 @@ class PubNet:
         for e in self.edges:
             self[e].set(self[e][self[e].isin("Publication", pub_ids)])
 
+        for n in self.nodes:
+            if len(n) == 0:
+                continue
+            try:
+                edge = self[n, "Publication"]
+                node_ids = edge[n][edge.isin("Publication", pub_ids)]
+                self[n].set(self[n][self[n][self[n].id].isin(node_ids)])
+
+            except KeyError:
+                continue
+
         return self
 
     def merge(self, other, mutate=True):

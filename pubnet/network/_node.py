@@ -48,10 +48,48 @@ class Node:
         return repr(self._data)
 
     def __getitem__(self, key):
-        return self._data[key]
+        if key is None:
+            # When node is empty, self.id == None.
+            return pd.Series(dtype=pd.Float64Dtype)
+
+        if isinstance(key, str):
+            return self._data[key]
+
+        if isinstance(key, int):
+            return self._data[self._data.columns[key]]
+
+        if isinstance(key, tuple):
+            assert (
+                len(key) <= 2
+            ), f"Nodes are 2d; {key} has too many dimensions."
+            rows = key[0]
+            columns = key[1]
+        elif isinstance(key, list) and isinstance(key[0], str):
+            columns = key
+            rows = slice(None)
+        else:
+            rows = key
+            columns = slice(None)
+
+        if not isinstance(rows, slice):
+            if (len(rows) > 1) and isinstance(rows[0], (bool, np.bool8)):
+                return self._data[columns].loc[rows]
+
+        return self._data[columns][rows]
 
     def __len__(self):
         return len(self._data)
+
+    def set(self, new_data):
+        self._data = new_data
+
+    @property
+    def features(self):
+        return self._data.columns
+
+    @property
+    def columns(self):
+        return self.features
 
     @property
     def shape(self):
