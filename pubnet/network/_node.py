@@ -15,6 +15,21 @@ class Node:
     f"{name}:ID({namespace})" in order to be compatible with Neo4j
     data.  Here the value `namespace` refers to the node so it's not
     important since we already know the the node.
+
+    Arguments
+    ---------
+    node : str or None, If None, return an empty node otherwise, a node
+        name with a corresponding file in data_dir named f"{node}_nodes.tsv.
+    data_dir : str, where to look for node files (default "."). Not
+        used when node is None.
+
+    Attributes
+    ----------
+    id : the name of the node id. This is the feature that will be
+        used in edges to link to the node.
+    features : a list of all features.
+    columns : alias for features to correspond with dataframe terminology.
+    shape : a touple with number of rows and number of features.
     """
 
     _id_re = re.compile("(.*):ID\\(.*?\\)")
