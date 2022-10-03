@@ -66,6 +66,15 @@ class NumpyEdge(Edge):
 
         return np.isin(self[column], test_elements)
 
+    def isequal(self, edge_2):
+        if self.start_id != edge_2.start_id:
+            return False
+
+        if self.end_id != edge_2.end_id:
+            return False
+
+        return (self._data == edge_2._data).all()
+
     @property
     def shape(self):
         return self._data.shape[0]

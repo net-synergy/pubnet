@@ -182,6 +182,24 @@ class TestNetwork:
             np.unique(subnet["Author"][subnet["Author"].id]), expected_authors
         )
 
+    # Issue where filtering a network created by filtering another
+    # network is not working. This should ensure the network returned
+    # by slicing doesn't have any unexpected traits.
+    #
+    # Caused by DataFrame using row IDs for numeric indexing but row
+    # IDs aren't regenerated after slicing. If the first row is
+    # filtered out, there is no longer a row 0, and indexing with 0 is
+    # a key error.
+    def test_filter_twice(self, simple_pubnet):
+        publication_ids_1 = np.asarray([4, 6], dtype=simple_pubnet.id_datatype)
+        publication_ids_2 = 4
+
+        subnet_1 = simple_pubnet[publication_ids_1]
+        subsubnet = subnet_1[publication_ids_2]
+        subnet_2 = simple_pubnet[publication_ids_2]
+
+        assert subsubnet.isequal(subnet_2)
+
     def test_filter_to_author(self, simple_pubnet):
         publication_ids = simple_pubnet.publications_containing(
             "Author", "LastName", "Smith"

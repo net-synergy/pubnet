@@ -87,7 +87,13 @@ class Node:
             columns = slice(None)
 
         if not isinstance(rows, slice):
-            if (len(rows) > 1) and isinstance(rows[0], (bool, np.bool8)):
+            is_mask = len(rows) > 1
+            if is_mask and isinstance(rows, pd.Series):
+                is_mask = isinstance(rows.values[0], (bool, np.bool8))
+            else:
+                is_mask = is_mask and isinstance(rows[0], (bool, np.bool8))
+
+            if is_mask:
                 return self._data[columns].loc[rows]
 
         return self._data[columns][rows]
@@ -126,3 +132,15 @@ class Node:
 
         rng = np.random.default_rng(seed=seed)
         return self._data.loc[rng.integers(0, self._data.shape[0], size=(n,))]
+
+    def isequal(self, node_2):
+        """Test if two nodes have the same values in all their columns."""
+
+        if not (self.features == node_2.features).all():
+            return False
+
+        for feature in self.features:
+            if not (self[feature].values == node_2[feature].values).all():
+                return False
+
+        return True

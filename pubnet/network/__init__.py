@@ -67,20 +67,29 @@ class PubNet:
         missing_nodes = {n: _node.Node(None) for n in missing_nodes}
         self._node_data.update(missing_nodes)
 
-        self.nodes = nodes
-        self.edges = edges
+        if "Publication" not in nodes:
+            warn(
+                "Constructing PubNet object without Publication nodes. "
+                "This will limit the functionality of the data type."
+            )
+
+        self.nodes = np.asarray(nodes)
+        self.edges = np.asarray(edges)
         self.id_datatype = Edge.id_datatype
 
     def __getitem__(self, args):
         if isinstance(args, str):
             return self._node_data[args]
 
-
-        if isinstance(args, tuple) and len(args) == 2:
+        is_string_array = isinstance(args, np.ndarray) and isinstance(
+            args[0], str
+        )
+        if (is_string_array or isinstance(args, tuple)) and (len(args) == 2):
             return self._edge_data[_edge_key(args[0], args[1])]
 
         if isinstance(args, (np.ndarray, self.id_datatype, int)):
             return self._slice(args)
+
         raise KeyError(*args)
 
     def __repr__(self):
@@ -217,15 +226,16 @@ class PubNet:
             self[e].set(self[e][self[e].isin("Publication", pub_ids)])
 
         for n in self.nodes:
-            if len(n) == 0:
+            if len(self[n]) == 0:
                 continue
             try:
                 edge = self[n, "Publication"]
-                node_ids = edge[n][edge.isin("Publication", pub_ids)]
-                self[n].set(self[n][self[n][self[n].id].isin(node_ids)])
-
             except KeyError:
                 continue
+
+            node_ids = edge[n]
+            node_locs = self[n][self[n].id].isin(node_ids)
+            self[n].set(self[n][node_locs])
 
         return self
 
@@ -240,6 +250,23 @@ class PubNet:
         # combines data from multiple sources (pubmed, crossref).
 
         pass
+
+    def isequal(self, other):
+        if not (self.nodes == other.nodes).all():
+            return False
+
+        if not (self.edges == other.edges).all():
+            return False
+
+        for n in self.nodes:
+            if not self[n].isequal(other[n]):
+                return False
+
+        for e in self.edges:
+            if not self[e].isequal(other[e]):
+                return False
+
+        return True
 
 
 def _edge_key(n1, n2):
