@@ -69,17 +69,18 @@ class PubNet:
 
         self.nodes = nodes
         self.edges = edges
+        self.id_datatype = Edge.id_datatype
 
     def __getitem__(self, args):
         if isinstance(args, str):
             return self._node_data[args]
 
-        if isinstance(args, np.ndarray):
-            return self.slice(args)
 
-        if len(args) == 2:
+        if isinstance(args, tuple) and len(args) == 2:
             return self._edge_data[_edge_key(args[0], args[1])]
 
+        if isinstance(args, (np.ndarray, self.id_datatype, int)):
+            return self._slice(args)
         raise KeyError(*args)
 
     def __repr__(self):
@@ -199,7 +200,7 @@ class PubNet:
 
         return publication_ids
 
-    def slice(self, pub_ids, mutate=False):
+    def _slice(self, pub_ids, mutate=False):
         """Filter all the PubNet object's edges to those connecting to pub_ids.
 
         Primarily called through indexing with `__getitem__`.
@@ -209,7 +210,7 @@ class PubNet:
 
         if not mutate:
             new_pubnet = copy.deepcopy(self)
-            new_pubnet.slice(pub_ids, mutate=True)
+            new_pubnet._slice(pub_ids, mutate=True)
             return new_pubnet
 
         for e in self.edges:

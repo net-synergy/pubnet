@@ -13,13 +13,15 @@ class NumpyEdge(Edge):
     Uses arrays to list the non-zero edges in a sparse matrix form.
     """
 
+    id_datatype = np.int64
+
     def __init__(self, *args):
         super().__init__(*args)
         self._representation = "numpy"
         self._data = np.genfromtxt(
             self._file_path,
             # All edge values should be integer IDs.
-            dtype=np.int64,
+            dtype=self.id_datatype,
             skip_header=1,
         )
 

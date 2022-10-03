@@ -158,12 +158,23 @@ class TestNetwork:
         )
         assert len(net.edges) == 0
 
+    def test_filter_to_single_publication_id(self, simple_pubnet):
+        publication_id = 1
+        subnet = simple_pubnet[publication_id]
+
+        expected_authors = np.asarray([1, 2, 3])
+
+        assert subnet["Author", "Publication"].shape == 3
+        assert subnet["Chemical", "Publication"].shape == 2
+        assert np.array_equal(
+            np.unique(subnet["Author"][subnet["Author"].id]), expected_authors
+        )
+
     def test_filter_to_publicaiton_ids(self, simple_pubnet):
-        publication_ids = np.asarray([1, 2], dtype=np.int64)
+        publication_ids = np.asarray([1, 2], dtype=simple_pubnet.id_datatype)
         subnet = simple_pubnet[publication_ids]
 
         expected_authors = np.asarray([1, 2, 3])
-        expected_chemicals = np.asarray([1, 2, 3])
 
         assert subnet["Author", "Publication"].shape == 5
         assert subnet["Chemical", "Publication"].shape == 4
