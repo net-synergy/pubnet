@@ -86,8 +86,8 @@ class TestNodes:
         assert (author_node[features].columns.values == features).all()
 
     def test_slice_column_by_index(self, author_node):
-        assert author_node[0] is author_node["AuthorId"]
-        assert author_node[1] is author_node["LastName"]
+        assert author_node[0] is author_node[author_node.features[0]]
+        assert author_node[1] is author_node[author_node.features[1]]
 
     def test_slice_rows_by_index(self, author_node):
         expected = pd.DataFrame(
