@@ -80,8 +80,11 @@ class PubNet:
         if (is_string_array or isinstance(args, tuple)) and (len(args) == 2):
             return self._edge_data[_edge_key(args[0], args[1])]
 
-        if isinstance(args, (np.ndarray, self.id_datatype, int)):
+        if isinstance(args, np.ndarray):
             return self._slice(args)
+
+        if isinstance(args, (self.id_datatype, int)):
+            return self._slice(np.asarray([args]))
 
         raise KeyError(*args)
 
@@ -221,12 +224,16 @@ class PubNet:
         for n in self.nodes:
             if len(self[n]) == 0:
                 continue
-            try:
-                edge = self[n, "Publication"]
-            except KeyError:
-                continue
 
-            node_ids = edge[n]
+            if n == "Publication":
+                node_ids = pub_ids
+            else:
+                try:
+                    edge = self[n, "Publication"]
+                except KeyError:
+                    continue
+                node_ids = edge[n]
+
             node_locs = self[n][self[n].id].isin(node_ids)
             self[n].set(self[n][node_locs])
 

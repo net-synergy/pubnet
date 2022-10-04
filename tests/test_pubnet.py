@@ -169,6 +169,10 @@ class TestNetwork:
         assert np.array_equal(
             np.unique(subnet["Author"][subnet["Author"].id]), expected_authors
         )
+        assert np.array_equal(
+            np.unique(subnet["Publication"][subnet["Publication"].id]),
+            np.asarray([publication_id]),
+        )
 
     def test_filter_to_publicaiton_ids(self, simple_pubnet):
         publication_ids = np.asarray([1, 2], dtype=simple_pubnet.id_datatype)
@@ -180,6 +184,10 @@ class TestNetwork:
         assert subnet["Chemical", "Publication"].shape == 4
         assert np.array_equal(
             np.unique(subnet["Author"][subnet["Author"].id]), expected_authors
+        )
+        assert np.array_equal(
+            np.unique(subnet["Publication"][subnet["Publication"].id]),
+            publication_ids,
         )
 
     # Issue where filtering a network created by filtering another
@@ -213,6 +221,11 @@ class TestNetwork:
         )
         assert np.array_equal(
             np.unique(subnet["Chemical", "Publication"]["Publication"]),
+            expected_publication_ids,
+        )
+
+        assert np.array_equal(
+            np.unique(subnet["Publication"][subnet["Publication"].id]),
             expected_publication_ids,
         )
 
