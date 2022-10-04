@@ -209,10 +209,7 @@ class TestNetwork:
         assert subsubnet.isequal(subnet_2)
 
     def test_filter_to_author(self, simple_pubnet):
-        publication_ids = simple_pubnet.publications_containing(
-            "Author", "LastName", "Smith"
-        )
-        subnet = simple_pubnet[publication_ids]
+        subnet = simple_pubnet.containing("Author", "LastName", "Smith")
         expected_publication_ids = np.asarray([1, 2, 3, 5])
 
         assert np.array_equal(

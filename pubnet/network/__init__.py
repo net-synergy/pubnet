@@ -205,6 +205,31 @@ class PubNet:
 
         return publication_ids
 
+    def where(self, node_type, func):
+        """Filter network to publications satisfying a predicate
+        function.
+
+        See also
+        --------
+        `publications_where`, `containing`.
+        """
+
+        publication_ids = self.publications_where(node_type, func)
+        return self[publication_ids]
+
+    def containing(self, node_type, node_feature, value, steps=1):
+        """Filter network to publications with a given node feature.
+
+        See also
+        --------
+        `publications_containing`, `where`.
+        """
+
+        publication_ids = self.publications_containing(
+            node_type, node_feature, value, steps
+        )
+        return self[publication_ids]
+
     def _slice(self, pub_ids, mutate=False):
         """Filter all the PubNet object's edges to those connecting to pub_ids.
 
