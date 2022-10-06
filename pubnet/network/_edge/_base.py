@@ -63,6 +63,10 @@ class Edge:
         """Find which elements from column are in the set of test_elements."""
         raise AbstractMethodError(self)
 
+    def isequal(self, other):
+        """Determine if two edges are equivalent."""
+        raise AbstractMethodError(self)
+
     @property
     def shape(self):
         """Find number of edges."""

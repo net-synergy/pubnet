@@ -44,12 +44,12 @@ class PubNet:
             edges = ()
 
         if compressed:
-            Edge = _edge.CompressedEdge
+            self._edge_class = _edge.CompressedEdge
         else:
-            Edge = _edge.NumpyEdge
+            self._edge_class = _edge.NumpyEdge
 
         self._edge_data = {
-            _edge_key(e[0], e[1]): Edge(e, data_dir) for e in edges
+            self._edge_key(e): self._edge_class(e, data_dir) for e in edges
         }
         self._node_data = {n: _node.Node(n, data_dir) for n in nodes}
 
@@ -68,7 +68,7 @@ class PubNet:
 
         self.nodes = np.asarray(nodes)
         self.edges = np.asarray(edges)
-        self.id_datatype = Edge.id_datatype
+        self.id_datatype = self._edge_class.id_datatype
 
     def __getitem__(self, args):
         if isinstance(args, str):
@@ -78,7 +78,7 @@ class PubNet:
             args[0], str
         )
         if (is_string_array or isinstance(args, tuple)) and (len(args) == 2):
-            return self._edge_data[_edge_key(args[0], args[1])]
+            return self._edge_data[self._edge_key(args)]
 
         if isinstance(args, np.ndarray):
             return self._slice(args)
@@ -264,6 +264,63 @@ class PubNet:
 
         return self
 
+    def drop(self, nodes=None, edges=None):
+        """Drop given nodes and edges from the network.
+
+        Arguments
+        ---------
+        nodes : str, list-like; None, if not none, drop the provided nodes.
+        edges : list-like, None; if not none, drop the provided edges.
+        """
+
+        assert self._missing_nodes(nodes).size == 0, (
+            f"Node(s) {nodes[self._missing_nodes(nodes)]} is not in network",
+            "\n\nNetwork's nodes are {self.nodes}.",
+        )
+
+        assert self._missing_edges(edges).size == 0, (
+            f"Edge(s) {edges[self._missing_edges(edges)]} is not in network",
+            "\n\nNetwork's edges are {self.edges}.",
+        )
+
+        if nodes is None:
+            nodes = []
+        elif isinstance(nodes, str):
+            nodes = [nodes]
+
+        for node in nodes:
+            self._node_data.pop(node)
+        self.nodes = self.nodes[np.isin(self.nodes, nodes, invert=True)]
+
+        if edges is None:
+            edges = []
+        else:
+            edges = self._as_keys(edges)
+
+        for edge in edges:
+            self._edge_data.pop(edge)
+        self.edges = self.edges[
+            np.isin(self._as_keys(self.edges), edges, invert=True)
+        ]
+
+    def update(self, other):
+        """Add the data from other to the current network.
+
+        Behaves similar to Dict.update(), if other contains nodes or edges in
+        this network, the values in other will replace this network's.
+
+        This command mutates the current network and returns nothing.
+        """
+
+        self._node_data.update(other._node_data)
+        self._edge_data.update(other._edge_data)
+        self.nodes = np.unique(
+            np.concatenate((self.nodes, other.nodes)), axis=0
+        )
+        self.edges = np.unique(
+            np.concatenate((self.edges, other.edges)), axis=0
+        )
+
     def merge(self, other, mutate=True):
         # Should handle different publication IDs somehow. Probably
         # have known IDs (PMID, DOI, etc) and use a lookup table for
@@ -274,7 +331,7 @@ class PubNet:
         # Intend on using this to ease generation of a PubNet that
         # combines data from multiple sources (pubmed, crossref).
 
-        pass
+        raise NotImplementedError
 
     def isequal(self, other):
         if not (self.nodes == other.nodes).all():
@@ -293,10 +350,66 @@ class PubNet:
 
         return True
 
+    @staticmethod
+    def _edge_key(edge):
+        """Generate a dictionary key for the given pair of nodes."""
 
-def _edge_key(n1, n2):
-    """Generate a dictionary key for the given pair of nodes."""
-    return "_".join(sorted((n1, n2)))
+        return "_".join(sorted(edge))
+
+    def _as_keys(self, edges):
+        """Convert a list of edges to their keys."""
+
+        try:
+            if isinstance(edges[0], str):
+                edges = [edges]
+        except IndexError:
+            return None
+
+        edges = np.asarray(edges)
+        return np.asarray([self._edge_key(e) for e in edges])
+
+    def _missing_edges(self, edges):
+        """Find all edges not in self.
+
+        Arguments
+        ---------
+        edges : list-like, None
+
+        Returns
+        -------
+        missing_edges : np.ndarary, edges not in self.
+        """
+
+        if edges is None:
+            return np.asarray([])
+
+        if isinstance(edges[0], str):
+            edges = [edges]
+
+        edges = np.asarray(edges)
+        return edges[
+            np.isin(
+                self._as_keys(edges), self._as_keys(self.edges), invert=True
+            )
+        ]
+
+    def _missing_nodes(self, nodes):
+        """Find all nodes not in self.
+
+        Arguments
+        ---------
+        nodes : str, list-like, None
+
+        Returns
+        -------
+        missing_nodes : np.ndarary, nodes not in self.
+        """
+
+        if nodes is None:
+            return np.asarray([])
+
+        nodes = np.asarray(nodes)
+        return nodes[np.isin(nodes, self.nodes, invert=True)]
 
 
 def from_dir(data_dir, *args):

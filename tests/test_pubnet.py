@@ -21,6 +21,15 @@ def simple_pubnet(request):
 
 
 @pytest.fixture
+def other_pubnet(request):
+    return PubNet(
+        ("Chemical",),
+        (("Publication", "Chemical"),),
+        data_dir="tests/data/other_pubnet",
+    )
+
+
+@pytest.fixture
 def author_node(simple_pubnet):
     return simple_pubnet["Author"]
 
@@ -242,6 +251,63 @@ class TestNetwork:
         assert np.array_equal(
             np.unique(subnet["Chemical", "Publication"]["Publication"]),
             expected_publication_ids,
+        )
+
+    def test_drops_node(self, simple_pubnet):
+        node = "Author"
+        simple_pubnet.drop(node)
+
+        assert node not in simple_pubnet.nodes
+        assert node not in simple_pubnet._node_data.keys()
+
+    def test_drops_nodes(self, simple_pubnet):
+        nodes = ["Author", "Chemical"]
+        simple_pubnet.drop(nodes)
+
+        assert np.isin(nodes, simple_pubnet.nodes, invert=True).all()
+        assert np.isin(
+            nodes, simple_pubnet._node_data.keys(), invert=True
+        ).all()
+
+    def test_drops_edge(self, simple_pubnet):
+        edge = ("Author", "Publication")
+        simple_pubnet.drop(edges=edge)
+
+        edge = simple_pubnet._edge_key(edge)
+        assert edge not in simple_pubnet.edges
+        assert edge not in simple_pubnet._edge_data.keys()
+
+    def test_drops_edges(self, simple_pubnet):
+        edges = (("Author", "Publication"), ("Chemical", "Publication"))
+        simple_pubnet.drop(edges=edges)
+
+        edges = simple_pubnet._as_keys(edges)
+        assert np.isin(
+            edges, simple_pubnet._as_keys(simple_pubnet.edges), invert=True
+        ).all()
+        assert np.isin(
+            edges, simple_pubnet._edge_data.keys(), invert=True
+        ).all()
+
+    def test_update(self, simple_pubnet, other_pubnet):
+        expected_nodes = set(simple_pubnet.nodes).union(
+            set(other_pubnet.nodes)
+        )
+
+        expected_edges = set(
+            simple_pubnet._as_keys(simple_pubnet.edges)
+        ).union(set(other_pubnet._as_keys(other_pubnet.edges)))
+        print(expected_edges)
+
+        other_pubnet.drop("Publication")
+        simple_pubnet.update(other_pubnet)
+        assert set(simple_pubnet.nodes) == expected_nodes
+        assert (
+            set(simple_pubnet._as_keys(simple_pubnet.edges)) == expected_edges
+        )
+        # Assert other's Chemical-Publication edge shadowed simple_pubnet's.
+        assert simple_pubnet["Chemical", "Publication"].isequal(
+            other_pubnet["Chemical", "Publication"]
         )
 
 
