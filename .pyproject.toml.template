@@ -3,6 +3,7 @@
 cat >pyproject.toml <<_EOF_
 [tool.black]
 line-length = 79
+preview = true
 
 [tool.poetry]
 name = "$pname"
