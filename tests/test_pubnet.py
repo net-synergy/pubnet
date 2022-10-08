@@ -1,63 +1,35 @@
 import numpy as np
 import pandas as pd
+import pubnet
 import pytest
-from pubnet import PubNet
 
-
-# If true uses CompressedEdge otherwise NumpyEdge.  If more edge types
-# are added in the future this sholud be extended to `edge_type` and
-# return the str representing the desired type.
-@pytest.fixture(params=[True, False])
-def simple_pubnet(request):
-    try:
-        return PubNet(
-            ("Author", "Publication"),
-            (("Publication", "Author"), ("Publication", "Chemical")),
-            data_dir="tests/data/simple_pubnet",
-            compressed=request.param,
-        )
-    except NotImplementedError:
-        pytest.skip("Not implemented")
-
-
-@pytest.fixture
-def other_pubnet(request):
-    return PubNet(
-        ("Chemical",),
-        (("Publication", "Chemical"),),
-        data_dir="tests/data/other_pubnet",
-    )
-
-
-@pytest.fixture
-def author_node(simple_pubnet):
-    return simple_pubnet["Author"]
+from ._test_fixtures import author_node, other_pubnet, simple_pubnet
 
 
 class TestEdges:
     def test_finds_start_id(self, simple_pubnet):
         for e in simple_pubnet.edges:
-            assert simple_pubnet[e].start_id == e[0]
+            assert simple_pubnet[e].start_id == "Publication"
 
-    def test_finds_close_id(self, simple_pubnet):
+    def test_finds_end_id(self, simple_pubnet):
+        expected = ["Author", "Chemical"]
         for e in simple_pubnet.edges:
-            assert simple_pubnet[e].end_id == e[1]
+            assert simple_pubnet[e].end_id in expected
 
-    @pytest.mark.xfail
     def test_handles_swapped_start_and_close_id(self):
-        net = PubNet(
+        net = pubnet.from_dir(
+            "Publication",
             ("Publication",),
             (("Publication", "Flippedheaders"),),
             data_dir="tests/data/simple_pubnet",
-            compressed=False,
         )
         edges = net["Publication", "Flippedheaders"]
         assert edges[edges.start_id][0] == 2
         assert edges[edges.end_id][0] == 1
 
     def test_shape(self, simple_pubnet):
-        assert simple_pubnet["Author", "Publication"].shape == 12
-        assert simple_pubnet["Chemical", "Publication"].shape == 10
+        assert simple_pubnet["Author", "Publication"].shape[0] == 12
+        assert simple_pubnet["Chemical", "Publication"].shape[0] == 10
 
     def test_overlap(self, simple_pubnet):
         expected = np.array(
@@ -146,11 +118,11 @@ class TestNetwork:
         "ignore:Constructing PubNet object without Publication nodes."
     )
     def test_handles_no_nodes(self):
-        net = PubNet(
+        net = pubnet.from_dir(
+            "Publication",
             None,
             (("Publication", "Author"),),
             data_dir="tests/data/simple_pubnet",
-            compressed=False,
         )
         assert len(net["Publication"]) == 0
         assert len(net["Author"]) == 0
@@ -159,11 +131,11 @@ class TestNetwork:
         assert len(simple_pubnet["Chemical"]) == 0
 
     def test_handles_no_edges(self):
-        net = PubNet(
+        net = pubnet.from_dir(
+            "Publication",
             ("Publication",),
             None,
             data_dir="tests/data/simple_pubnet",
-            compressed=False,
         )
         assert len(net.edges) == 0
 
@@ -173,8 +145,8 @@ class TestNetwork:
 
         expected_authors = np.asarray([1, 2, 3])
 
-        assert subnet["Author", "Publication"].shape == 3
-        assert subnet["Chemical", "Publication"].shape == 2
+        assert subnet["Author", "Publication"].shape[0] == 3
+        assert subnet["Chemical", "Publication"].shape[0] == 2
         assert np.array_equal(
             np.unique(subnet["Author"][subnet["Author"].id]), expected_authors
         )
@@ -184,13 +156,13 @@ class TestNetwork:
         )
 
     def test_filter_to_publicaiton_ids(self, simple_pubnet):
-        publication_ids = np.asarray([1, 2], dtype=simple_pubnet.id_datatype)
+        publication_ids = np.asarray([1, 2], dtype=simple_pubnet.id_dtype)
         subnet = simple_pubnet[publication_ids]
 
         expected_authors = np.asarray([1, 2, 3])
 
-        assert subnet["Author", "Publication"].shape == 5
-        assert subnet["Chemical", "Publication"].shape == 4
+        assert subnet["Author", "Publication"].shape[0] == 5
+        assert subnet["Chemical", "Publication"].shape[0] == 4
         assert np.array_equal(
             np.unique(subnet["Author"][subnet["Author"].id]), expected_authors
         )
@@ -208,7 +180,7 @@ class TestNetwork:
     # filtered out, there is no longer a row 0, and indexing with 0 is
     # a key error.
     def test_filter_twice(self, simple_pubnet):
-        publication_ids_1 = np.asarray([4, 6], dtype=simple_pubnet.id_datatype)
+        publication_ids_1 = np.asarray([4, 6], dtype=simple_pubnet.id_dtype)
         publication_ids_2 = 4
 
         subnet_1 = simple_pubnet[publication_ids_1]
@@ -238,7 +210,7 @@ class TestNetwork:
     def test_filter_to_author_multiple_steps(self, simple_pubnet):
         # Currently doesn't remove any publications since all
         # publications within two steps.
-        publication_ids = simple_pubnet.publications_containing(
+        publication_ids = simple_pubnet.ids_containing(
             "Author", "LastName", "Smith", steps=2
         )
         subnet = simple_pubnet[publication_ids]
@@ -273,7 +245,7 @@ class TestNetwork:
         edge = ("Author", "Publication")
         simple_pubnet.drop(edges=edge)
 
-        edge = simple_pubnet._edge_key(edge)
+        edge = pubnet.network.edge_key(*edge)
         assert edge not in simple_pubnet.edges
         assert edge not in simple_pubnet._edge_data.keys()
 
@@ -289,22 +261,23 @@ class TestNetwork:
             edges, simple_pubnet._edge_data.keys(), invert=True
         ).all()
 
+    @pytest.mark.filterwarnings(
+        "ignore:Constructing PubNet object without Publication nodes."
+    )
     def test_update(self, simple_pubnet, other_pubnet):
         expected_nodes = set(simple_pubnet.nodes).union(
             set(other_pubnet.nodes)
         )
 
-        expected_edges = set(
-            simple_pubnet._as_keys(simple_pubnet.edges)
-        ).union(set(other_pubnet._as_keys(other_pubnet.edges)))
+        expected_edges = set(simple_pubnet.edges).union(
+            set(other_pubnet.edges)
+        )
         print(expected_edges)
 
         other_pubnet.drop("Publication")
         simple_pubnet.update(other_pubnet)
         assert set(simple_pubnet.nodes) == expected_nodes
-        assert (
-            set(simple_pubnet._as_keys(simple_pubnet.edges)) == expected_edges
-        )
+        assert set(simple_pubnet.edges) == expected_edges
         # Assert other's Chemical-Publication edge shadowed simple_pubnet's.
         assert simple_pubnet["Chemical", "Publication"].isequal(
             other_pubnet["Chemical", "Publication"]
@@ -317,7 +290,7 @@ class TestSnapshots:
     @pytest.mark.parametrize("method", ["shortest_path"])
     def test_similarity(self, simple_pubnet, method, snapshot):
         snapshot.snapshot_dir = "tests/snapshots"
-        publication_ids = simple_pubnet.publications_containing(
+        publication_ids = simple_pubnet.ids_containing(
             "Author", "LastName", "Smith"
         )
         snapshot.assert_match(

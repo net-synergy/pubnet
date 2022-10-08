@@ -6,6 +6,8 @@ import re
 import numpy as np
 import pandas as pd
 
+__all__ = ["Node", "from_file", "from_data"]
+
 
 class Node:
     """Class for storing node data for PubNet class.
@@ -18,10 +20,14 @@ class Node:
 
     Arguments
     ---------
-    node : str or None, If None, return an empty node otherwise, a node
-        name with a corresponding file in data_dir named f"{node}_nodes.tsv.
-    data_dir : str, where to look for node files (default "."). Not
-        used when node is None.
+    data : pandas.DataFrame, containing node's features.
+    id : "detect" or str, if "detect" (default), determine the id
+        column based on the above mentioned Neo4j syntax. Otherwise,
+        use specified column name as the ID. If the column doesn't
+        exist it will be generated as 1:len(data).
+    features : "all" or list : If not "all" (default) provide a list
+        of the columns to keep. All names in list must be exact
+        matches to column names in the data file.
 
     Attributes
     ----------
@@ -32,29 +38,44 @@ class Node:
     shape : a touple with number of rows and number of features.
     """
 
-    _id_re = re.compile("(.*):ID\\(.*?\\)")
-
-    def __init__(self, node, data_dir="."):
-        if node is None:
+    def __init__(self, data, id="detect", features="all"):
+        self._data = data
+        if data is None:
             self._data = pd.DataFrame()
             self.id = None
             return
 
-        self._data = pd.read_csv(
-            os.path.join(data_dir, f"{node}_nodes.tsv"),
-            delimiter="\t",
-        )
-        id_column = list(
-            filter(
-                lambda x: x is not None,
-                [self._id_re.search(name) for name in self._data.columns],
+        if id == "detect":
+            id_regex = r"(\w+):ID\((\w+)\)"
+            id_column = list(
+                filter(
+                    lambda x: x is not None,
+                    [re.search(id_regex, name) for name in data.columns],
+                )
+            )[0]
+            old_id = id_column.group().replace("(", "\\(").replace(")", "\\)")
+            self.id = id_column.groups()[0]
+            self._data.columns = self._data.columns.str.replace(
+                old_id, self.id, regex=True
             )
-        )[0]
-        old_id = id_column.group().replace("(", "\\(").replace(")", "\\)")
-        self.id = id_column.groups()[0]
-        self._data.columns = self._data.columns.str.replace(
-            old_id, self.id, regex=True
-        )
+        else:
+            assert (
+                id in data.columns
+            ), f"Id not in data.\n\tAvailable features: {data.columns}."
+            self.id = id
+
+        if features != "all":
+            assert isinstance(
+                features, list
+            ), 'Features must be a list or "all"'
+            try:
+                self._data = self._data[features]
+            except KeyError as err:
+                raise KeyError(
+                    "One or more selected feature not in data.\n\n\tSelected"
+                    f" features: {features}\n\tData's features:"
+                    f" {self._data.columns}"
+                ) from err
 
     def __str__(self):
         return str(self._data)
@@ -144,3 +165,15 @@ class Node:
                 return False
 
         return True
+
+
+def from_file(file, *args):
+    data = pd.read_csv(
+        file,
+        delimiter="\t",
+    )
+    return from_data(data, *args)
+
+
+def from_data(data, *args):
+    return Node(data, *args)

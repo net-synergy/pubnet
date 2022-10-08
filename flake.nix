@@ -24,7 +24,7 @@
         pubnetCheckInputs = (with python.pkgs; [ pytest pytest-snapshot ]);
         pubnet = python.pkgs.buildPythonPackage rec {
           pname = "pubnet";
-          version = "0.1.0";
+          version = "0.2.0";
           src = ./.;
           format = "pyproject";
           buildInputs = (with python.pkgs; [ poetry ]);

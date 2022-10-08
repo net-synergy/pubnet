@@ -13,17 +13,8 @@ class NumpyEdge(Edge):
     Uses arrays to list the non-zero edges in a sparse matrix form.
     """
 
-    id_datatype = np.int64
-
     def __init__(self, *args):
         super().__init__(*args)
-        self._representation = "numpy"
-        self._data = np.genfromtxt(
-            self._file_path,
-            # All edge values should be integer IDs.
-            dtype=self.id_datatype,
-            skip_header=1,
-        )
 
     def __str__(self):
         return (
@@ -43,7 +34,8 @@ class NumpyEdge(Edge):
                 key = 1
             else:
                 raise KeyError(
-                    f'Key "{key}" not one of "{self.start_id}" or "{self.end_id}".'
+                    f'Key "{key}" not one of "{self.start_id}" or'
+                    f' "{self.end_id}".'
                 )
             return self._data[:, key]
 
@@ -77,7 +69,7 @@ class NumpyEdge(Edge):
 
     @property
     def shape(self):
-        return self._data.shape[0]
+        return self._data.shape
 
     def _calc_overlap(self):
         """Calculate the neighbor overlap between nodes.

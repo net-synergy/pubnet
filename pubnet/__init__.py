@@ -5,8 +5,6 @@ publication data as a set of graphs. Graphs are represented as nodes
 and edges (adjacency matrices).
 """
 
-from pubnet.network import PubNet
+from pubnet.network import from_data, from_dir
 
-__all__ = [
-    "PubNet",
-]
+__all__ = ["from_dir", "from_data"]

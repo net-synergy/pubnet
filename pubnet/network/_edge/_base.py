@@ -21,8 +21,9 @@ class Edge:
 
     Arguments
     ---------
-    edge : a list of two node types.
-    data_dir : the directory the edge file is in.
+    data : numpy.ndarray, the edges as a list of existing edges.
+    start_id : str, name of edge start node type
+    end_id : str, name of edge end node type
 
     Attributes
     ----------
@@ -30,21 +31,12 @@ class Edge:
     end_id : the node type in column 1.
     """
 
-    _start_id_re = re.compile(":START_ID\\((.*?)\\)")
-    _end_id_re = re.compile(":END_ID\\((.*?)\\)")
+    def __init__(self, data, start_id, end_id):
+        self._data = data
+        self.start_id = start_id
+        self.end_id = end_id
 
-    def __init__(self, edge, data_dir):
-        assert len(edge) == 2, "Edge is defined by exactly two nodes."
-
-        self._file_path = _edge_path(edge[0], edge[1], data_dir)
-
-        with open(self._file_path, "r") as f:
-            header_line = f.readline()
-
-        self.start_id = self._start_id_re.search(header_line).groups()[0]
-        self.end_id = self._end_id_re.search(header_line).groups()[0]
-        self._data = None
-        # Weighted edges implemented yet.
+        # Weighted not implemented yet
         self.isweighted = False
 
     def set(self, new_data):
@@ -120,35 +112,6 @@ class Edge:
 
     def _pagerank(self, target_publications):
         raise AbstractMethodError(self)
-
-
-def _edge_path(n1, n2, data_dir):
-    """Find the edge file in data_dir for the provided node types.
-
-    Known possible issues:
-        If we need directed edges, the order of nodes in the file name
-        may be important. Add in a weighted keyword argument, if true
-        look for files only with the nodes in the order they were
-        provided otherwise look for both. Another option is to not
-        only check the file name but check the header for the START_ID
-        and END_ID node types.
-    """
-
-    def edge_file_path(n1, n2):
-        return os.path.join(data_dir, f"{n1}_{n2}_edges.tsv")
-
-    if os.path.exists(edge_file_path(n1, n2)):
-        file_path = edge_file_path(n1, n2)
-    elif os.path.exists(edge_file_path(n2, n1)):
-        file_path = edge_file_path(n2, n1)
-    else:
-        raise FileNotFoundError(
-            f"No edge file for edges {n1}, {n2} found in {data_dir}"
-            f"\n\nExpceted either file '{edge_file_path(n1, n2)}' or"
-            f"'{edge_file_path(n2, n1)}'"
-        )
-
-    return file_path
 
 
 class AbstractMethodError(NotImplementedError):

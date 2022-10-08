@@ -1,4 +1,4 @@
-from pubnet import PubNet
+from pubnet import from_dir
 
 data_dir = "example/graphs"
 nodes = ("Author", "Publication", "Descriptor", "Chemical")
@@ -8,15 +8,13 @@ edges = (
     ("Chemical", "Publication"),
 )
 
-publications = PubNet(nodes, edges, data_dir)
-authors = publications["Author"].get_random(n=4, seed=1)
-publication_ids = publications.publications_containing(
-    "Author", "LastName", list(authors["LastName"]), steps=2
+publications = from_dir(nodes, edges, data_dir)
+last_names = list(publications["Author"].get_random(n=4, seed=1)["LastName"])
+publication_ids = publications.containing(
+    "Author", "LastName", last_names, steps=2
 )
 
 subnet = publications[publication_ids]
 sim = subnet["Author", "Publication"].similarity(
-    publications.publications_containing(
-        "Author", "LastName", list(authors["LastName"])
-    ),
+    publications.containing("Author", "LastName", last_names)
 )
