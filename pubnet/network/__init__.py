@@ -106,6 +106,9 @@ class PubNet:
         `start_id` and `end_id` are only needed if `data` is an np.ndarray.
         """
 
+        if isinstance(name, tuple):
+            name = edge_key(*name)
+
         if name in self.edges:
             raise ValueError(f"The edge {name} is already in the network.")
 
