@@ -141,6 +141,39 @@ class PubNet:
 
         raise KeyError(*args)
 
+    def _slice(self, root_ids, mutate=False):
+        """Filter all the PubNet object's edges to those connecting to
+        root_ids.
+
+        If mutate is False return a new `PubNet` object otherwise
+        return self after mutating the edges."""
+
+        if not mutate:
+            new_pubnet = copy.deepcopy(self)
+            new_pubnet._slice(root_ids, mutate=True)
+            return new_pubnet
+
+        for key in self.edges:
+            self[key].set(self[key][self[key].isin(self.root, root_ids)])
+
+        for key in self.nodes:
+            if len(self[key]) == 0:
+                continue
+
+            if key == self.root:
+                node_ids = root_ids
+            else:
+                try:
+                    edge = self[key, self.root]
+                except KeyError:
+                    continue
+                node_ids = edge[key]
+
+            node_locs = self[key][self[key].id].isin(node_ids)
+            self[key].set(self[key][node_locs])
+
+        return self
+
     def __repr__(self):
         res = "PubNet"
         res += "\nNodes (number of nodes)"
@@ -265,39 +298,6 @@ class PubNet:
 
         root_ids = self.ids_containing(node_type, node_feature, value, steps)
         return self[root_ids]
-
-    def _slice(self, root_ids, mutate=False):
-        """Filter all the PubNet object's edges to those connecting to
-        root_ids.
-
-        If mutate is False return a new `PubNet` object otherwise
-        return self after mutating the edges."""
-
-        if not mutate:
-            new_pubnet = copy.deepcopy(self)
-            new_pubnet._slice(root_ids, mutate=True)
-            return new_pubnet
-
-        for key in self.edges:
-            self[key].set(self[key][self[key].isin(self.root, root_ids)])
-
-        for key in self.nodes:
-            if len(self[key]) == 0:
-                continue
-
-            if key == self.root:
-                node_ids = root_ids
-            else:
-                try:
-                    edge = self[key, self.root]
-                except KeyError:
-                    continue
-                node_ids = edge[key]
-
-            node_locs = self[key][self[key].id].isin(node_ids)
-            self[key].set(self[key][node_locs])
-
-        return self
 
     def drop(self, nodes=None, edges=None):
         """Drop given nodes and edges from the network.
