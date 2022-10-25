@@ -34,8 +34,39 @@ def from_file(file, representation):
     if ids[0][0] == "END":
         data = data[:, [1, 0]]
 
-    return from_data(data, start_id, end_id, representation)
+    return from_data(data, representation, start_id=start_id, end_id=end_id)
 
 
-def from_data(data, start_id, end_id, representation):
-    return _edge_class[representation](data, start_id, end_id)
+def from_data(
+    data, representation, start_id=None, end_id=None, dtype=id_dtype
+):
+    if start_id is None or end_id is None:
+        try:
+            columns = data.columns
+        except AttributeError:
+            columns = None
+
+    if (start_id is None) and (columns is not None):
+        start_id = list(
+            filter(
+                lambda x: x is not None,
+                [re.search(r":START_ID\((\w+)\)", name) for name in columns],
+            )
+        )[0]
+        start_id = start_id.groups()[0]
+
+    if (end_id is None) and (columns is not None):
+        end_id = list(
+            filter(
+                lambda x: x is not None,
+                [re.search(r":END_ID\((\w+)\)", name) for name in columns],
+            )
+        )[0]
+        end_id = end_id.groups()[0]
+
+        if start_id is None or end_id is None:
+            raise TypeError(
+                "Missing required keyword argument: 'start_id' or 'end_id'"
+            )
+
+    return _edge_class[representation](data, start_id, end_id, dtype)

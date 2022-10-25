@@ -31,10 +31,11 @@ class Edge:
     end_id : the node type in column 1.
     """
 
-    def __init__(self, data, start_id, end_id):
+    def __init__(self, data, start_id, end_id, dtype):
         self._data = data
         self.start_id = start_id
         self.end_id = end_id
+        self.dtype = dtype
 
         # Weighted not implemented yet
         self.isweighted = False

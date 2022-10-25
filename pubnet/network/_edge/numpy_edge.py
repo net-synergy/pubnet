@@ -16,6 +16,9 @@ class NumpyEdge(Edge):
     def __init__(self, *args):
         super().__init__(*args)
 
+        if not isinstance(self._data, np.ndarray):
+            self._data = np.asarray(self._data, self.dtype)
+
     def __str__(self):
         return (
             f"col 0: {self.start_id}\ncol 1: {self.end_id}\n{str(self._data)}"
