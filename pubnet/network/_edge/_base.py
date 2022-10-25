@@ -60,6 +60,11 @@ class Edge:
         """Determine if two edges are equivalent."""
         raise AbstractMethodError(self)
 
+    def distribution(self, column):
+        """Return the distribution of the nodes in column."""
+
+        raise AbstractMethodError(self)
+
     @property
     def shape(self):
         """Find number of edges."""

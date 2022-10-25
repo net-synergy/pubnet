@@ -70,6 +70,12 @@ class NumpyEdge(Edge):
 
         return (self._data == other._data).all()
 
+    def distribution(self, column):
+        dist = np.bincount(self[column])
+        # Because id's start at 1 but the 0th value in the distribution is
+        # reserved for id == 0.
+        return dist[1:]
+
     @property
     def shape(self):
         return self._data.shape

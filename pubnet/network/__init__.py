@@ -6,6 +6,7 @@ import re
 from functools import reduce
 from warnings import warn
 
+import matplotlib.pyplot as plt
 import numpy as np
 from pandas.core.dtypes.common import is_list_like
 from pubnet.data import default_data_dir
@@ -298,6 +299,33 @@ class PubNet:
 
         root_ids = self.ids_containing(node_type, node_feature, value, steps)
         return self[root_ids]
+
+    def plot_distribution(self, node_type, node_feature, threshold=1):
+        distribution = self[self.root, node_type].distribution(node_type)
+        names = self[node_type][node_feature].to_numpy()
+
+        retain = distribution >= threshold
+        distribution = distribution[retain]
+        names = names[retain]
+
+        indices = np.argsort(distribution)
+        indices = indices[-1::-1]
+
+        fig, ax = plt.subplots()
+        ax.bar(
+            np.take_along_axis(
+                names,
+                indices,
+                axis=0,
+            ),
+            np.take_along_axis(distribution, indices, axis=0),
+        )
+        for tick in ax.get_xticklabels():
+            tick.set_rotation(90)
+
+        ax.set_xlabel(node_feature)
+        ax.set_ylabel(f"{self.root} occurance")
+        plt.show()
 
     def drop(self, nodes=None, edges=None):
         """Drop given nodes and edges from the network.
