@@ -30,7 +30,7 @@
           format = "pyproject";
           buildInputs = (with python.pkgs; [ poetry ]);
           propagatedBuildInputs =
-            (with python.pkgs; [ numpy pandas scipy matplotlib ]);
+            (with python.pkgs; [ numpy pandas scipy matplotlib igraph ]);
           checkInputs = pubnetCheckInputs;
           authors = [ "David Connell <davidconnell12@gmail.com>" ];
           checkPhase = ''
