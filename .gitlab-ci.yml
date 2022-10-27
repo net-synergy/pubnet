@@ -1,0 +1,46 @@
+image: python:3.9
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+cache:
+  paths:
+    - .cache/pip
+    - .venv
+    - poetry.lock
+
+stages:
+  - test
+  - format
+  - typecheck
+
+before_script:
+  - pip install poetry
+  - poetry config virtualenvs.in-project true
+  - poetry install -vv
+
+test:
+  stage: test
+  needs: []
+  script:
+    - poetry run pytest --junit-xml pytest_report.xml
+  artifacts:
+    when: always
+    reports:
+      junit: pytest_report.xml
+
+format:
+  stage: format
+  needs: []
+  script:
+    - poetry run black .
+
+type-check:
+  stage: typecheck
+  needs: []
+  script:
+    - poetry run mypy --junit-xml mypy_report.xml .
+  artifacts:
+    when: always
+    reports:
+      junit: mypy_report.xml

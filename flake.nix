@@ -21,7 +21,8 @@
         pkgs = nixpkgs.legacyPackages.${system};
         python = pkgs.python3;
         # Nix does not expose `checkInputs` attribute.
-        pubnetCheckInputs = (with python.pkgs; [ pytest pytest-snapshot ]);
+        pubnetCheckInputs =
+          (with python.pkgs; [ pytest pytest-snapshot mypy black lxml ]);
         pubnet = python.pkgs.buildPythonPackage rec {
           pname = "pubnet";
           version = "0.3.0";
