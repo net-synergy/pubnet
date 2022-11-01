@@ -16,6 +16,7 @@ class NumpyEdge(Edge):
     def __init__(self, *args):
         super().__init__(*args)
 
+        self.representation = "numpy"
         if not isinstance(self._data, np.ndarray):
             self._data = np.asarray(self._data, self.dtype)
 
