@@ -97,8 +97,8 @@ class PubNet:
         ---------
         name : str, name of the node set (see `pubnet.network.edge_key` for
             generating the name).
-        data : str, Edge, or np.ndarray, the data in the form of a file path, an
-            array or an already constructed Node.
+        data : str, Edge, or np.ndarray, the data in the form of a file path,
+            an array or an already constructed Node.
         representation : {"numpy", "igraph"}, the method used for storing the
             edge (defaults to "numpy").
         start_id : str, the name of the "from" node.
@@ -127,6 +127,8 @@ class PubNet:
                 return self._node_data[args]
             elif args in self.edges:
                 return self._edge_data[args]
+            else:
+                raise KeyError(args)
 
         is_string_array = isinstance(args, np.ndarray) and isinstance(
             args[0], str
@@ -464,6 +466,81 @@ class PubNet:
 
         return list(filter(lambda key: key not in self.nodes, nodes))
 
+    def to_dir(
+        self,
+        graph_name,
+        nodes="all",
+        edges="all",
+        data_dir=default_data_dir(),
+        format="tsv",
+    ):
+        """Save a graph to disk.
+
+        Arguments
+        ---------
+        graph_name : str, what to name the graph (the directory under
+            `data_dir` to store files.).
+        nodes : tuple or "all", a list of nodes to save (default "all").
+        edges : tuple or "all", a list of edges to save (default "all").
+        data_dir : location to save the graph (default `default_data_dir`)
+        format : str {"tsv", "gzip", "binary"}, how to store the files.
+
+        If nodes and edges are both "all" store the entire graph. If nodes is
+        "all" and edges is a tuple, save all nodes in the list of
+        edges. Similarly, if edges is "all" and nodes is a tuple, save all
+        edges where both the start and end nodes are in the node list.
+
+        Returns
+        -------
+        None
+
+        See also
+        --------
+        `default_data_dir`
+        `from_dir`
+        """
+
+        def all_edges_containing(nodes):
+            edges = set()
+            for e in self.edges:
+                n1, n2 = e.split("-")
+                if (n1 in nodes) and (n2 in nodes):
+                    edges.add(e)
+
+            return tuple(edges)
+
+        def all_nodes_in(edges):
+            nodes = set()
+            for e in edges:
+                for n in e.split("-"):
+                    if n in self.nodes:
+                        nodes.add(n)
+
+            return tuple(nodes)
+
+        if (nodes == "all") and (edges == "all"):
+            nodes = self.nodes
+            edges = self.edges
+        elif (nodes == "all") and (edges is None):
+            nodes = self.nodes
+        elif (edges == "all") and (nodes is None):
+            edges = self.edges
+        elif nodes == "all":
+            nodes = all_nodes_in(edges)
+        elif edges == "all":
+            edges = all_edges_containing(nodes)
+
+        if nodes is None:
+            nodes = []
+        if edges is None:
+            edges = []
+
+        for n in nodes:
+            self[n].to_file(n, graph_name, data_dir=data_dir, format=format)
+
+        for e in edges:
+            self[e].to_file(e, graph_name, data_dir=data_dir, format=format)
+
 
 def from_dir(
     root,
@@ -518,13 +595,13 @@ def from_dir(
     """
 
     def find_node_files_containing(nodes):
-        path_regex = r"^(\w+)_nodes.tsv"
+        path_regex = r"^(\w+)_nodes.(tsv|gz|feather)"
         potential_files = os.listdir(data_dir)
         out = {}
         for file in potential_files:
             m = re.match(path_regex, file)
             if m is not None:
-                out[m.groups()[0]] = m.group()
+                out[m.groups()[0]] = os.path.join(data_dir, m.group())
 
         if nodes != "all":
             out = {key: out[key] for key in nodes}
@@ -549,7 +626,7 @@ def from_dir(
         if nodes != "all":
             out = {key: out[key] for key in out if edge_pair_in_nodes(key)}
 
-        return out
+        return {key: os.path.join(data_dir, out[key]) for key in out}
 
     if nodes is None:
         nodes = ()
