@@ -3,9 +3,7 @@ import pytest
 
 __all__ = ["simple_pubnet", "other_pubnet", "author_node"]
 
-# If true uses CompressedEdge otherwise NumpyEdge.  If more edge types
-# are added in the future this sholud be extended to `edge_type` and
-# return the str representing the desired type.
+
 @pytest.fixture(params=["numpy", "igraph"])
 def simple_pubnet(request):
     try:
