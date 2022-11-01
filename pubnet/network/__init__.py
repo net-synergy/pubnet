@@ -594,39 +594,26 @@ def from_dir(
     `pubnet.PubNet`, `pubnet.data.default_data_dir`
     """
 
-    def find_node_files_containing(nodes):
-        path_regex = r"^(\w+)_nodes.(tsv|gz|feather)"
-        potential_files = os.listdir(data_dir)
-        out = {}
-        for file in potential_files:
-            m = re.match(path_regex, file)
-            if m is not None:
-                out[m.groups()[0]] = os.path.join(data_dir, m.group())
+    def node_files_containing(nodes):
+        all_node_files = _node_files(data_dir)
+        if nodes == "all":
+            nodes = all_node_files.keys()
 
-        if nodes != "all":
-            out = {key: out[key] for key in nodes}
+        return {n: _node_file_path(n, all_node_files) for n in nodes}
 
-        return out
-
-    def find_edge_files_containing(nodes):
-        path_regex = r"^(\w+)_(\w+)_edges.tsv"
-        potential_files = os.listdir(data_dir)
-        out = {}
-        for file in potential_files:
-            m = re.match(path_regex, file)
-            if m is not None:
-                out[edge_key(*m.groups())] = m.group()
-
-        edge_pair_in_nodes = (
-            lambda key: reduce(
-                lambda a, k: a + (k in nodes), key.split("-"), 0
+    def edge_files_containing(nodes):
+        all_edge_files = _edge_files(data_dir)
+        if nodes == "all":
+            edges = all_edge_files.keys()
+        else:
+            edges = (
+                (n1, n2)
+                for i, n1 in enumerate(nodes)
+                for n2 in nodes[i:]
+                if edge_key(n1, n2) in all_edge_files.keys()
             )
-            == 2
-        )
-        if nodes != "all":
-            out = {key: out[key] for key in out if edge_pair_in_nodes(key)}
 
-        return {key: os.path.join(data_dir, out[key]) for key in out}
+        return {edge_key(*e): _edge_file_path(*e) for e in edges}
 
     if nodes is None:
         nodes = ()
@@ -646,11 +633,11 @@ def from_dir(
     node_files = {}
     edge_files = {}
     if (nodes == "all") and (edges == "all"):
-        node_files = find_node_files_containing("all")
-        edge_files = find_edge_files_containing("all")
+        node_files = node_files_containing("all")
+        edge_files = edge_files_containing("all")
     elif nodes == "all":
         edge_nodes = set(reduce(lambda a, b: a + b, edges, ()))
-        node_files = find_node_files_containing(edge_nodes)
+        node_files = node_files_containing(edge_nodes)
         for node_pair in edges:
             edge_files[edge_key(*node_pair)] = _edge_file_path(
                 *node_pair, data_dir
@@ -658,7 +645,7 @@ def from_dir(
     elif edges == "all":
         for node in nodes:
             node_files[node] = _node_file_path(node, data_dir)
-        edge_files = find_edge_files_containing(nodes)
+        edge_files = edge_files_containing(nodes)
     else:
         for node in nodes:
             node_files[node] = _node_file_path(node, data_dir)
@@ -701,20 +688,9 @@ def from_data(root, nodes=None, edges=None, representation="numpy"):
 
 
 def edge_key(node_1, node_2):
-    """Generate a dictionary key for the given pair of nodes."""
+    """Generate a dictionary key for the given pair of nodes.
 
-    return "-".join(sorted((node_1, node_2)))
-
-
-def _node_file_path(name, data_dir):
-    """Return the file path for a node."""
-    return os.path.join(data_dir, f"{name}_nodes.tsv")
-
-
-def _edge_file_path(node_1, node_2, data_dir):
-    """Find the edge file in data_dir for the provided node types.
-
-    Known possible issues:
+    Known future issue:
         If we need directed edges, the order of nodes in the file name
         may be important. Add in a weighted keyword argument, if true
         look for files only with the nodes in the order they were
@@ -723,19 +699,106 @@ def _edge_file_path(node_1, node_2, data_dir):
         and END_ID node types.
     """
 
-    def edge_file_path(n1, n2):
-        return os.path.join(data_dir, f"{n1}_{n2}_edges.tsv")
+    return "-".join(sorted((node_1, node_2)))
 
-    if os.path.exists(edge_file_path(node_1, node_2)):
-        file_path = edge_file_path(node_1, node_2)
-    elif os.path.exists(edge_file_path(node_2, node_1)):
-        file_path = edge_file_path(node_2, node_1)
+
+def _node_files(data_dir):
+    """Return all node files in the data_dir"""
+
+    files = os.listdir(data_dir)
+    path_regex = r"(?P<node>\w+)_nodes.(?P<ext>[\w\.]+)"
+    out = {}
+    for f in files:
+        m = re.match(path_regex, f)
+        try:
+            out[m.groups()[0]][m.groups()[1]] = os.path.join(
+                data_dir, m.group()
+            )
+        except KeyError:
+            out[m.groups()[0]] = {
+                m.groups()[1]: os.path.join(data_dir, m.group())
+            }
+        except AttributeError:  # File didn't match regex
+            continue
+    return out
+
+
+def _node_file_path(name, data_dir):
+    """Return the file path for a node."""
+
+    if isinstance(data_dir, dict):
+        node_files = data_dir
+    elif isinstance(data_dir, str) and os.path.isdir(data_dir):
+        node_files = _node_files(data_dir)
     else:
-        raise FileNotFoundError(
-            f"No edge file for edges {node_1}, {node_2} found in"
-            f" {data_dir}\n\nExpceted either file"
-            f" '{edge_file_path(node_1, node_2)}'"
-            f" or'{edge_file_path(node_2, node_1)}'"
+        raise TypeError(
+            "Second argument must be a dictionary of files or directory."
         )
 
-    return file_path
+    try:
+        available_files = node_files[name]
+    except KeyError:
+        raise FileNotFoundError(f"No file found for node {name}.")
+
+    ext_preference = ["feather", "tsv", "tsv.gz"]
+    for ext in ext_preference:
+        try:
+            return available_files[ext]
+        except KeyError:
+            continue
+
+    raise FileNotFoundError(
+        f"No file found for node {name} with a supported file extension."
+    )
+
+
+def _edge_files(data_dir):
+    """Return all edge files in the data_dir"""
+
+    files = os.listdir(data_dir)
+    path_regex = r"(?P<n1>\w+)_(?P<n2>\w+)_edges.(?P<ext>[\w\.]+)"
+    out = {}
+    for f in files:
+        m = re.match(path_regex, f)
+        try:
+            out[edge_key(*m.groups()[:2])][m.groups()[2]] = os.path.join(
+                data_dir, m.group()
+            )
+        except KeyError:
+            out[edge_key(*m.groups()[:2])] = {
+                m.groups()[2]: os.path.join(data_dir, m.group())
+            }
+        except AttributeError:  # File didn't match regex
+            continue
+    return out
+
+
+def _edge_file_path(node_1, node_2, data_dir):
+    """Find the edge file in data_dir for the provided node types."""
+
+    if isinstance(data_dir, dict):
+        edge_files = data_dir
+    elif isinstance(data_dir, str) and os.path.isdir(data_dir):
+        edge_files = _edge_files(data_dir)
+    else:
+        raise TypeError(
+            "Second argument must be a dictionary of files or directory."
+        )
+
+    name = edge_key(node_1, node_2)
+    try:
+        available_files = edge_files[name]
+    except KeyError:
+        raise FileNotFoundError(f"No file found for nodes {node_1}, {node_2}.")
+
+    ext_preference = ["npy", "tsv", "tsv.gz"]
+    for ext in ext_preference:
+        try:
+            return available_files[ext]
+        except KeyError:
+            continue
+
+    raise FileNotFoundError(
+        f"No file found for nodes {node_1}, {node_2} with a supported file"
+        " extension."
+    )
