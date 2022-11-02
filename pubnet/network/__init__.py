@@ -14,6 +14,8 @@ from pubnet.network import _edge, _node
 
 __all__ = ["from_dir", "from_data", "edge_key"]
 
+EDGE_KEY_DELIM = "-"
+
 
 class PubNet:
     """Store publication network as a graph.
@@ -55,7 +57,7 @@ class PubNet:
         for name, data in edges.items():
             self.add_edge(name, data)
 
-        edge_nodes = reduce(lambda a, n: a + n.split("-"), self.edges, [])
+        edge_nodes = reduce(lambda a, n: a + edge_parts(n), self.edges, [])
         missing_nodes = filter(lambda n: n not in self.nodes, edge_nodes)
 
         for name in missing_nodes:
@@ -503,7 +505,7 @@ class PubNet:
         def all_edges_containing(nodes):
             edges = set()
             for e in self.edges:
-                n1, n2 = e.split("-")
+                n1, n2 = edge_parts(e)
                 if (n1 in nodes) and (n2 in nodes):
                     edges.add(e)
 
@@ -512,7 +514,7 @@ class PubNet:
         def all_nodes_in(edges):
             nodes = set()
             for e in edges:
-                for n in e.split("-"):
+                for n in edge_parts(e):
                     if n in self.nodes:
                         nodes.add(n)
 
@@ -686,7 +688,7 @@ def from_data(root, nodes=None, edges=None, representation="numpy"):
         nodes[name] = _node.from_data(data)
 
     for name, data in edges:
-        start_id, end_id = name.split("-")
+        start_id, end_id = edge_parts(name)
         edges[name] = _edge.from_data(data, start_id, end_id, representation)
 
     return PubNet(root, nodes, edges)
@@ -704,12 +706,12 @@ def edge_key(node_1, node_2):
         and END_ID node types.
     """
 
-    return "-".join(sorted((node_1, node_2)))
+    return EDGE_KEY_DELIM.join(sorted((node_1, node_2)))
 
 
 def edge_parts(key):
     """Break an edge key into its nodes"""
-    return key.split("-")
+    return key.split(EDGE_KEY_DELIM)
 
 
 def _node_files(data_dir):
