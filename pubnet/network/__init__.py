@@ -9,6 +9,7 @@ from warnings import warn
 import matplotlib.pyplot as plt
 import numpy as np
 from pandas.core.dtypes.common import is_list_like
+from pubnet import data
 from pubnet.data import default_data_dir
 from pubnet.network import _edge, _node
 
@@ -475,6 +476,7 @@ class PubNet:
         edges="all",
         data_dir=default_data_dir(),
         format="tsv",
+        overwrite=False,
     ):
         """Save a graph to disk.
 
@@ -486,6 +488,15 @@ class PubNet:
         edges : tuple or "all", a list of edges to save (default "all").
         data_dir : location to save the graph (default `default_data_dir`)
         format : str {"tsv", "gzip", "binary"}, how to store the files.
+        overwrite : bool, if true delete the current graph on disk. This may be
+            useful for replacing a plain text representation with a binary
+            represention if storage is a concern. WARNING: This can lose data
+            if the self does not contain all the nodes/edges that are in the
+            saved graph. Tries to perform the deletion as late as possible to
+            prevent errors from erasing data without replacing it, but it may
+            be safer to save the data to a new location then delete the graph
+            (with `pubnet.data.delete`) after confirming the safe worked
+            correctly.
 
         If nodes and edges are both "all" store the entire graph. If nodes is
         "all" and edges is a tuple, save all nodes in the list of
@@ -539,6 +550,9 @@ class PubNet:
 
         nodes = [n for n in nodes if self[n].shape[0] > 0]
         edges = [e for e in edges if self[e].shape[0] > 0]
+
+        if overwrite:
+            data.delete(graph_name, data_dir)
 
         for n in nodes:
             self[n].to_file(n, graph_name, data_dir=data_dir, format=format)
