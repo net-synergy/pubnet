@@ -535,6 +535,9 @@ class PubNet:
         if edges is None:
             edges = []
 
+        nodes = [n for n in nodes if self[n].shape[0] > 0]
+        edges = [e for e in edges if self[e].shape[0] > 0]
+
         for n in nodes:
             self[n].to_file(n, graph_name, data_dir=data_dir, format=format)
 
@@ -607,13 +610,15 @@ def from_dir(
             edges = all_edge_files.keys()
         else:
             edges = (
-                (n1, n2)
+                edge_key(n1, n2)
                 for i, n1 in enumerate(nodes)
                 for n2 in nodes[i:]
                 if edge_key(n1, n2) in all_edge_files.keys()
             )
 
-        return {edge_key(*e): _edge_file_path(*e) for e in edges}
+        return {
+            e: _edge_file_path(*edge_parts(e), all_edge_files) for e in edges
+        }
 
     if nodes is None:
         nodes = ()
@@ -700,6 +705,11 @@ def edge_key(node_1, node_2):
     """
 
     return "-".join(sorted((node_1, node_2)))
+
+
+def edge_parts(key):
+    """Break an edge key into its nodes"""
+    return key.split("-")
 
 
 def _node_files(data_dir):
