@@ -1,5 +1,6 @@
 """Provides classes for storing graph edges as different representations. """
 
+import gzip
 import re
 
 import numpy as np
@@ -15,7 +16,21 @@ id_dtype = np.int64
 
 
 def from_file(file, representation):
-    with open(file, "r") as f:
+    ext = file.split(".")[-1]
+
+    if ext == "tsv" or ext == "npy":
+        ext_open = open
+    elif ext == "gz":
+        ext_open = gzip.open
+    else:
+        raise ValueError(f"Extension {ext} not supported")
+
+    if ext == "npy":
+        header_file = re.sub(r"(?:edges)\.(?:\w+)", "edge_header.tsv", file)
+    else:
+        header_file = file
+
+    with ext_open(header_file, "rt") as f:
         header_line = f.readline()
 
     ids = re.findall(r":((?:START)|(?:END))_ID\((\w+)\)", header_line)
@@ -25,12 +40,16 @@ def from_file(file, representation):
         elif id == "END":
             end_id = node
 
-    data = np.genfromtxt(
-        file,
-        # All edge values should be integer IDs.
-        dtype=id_dtype,
-        skip_header=1,
-    )
+    if ext == "npy":
+        data = np.load(file, allow_pickle=True)
+    else:
+        data = np.genfromtxt(
+            file,
+            # All edge values should be integer IDs.
+            dtype=id_dtype,
+            skip_header=1,
+        )
+
     if ids[0][0] == "END":
         data = data[:, [1, 0]]
 

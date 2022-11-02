@@ -69,6 +69,10 @@ class Edge:
 
         raise AbstractMethodError(self)
 
+    def to_file(self, edge_name, graph_name, data_dir, format):
+        """Save the edge to disk."""
+        raise AbstractMethodError(self)
+
     @property
     def shape(self):
         """Find number of edges."""
