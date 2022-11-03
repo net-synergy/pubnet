@@ -151,7 +151,7 @@ class CompressedEdge(Edge):
 
         return np.asarray(overlaps)
 
-    def similarity(self, target_publications):
+    def _shortest_path(self, target_publications):
         return self._data.shortest_paths(
             target_publications, target_publications
         )
