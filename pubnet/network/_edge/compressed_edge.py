@@ -133,7 +133,7 @@ class CompressedEdge(Edge):
     @property
     def shape(self):
         """Find number of edges."""
-        return [self._data.ecount()]
+        return [self._data.ecount(), 2]
 
     @property
     def overlap(self):
