@@ -4,7 +4,6 @@ preview = true
 
 [tool.mypy]
 ignore_missing_imports = true
-# junit_xml = "mypy_report.xml"
 
 [tool.poetry]
 name = "pubnet"
@@ -23,6 +22,7 @@ numpy = "^1.21"
 pandas = "^1.4"
 scipy = "^1.8"
 matplotlib = "^3.5"
+igraph = "^0.9"
 python = "~3.9"
 
 [tool.poetry.dev-dependencies]

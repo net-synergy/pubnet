@@ -5,12 +5,12 @@ import re
 import numpy as np
 
 from ._base import Edge
-from .compressed_edge import CompressedEdge
+from .igraph_edge import IgraphEdge
 from .numpy_edge import NumpyEdge
 
 __all__ = ["from_file", "from_data", "Edge", "id_dtype"]
 
-_edge_class = {"numpy": NumpyEdge, "igraph": CompressedEdge}
+_edge_class = {"numpy": NumpyEdge, "igraph": IgraphEdge}
 id_dtype = np.int64
 
 
