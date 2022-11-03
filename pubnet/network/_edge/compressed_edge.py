@@ -1,9 +1,10 @@
 """Implementation of the Edge class storing edges in a compressed form."""
 
 
-from ._base import Edge
 import igraph as ig
 import numpy as np
+
+from ._base import Edge
 
 
 class CompressedEdge(Edge):
