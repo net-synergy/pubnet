@@ -8,7 +8,13 @@ edges = (
     ("Chemical", "Publication"),
 )
 
-publications = from_dir(nodes, edges, data_dir)
+publications = from_dir(
+    "Publication",
+    nodes=nodes,
+    edges=edges,
+    data_dir=data_dir,
+    representation="igraph",
+)
 last_names = list(publications["Author"].get_random(n=4, seed=1)["LastName"])
 publication_ids = publications.containing(
     "Author", "LastName", last_names, steps=2
