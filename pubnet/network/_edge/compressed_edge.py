@@ -11,41 +11,41 @@ class CompressedEdge(Edge):
     def __init__(self, *args):
         super().__init__(*args)
         edge_data = self._data
-        NodeID = 0
-        NodeDIC = {self.start_id: {}, self.end_id: {}}
+        node_id = 0
+        node_dic = {self.start_id: {}, self.end_id: {}}
         edge_list = []
         for i in range(len(edge_data)):
             data = edge_data[i]
-            if int(data[0]) not in NodeDIC[self.start_id].keys():
-                NodeDIC[self.start_id][int(data[0])] = NodeID
-                NodeID += 1
-            if int(data[1]) not in NodeDIC[self.end_id].keys():
-                NodeDIC[self.end_id][int(data[1])] = NodeID
-                NodeID += 1
+            if int(data[0]) not in node_dic[self.start_id].keys():
+                node_dic[self.start_id][int(data[0])] = node_id
+                node_id += 1
+            if int(data[1]) not in node_dic[self.end_id].keys():
+                node_dic[self.end_id][int(data[1])] = node_id
+                node_id += 1
 
             edge_list.append(
                 [
-                    NodeDIC[self.start_id][int(data[0])],
-                    NodeDIC[self.end_id][int(data[1])],
+                    node_dic[self.start_id][int(data[0])],
+                    node_dic[self.end_id][int(data[1])],
                 ]
             )
 
         self._data = ig.Graph(n=0, edges=edge_list)
         nodes = self._data.vs
-        IDdic = {self.start_id: {}, self.end_id: {}}
-        IDdic[self.start_id] = dict(
-            (v, k) for k, v in NodeDIC[self.start_id].items()
+        id_dic = {self.start_id: {}, self.end_id: {}}
+        id_dic[self.start_id] = dict(
+            (v, k) for k, v in node_dic[self.start_id].items()
         )
-        IDdic[self.end_id] = dict(
-            (v, k) for k, v in NodeDIC[self.end_id].items()
+        id_dic[self.end_id] = dict(
+            (v, k) for k, v in node_dic[self.end_id].items()
         )
         for n in nodes:
-            if n.index in IDdic[self.start_id].keys():
+            if n.index in id_dic[self.start_id].keys():
                 n["NodeType"] = self.start_id
-                n["id"] = IDdic[self.start_id][n.index]
+                n["id"] = id_dic[self.start_id][n.index]
             else:
                 n["NodeType"] = self.end_id
-                n["id"] = IDdic[self.end_id][n.index]
+                n["id"] = id_dic[self.end_id][n.index]
 
     def __str__(self):
         return (
