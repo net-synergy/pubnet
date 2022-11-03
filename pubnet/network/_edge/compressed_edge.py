@@ -95,9 +95,6 @@ class CompressedEdge(Edge):
 
         return self._data.subgraph_edges(edges=new_edges)
 
-    def _read_from_file(path):
-        raise NotImplementedError
-
     def isin(self, column, test_elements):
         """Find which elements from column are in the set of test_elements."""
         isin = []
@@ -158,32 +155,3 @@ class CompressedEdge(Edge):
         return self._data.shortest_paths(
             target_publications, target_publications
         )
-
-
-def _edge_path(n1, n2, data_dir):
-    """Find the edge file in data_dir for the provided node types.
-
-    Known possible issues:
-        If we need directed edges, the order of nodes in the file name
-        may be important. Add in a weighted keyword argument, if true
-        look for files only with the nodes in the order they were
-        provided otherwise look for both. Another option is to not
-        only check the file name but check the header for the START_ID
-        and END_ID node types.
-    """
-
-    def edge_file_path(n1, n2):
-        return os.path.join(data_dir, f"{n1}_{n2}_edges.tsv")
-
-    if os.path.exists(edge_file_path(n1, n2)):
-        file_path = edge_file_path(n1, n2)
-    elif os.path.exists(edge_file_path(n2, n1)):
-        file_path = edge_file_path(n2, n1)
-    else:
-        raise FileNotFoundError(
-            f"No edge file for edges {n1}, {n2} found in"
-            f" {data_dir}.\n\nExpceted either file {edge_file_path(n1, n2)} or"
-            f" {edge_file_path(n2, n1)}"
-        )
-
-    return file_path
