@@ -7,7 +7,7 @@ ignore_missing_imports = true
 
 [tool.poetry]
 name = "pubnet"
-version = "0.3.0"
+version = "0.4.0"
 description = "A python package for storing and working with publication data in graph form."
 license = "MIT"
 authors = [

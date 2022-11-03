@@ -25,7 +25,7 @@
           (with python.pkgs; [ pytest pytest-snapshot mypy black lxml ]);
         pubnet = python.pkgs.buildPythonPackage rec {
           pname = "pubnet";
-          version = "0.3.0";
+          version = "0.4.0";
           src = ./.;
           format = "pyproject";
           buildInputs = (with python.pkgs; [ poetry ]);
