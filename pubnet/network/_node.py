@@ -54,10 +54,9 @@ class Node:
                     [re.search(id_regex, name) for name in data.columns],
                 )
             )[0]
-            old_id = id_column.group().replace("(", "\\(").replace(")", "\\)")
             self.id = id_column.groups()[0]
             self._data.columns = self._data.columns.str.replace(
-                old_id, self.id, regex=True
+                id_column.group(), self.id, regex=False
             )
         else:
             assert (
