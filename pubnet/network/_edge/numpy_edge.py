@@ -1,6 +1,9 @@
 """Implementation of the Edge class storing edges as numpy arrays."""
 
+import os
+
 import numpy as np
+from pubnet.data import default_data_dir
 from scipy import sparse as sp
 from scipy.stats import rankdata
 
@@ -16,6 +19,7 @@ class NumpyEdge(Edge):
     def __init__(self, *args):
         super().__init__(*args)
 
+        self.representation = "numpy"
         if not isinstance(self._data, np.ndarray):
             self._data = np.asarray(self._data, self.dtype)
 
@@ -75,6 +79,70 @@ class NumpyEdge(Edge):
         # Because id's start at 1 but the 0th value in the distribution is
         # reserved for id == 0.
         return dist[1:]
+
+    def to_file(
+        self, edge_name, graph_name, data_dir=default_data_dir(), format="tsv"
+    ):
+        """Save the edge to disk.
+
+        Arguments
+        ---------
+        edge_name : str, the name of the edge.
+        graph_name : str, directory under `data_dir` to store the graph's
+            files.
+        data_dir : str, where to store graphs (default `default_data_dir`)
+        format : str {"tsv", "gzip", "binary"}, how to store the edge (default
+            "tsv"). Binary uses numpy's npy format.
+
+        Returns
+        -------
+        None
+
+        See also
+        --------
+        `pubnet.data.default_data_dir`
+        `pubnet.network.PubNet.to_dir`
+        `pubnet.network.from_dir`
+        """
+
+        ext = {"binary": "npy", "gzip": "tsv.gz", "tsv": "tsv"}
+        data_dir = os.path.join(data_dir, graph_name)
+
+        if not os.path.exists(data_dir):
+            os.mkdir(data_dir)
+
+        if isinstance(edge_name, tuple):
+            n1, n2 = edge_name[:2]
+        else:
+            n1, n2 = edge_name.split("-")
+
+        file_name = os.path.join(data_dir, f"{n1}_{n2}_edges.{ext[format]}")
+        header_name = os.path.join(data_dir, f"{n1}_{n2}_edge_header.tsv")
+        header = f":START_ID({self.start_id})\t:END_ID({self.end_id})"
+
+        if format == "binary":
+            self._to_binary(file_name, header_name, header)
+        else:
+            # `np.savetxt` handles "gz" extensions so nothing extra to do.
+            self._to_tsv(file_name, header)
+
+    def _to_binary(self, file_name, header_name, header):
+        np.save(file_name, self._data)
+        with open(header_name, "wt") as header_file:
+            header_file.write(header)
+
+    def _to_tsv(self, file_name, header):
+        # NOTE: IDs should be ints so select integer fmt string but this will
+        # need modification if we add weigthed edges as the weight column(s)
+        # are likely going to be floats.
+        np.savetxt(
+            file_name,
+            self._data,
+            fmt="%d",
+            delimiter="\t",
+            header=header,
+            comments="",
+        )
 
     @property
     def shape(self):

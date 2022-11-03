@@ -22,13 +22,16 @@ class Edge:
     Arguments
     ---------
     data : numpy.ndarray, the edges as a list of existing edges.
-    start_id : str, name of edge start node type
-    end_id : str, name of edge end node type
+    start_id : str, name of edge start node type.
+    end_id : str, name of edge end node type.
 
     Attributes
     ----------
     start_id : the node type in column 0.
     end_id : the node type in column 1.
+    dtype : type, the data type used.
+    representation : str, which representation the edges are stored as.
+    isweighted : bool, whether the edges are weighted.
     """
 
     def __init__(self, data, start_id, end_id, dtype):
@@ -36,6 +39,7 @@ class Edge:
         self.start_id = start_id
         self.end_id = end_id
         self.dtype = dtype
+        self.representation = None
 
         # Weighted not implemented yet
         self.isweighted = False
@@ -63,6 +67,10 @@ class Edge:
     def distribution(self, column):
         """Return the distribution of the nodes in column."""
 
+        raise AbstractMethodError(self)
+
+    def to_file(self, edge_name, graph_name, data_dir, format):
+        """Save the edge to disk."""
         raise AbstractMethodError(self)
 
     @property
