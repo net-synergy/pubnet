@@ -305,7 +305,9 @@ class PubNet:
         root_ids = self.ids_containing(node_type, node_feature, value, steps)
         return self[root_ids]
 
-    def plot_distribution(self, node_type, node_feature, threshold=1):
+    def plot_distribution(
+        self, node_type, node_feature, threshold=1, fname=None
+    ):
         distribution = self[self.root, node_type].distribution(node_type)
         names = self[node_type][node_feature].to_numpy()
 
@@ -330,7 +332,11 @@ class PubNet:
 
         ax.set_xlabel(node_feature)
         ax.set_ylabel(f"{self.root} occurance")
-        plt.show()
+
+        if fname:
+            plt.savefig(fname)
+        else:
+            plt.show()
 
     def drop(self, nodes=None, edges=None):
         """Drop given nodes and edges from the network.
