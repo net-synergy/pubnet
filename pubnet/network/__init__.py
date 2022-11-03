@@ -523,7 +523,7 @@ class PubNet:
             edges = set()
             for e in self.edges:
                 n1, n2 = edge_parts(e)
-                if (n1 in nodes) and (n2 in nodes):
+                if (n1 in nodes) or (n2 in nodes):
                     edges.add(e)
 
             return tuple(edges)
