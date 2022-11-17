@@ -5,6 +5,7 @@ import re
 
 import numpy as np
 import pandas as pd
+from pubnet.data import default_data_dir
 
 __all__ = ["Node", "from_file", "from_data"]
 
@@ -53,10 +54,9 @@ class Node:
                     [re.search(id_regex, name) for name in data.columns],
                 )
             )[0]
-            old_id = id_column.group().replace("(", "\\(").replace(")", "\\)")
             self.id = id_column.groups()[0]
             self._data.columns = self._data.columns.str.replace(
-                old_id, self.id, regex=True
+                id_column.group(), self.id, regex=False
             )
         else:
             assert (
@@ -166,12 +166,71 @@ class Node:
 
         return True
 
+    def to_file(
+        self,
+        node_name,
+        graph_name,
+        data_dir=default_data_dir(),
+        format="tsv",
+    ):
+        """Save the node to file.
+
+        The node will be saved to a graph (a directory in the `data_dir` where
+        the graphs nodes and edges are stored).
+
+        Arguments
+        ---------
+        node_name : str, name of the node.
+        graph_name : str, the name of the graph to store it under.
+        data_dir : str, where the graph is stored (default:
+            `default_data_dir`).
+        format : str {"tsv", "gzip", "binary"}, the format to save the file as
+            (default: "tsv"). The binary format uses apache feather.
+
+        Returns
+        -------
+        None
+
+        See also
+        --------
+        `pubmed.data.default_data_dir` : the system dependent default location
+            to store pubnet data.
+        `pubmed.network.pubnet.to_dir` : Saving an entire publication network.
+        `pubmed.network.pubnet.from_dir` : Loading a publication network.
+        """
+
+        self._data.columns = self._data.columns.str.replace(
+            self.id, f"{self.id}:ID({node_name})", regex=False
+        )
+
+        ext = {"binary": "feather", "gzip": "tsv.gz", "tsv": "tsv"}
+        file_name = node_name + "_nodes." + ext[format]
+        data_dir = os.path.join(data_dir, graph_name)
+
+        if not os.path.exists(data_dir):
+            os.mkdir(data_dir)
+
+        file_path = os.path.join(data_dir, file_name)
+        if format == "binary":
+            self._data.to_feather(file_path)
+        else:
+            # `to_csv` will infer whether to use gzip based on extension.
+            self._data.to_csv(file_path, sep="\t", index=False)
+
+        self._data.columns = self._data.columns.str.replace(
+            f"{self.id}:ID({node_name})", self.id, regex=False
+        )
+
 
 def from_file(file, *args):
-    data = pd.read_csv(
-        file,
-        delimiter="\t",
-    )
+    ext = file.split(".")[-1]
+    if ext == "feather":
+        data = pd.read_feather(file)
+    else:
+        data = pd.read_csv(
+            file,
+            delimiter="\t",
+        )
     return from_data(data, *args)
 
 

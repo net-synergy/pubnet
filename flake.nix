@@ -21,14 +21,22 @@
         pkgs = nixpkgs.legacyPackages.${system};
         python = pkgs.python3;
         # Nix does not expose `checkInputs` attribute.
-        pubnetCheckInputs = (with python.pkgs; [ pytest pytest-snapshot ]);
+        pubnetCheckInputs =
+          (with python.pkgs; [ pytest pytest-snapshot mypy black lxml ]);
         pubnet = python.pkgs.buildPythonPackage rec {
           pname = "pubnet";
-          version = "0.2.1";
+          version = "0.5.0";
           src = ./.;
           format = "pyproject";
           buildInputs = (with python.pkgs; [ poetry ]);
-          propagatedBuildInputs = (with python.pkgs; [ numpy pandas scipy ]);
+          propagatedBuildInputs = (with python.pkgs; [
+            numpy
+            pandas
+            scipy
+            matplotlib
+            igraph
+            pyarrow
+          ]);
           checkInputs = pubnetCheckInputs;
           authors = [ "David Connell <davidconnell12@gmail.com>" ];
           checkPhase = ''

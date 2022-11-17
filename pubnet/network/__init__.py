@@ -6,12 +6,16 @@ import re
 from functools import reduce
 from warnings import warn
 
+import matplotlib.pyplot as plt
 import numpy as np
 from pandas.core.dtypes.common import is_list_like
+from pubnet import data
 from pubnet.data import default_data_dir
 from pubnet.network import _edge, _node
 
 __all__ = ["from_dir", "from_data", "edge_key"]
+
+EDGE_KEY_DELIM = "-"
 
 
 class PubNet:
@@ -54,7 +58,7 @@ class PubNet:
         for name, data in edges.items():
             self.add_edge(name, data)
 
-        edge_nodes = reduce(lambda a, n: a + n.split("-"), self.edges, [])
+        edge_nodes = reduce(lambda a, n: a + edge_parts(n), self.edges, [])
         missing_nodes = filter(lambda n: n not in self.nodes, edge_nodes)
 
         for name in missing_nodes:
@@ -96,8 +100,8 @@ class PubNet:
         ---------
         name : str, name of the node set (see `pubnet.network.edge_key` for
             generating the name).
-        data : str, Edge, or np.ndarray, the data in the form of a file path, an
-            array or an already constructed Node.
+        data : str, Edge, or np.ndarray, the data in the form of a file path,
+            an array or an already constructed Node.
         representation : {"numpy", "igraph"}, the method used for storing the
             edge (defaults to "numpy").
         start_id : str, the name of the "from" node.
@@ -105,6 +109,9 @@ class PubNet:
 
         `start_id` and `end_id` are only needed if `data` is an np.ndarray.
         """
+
+        if isinstance(name, tuple):
+            name = edge_key(*name)
 
         if name in self.edges:
             raise ValueError(f"The edge {name} is already in the network.")
@@ -123,6 +130,8 @@ class PubNet:
                 return self._node_data[args]
             elif args in self.edges:
                 return self._edge_data[args]
+            else:
+                raise KeyError(args)
 
         is_string_array = isinstance(args, np.ndarray) and isinstance(
             args[0], str
@@ -137,6 +146,39 @@ class PubNet:
             return self._slice(np.asarray([args]))
 
         raise KeyError(*args)
+
+    def _slice(self, root_ids, mutate=False):
+        """Filter all the PubNet object's edges to those connecting to
+        root_ids.
+
+        If mutate is False return a new `PubNet` object otherwise
+        return self after mutating the edges."""
+
+        if not mutate:
+            new_pubnet = copy.deepcopy(self)
+            new_pubnet._slice(root_ids, mutate=True)
+            return new_pubnet
+
+        for key in self.edges:
+            self[key].set(self[key][self[key].isin(self.root, root_ids)])
+
+        for key in self.nodes:
+            if len(self[key]) == 0:
+                continue
+
+            if key == self.root:
+                node_ids = root_ids
+            else:
+                try:
+                    edge = self[key, self.root]
+                except KeyError:
+                    continue
+                node_ids = edge[key]
+
+            node_locs = self[key][self[key].id].isin(node_ids)
+            self[key].set(self[key][node_locs])
+
+        return self
 
     def __repr__(self):
         res = "PubNet"
@@ -263,38 +305,38 @@ class PubNet:
         root_ids = self.ids_containing(node_type, node_feature, value, steps)
         return self[root_ids]
 
-    def _slice(self, root_ids, mutate=False):
-        """Filter all the PubNet object's edges to those connecting to
-        root_ids.
+    def plot_distribution(
+        self, node_type, node_feature, threshold=1, fname=None
+    ):
+        distribution = self[self.root, node_type].distribution(node_type)
+        names = self[node_type][node_feature].to_numpy()
 
-        If mutate is False return a new `PubNet` object otherwise
-        return self after mutating the edges."""
+        retain = distribution >= threshold
+        distribution = distribution[retain]
+        names = names[retain]
 
-        if not mutate:
-            new_pubnet = copy.deepcopy(self)
-            new_pubnet._slice(root_ids, mutate=True)
-            return new_pubnet
+        indices = np.argsort(distribution)
+        indices = indices[-1::-1]
 
-        for key in self.edges:
-            self[key].set(self[key][self[key].isin(self.root, root_ids)])
+        fig, ax = plt.subplots()
+        ax.bar(
+            np.take_along_axis(
+                names,
+                indices,
+                axis=0,
+            ),
+            np.take_along_axis(distribution, indices, axis=0),
+        )
+        for tick in ax.get_xticklabels():
+            tick.set_rotation(90)
 
-        for key in self.nodes:
-            if len(self[key]) == 0:
-                continue
+        ax.set_xlabel(node_feature)
+        ax.set_ylabel(f"{self.root} occurance")
 
-            if key == self.root:
-                node_ids = root_ids
-            else:
-                try:
-                    edge = self[key, self.root]
-                except KeyError:
-                    continue
-                node_ids = edge[key]
-
-            node_locs = self[key][self[key].id].isin(node_ids)
-            self[key].set(self[key][node_locs])
-
-        return self
+        if fname:
+            plt.savefig(fname)
+        else:
+            plt.show()
 
     def drop(self, nodes=None, edges=None):
         """Drop given nodes and edges from the network.
@@ -433,6 +475,97 @@ class PubNet:
 
         return list(filter(lambda key: key not in self.nodes, nodes))
 
+    def to_dir(
+        self,
+        graph_name,
+        nodes="all",
+        edges="all",
+        data_dir=default_data_dir(),
+        format="tsv",
+        overwrite=False,
+    ):
+        """Save a graph to disk.
+
+        Arguments
+        ---------
+        graph_name : str, what to name the graph (the directory under
+            `data_dir` to store files.).
+        nodes : tuple or "all", a list of nodes to save (default "all").
+        edges : tuple or "all", a list of edges to save (default "all").
+        data_dir : location to save the graph (default `default_data_dir`)
+        format : str {"tsv", "gzip", "binary"}, how to store the files.
+        overwrite : bool, if true delete the current graph on disk. This may be
+            useful for replacing a plain text representation with a binary
+            represention if storage is a concern. WARNING: This can lose data
+            if the self does not contain all the nodes/edges that are in the
+            saved graph. Tries to perform the deletion as late as possible to
+            prevent errors from erasing data without replacing it, but it may
+            be safer to save the data to a new location then delete the graph
+            (with `pubnet.data.delete`) after confirming the safe worked
+            correctly.
+
+        If nodes and edges are both "all" store the entire graph. If nodes is
+        "all" and edges is a tuple, save all nodes in the list of
+        edges. Similarly, if edges is "all" and nodes is a tuple, save all
+        edges where both the start and end nodes are in the node list.
+
+        Returns
+        -------
+        None
+
+        See also
+        --------
+        `default_data_dir`
+        `from_dir`
+        """
+
+        def all_edges_containing(nodes):
+            edges = set()
+            for e in self.edges:
+                n1, n2 = edge_parts(e)
+                if (n1 in nodes) or (n2 in nodes):
+                    edges.add(e)
+
+            return tuple(edges)
+
+        def all_nodes_in(edges):
+            nodes = set()
+            for e in edges:
+                for n in edge_parts(e):
+                    if n in self.nodes:
+                        nodes.add(n)
+
+            return tuple(nodes)
+
+        if (nodes == "all") and (edges == "all"):
+            nodes = self.nodes
+            edges = self.edges
+        elif (nodes == "all") and (edges is None):
+            nodes = self.nodes
+        elif (edges == "all") and (nodes is None):
+            edges = self.edges
+        elif nodes == "all":
+            nodes = all_nodes_in(edges)
+        elif edges == "all":
+            edges = all_edges_containing(nodes)
+
+        if nodes is None:
+            nodes = []
+        if edges is None:
+            edges = []
+
+        nodes = [n for n in nodes if self[n].shape[0] > 0]
+        edges = [e for e in edges if self[e].shape[0] > 0]
+
+        if overwrite:
+            data.delete(graph_name, data_dir)
+
+        for n in nodes:
+            self[n].to_file(n, graph_name, data_dir=data_dir, format=format)
+
+        for e in edges:
+            self[e].to_file(e, graph_name, data_dir=data_dir, format=format)
+
 
 def from_dir(
     root,
@@ -486,39 +619,28 @@ def from_dir(
     `pubnet.PubNet`, `pubnet.data.default_data_dir`
     """
 
-    def find_node_files_containing(nodes):
-        path_regex = r"^(\w+)_nodes.tsv"
-        potential_files = os.listdir(data_dir)
-        out = {}
-        for file in potential_files:
-            m = re.match(path_regex, file)
-            if m is not None:
-                out[m.groups()[0]] = m.group()
+    def node_files_containing(nodes):
+        all_node_files = _node_files(data_dir)
+        if nodes == "all":
+            nodes = all_node_files.keys()
 
-        if nodes != "all":
-            out = {key: out[key] for key in nodes}
+        return {n: _node_file_path(n, all_node_files) for n in nodes}
 
-        return out
-
-    def find_edge_files_containing(nodes):
-        path_regex = r"^(\w+)_(\w+)_edges.tsv"
-        potential_files = os.listdir(data_dir)
-        out = {}
-        for file in potential_files:
-            m = re.match(path_regex, file)
-            if m is not None:
-                out[edge_key(*m.groups())] = m.group()
-
-        edge_pair_in_nodes = (
-            lambda key: reduce(
-                lambda a, k: a + (k in nodes), key.split("-"), 0
+    def edge_files_containing(nodes):
+        all_edge_files = _edge_files(data_dir)
+        if nodes == "all":
+            edges = all_edge_files.keys()
+        else:
+            edges = (
+                edge_key(n1, n2)
+                for i, n1 in enumerate(nodes)
+                for n2 in nodes[i:]
+                if edge_key(n1, n2) in all_edge_files.keys()
             )
-            == 2
-        )
-        if nodes != "all":
-            out = {key: out[key] for key in out if edge_pair_in_nodes(key)}
 
-        return out
+        return {
+            e: _edge_file_path(*edge_parts(e), all_edge_files) for e in edges
+        }
 
     if nodes is None:
         nodes = ()
@@ -538,11 +660,11 @@ def from_dir(
     node_files = {}
     edge_files = {}
     if (nodes == "all") and (edges == "all"):
-        node_files = find_node_files_containing("all")
-        edge_files = find_edge_files_containing("all")
+        node_files = node_files_containing("all")
+        edge_files = edge_files_containing("all")
     elif nodes == "all":
         edge_nodes = set(reduce(lambda a, b: a + b, edges, ()))
-        node_files = find_node_files_containing(edge_nodes)
+        node_files = node_files_containing(edge_nodes)
         for node_pair in edges:
             edge_files[edge_key(*node_pair)] = _edge_file_path(
                 *node_pair, data_dir
@@ -550,7 +672,7 @@ def from_dir(
     elif edges == "all":
         for node in nodes:
             node_files[node] = _node_file_path(node, data_dir)
-        edge_files = find_edge_files_containing(nodes)
+        edge_files = edge_files_containing(nodes)
     else:
         for node in nodes:
             node_files[node] = _node_file_path(node, data_dir)
@@ -586,27 +708,16 @@ def from_data(root, nodes=None, edges=None, representation="numpy"):
         nodes[name] = _node.from_data(data)
 
     for name, data in edges:
-        start_id, end_id = name.split("-")
+        start_id, end_id = edge_parts(name)
         edges[name] = _edge.from_data(data, start_id, end_id, representation)
 
     return PubNet(root, nodes, edges)
 
 
 def edge_key(node_1, node_2):
-    """Generate a dictionary key for the given pair of nodes."""
+    """Generate a dictionary key for the given pair of nodes.
 
-    return "-".join(sorted((node_1, node_2)))
-
-
-def _node_file_path(name, data_dir):
-    """Return the file path for a node."""
-    return os.path.join(data_dir, f"{name}_nodes.tsv")
-
-
-def _edge_file_path(node_1, node_2, data_dir):
-    """Find the edge file in data_dir for the provided node types.
-
-    Known possible issues:
+    Known future issue:
         If we need directed edges, the order of nodes in the file name
         may be important. Add in a weighted keyword argument, if true
         look for files only with the nodes in the order they were
@@ -615,19 +726,111 @@ def _edge_file_path(node_1, node_2, data_dir):
         and END_ID node types.
     """
 
-    def edge_file_path(n1, n2):
-        return os.path.join(data_dir, f"{n1}_{n2}_edges.tsv")
+    return EDGE_KEY_DELIM.join(sorted((node_1, node_2)))
 
-    if os.path.exists(edge_file_path(node_1, node_2)):
-        file_path = edge_file_path(node_1, node_2)
-    elif os.path.exists(edge_file_path(node_2, node_1)):
-        file_path = edge_file_path(node_2, node_1)
+
+def edge_parts(key):
+    """Break an edge key into its nodes"""
+    return key.split(EDGE_KEY_DELIM)
+
+
+def _node_files(data_dir):
+    """Return all node files in the data_dir"""
+
+    files = os.listdir(data_dir)
+    path_regex = r"(?P<node>\w+)_nodes.(?P<ext>[\w\.]+)"
+    out = {}
+    for f in files:
+        m = re.match(path_regex, f)
+        try:
+            out[m.groups()[0]][m.groups()[1]] = os.path.join(
+                data_dir, m.group()
+            )
+        except KeyError:
+            out[m.groups()[0]] = {
+                m.groups()[1]: os.path.join(data_dir, m.group())
+            }
+        except AttributeError:  # File didn't match regex
+            continue
+    return out
+
+
+def _node_file_path(name, data_dir):
+    """Return the file path for a node."""
+
+    if isinstance(data_dir, dict):
+        node_files = data_dir
+    elif isinstance(data_dir, str) and os.path.isdir(data_dir):
+        node_files = _node_files(data_dir)
     else:
-        raise FileNotFoundError(
-            f"No edge file for edges {node_1}, {node_2} found in"
-            f" {data_dir}\n\nExpceted either file"
-            f" '{edge_file_path(node_1, node_2)}'"
-            f" or'{edge_file_path(node_2, node_1)}'"
+        raise TypeError(
+            "Second argument must be a dictionary of files or directory."
         )
 
-    return file_path
+    try:
+        available_files = node_files[name]
+    except KeyError:
+        raise FileNotFoundError(f"No file found for node {name}.")
+
+    ext_preference = ["feather", "tsv", "tsv.gz"]
+    for ext in ext_preference:
+        try:
+            return available_files[ext]
+        except KeyError:
+            continue
+
+    raise FileNotFoundError(
+        f"No file found for node {name} with a supported file extension."
+    )
+
+
+def _edge_files(data_dir):
+    """Return all edge files in the data_dir"""
+
+    files = os.listdir(data_dir)
+    path_regex = r"(?P<n1>\w+)_(?P<n2>\w+)_edges.(?P<ext>[\w\.]+)"
+    out = {}
+    for f in files:
+        m = re.match(path_regex, f)
+        try:
+            out[edge_key(*m.groups()[:2])][m.groups()[2]] = os.path.join(
+                data_dir, m.group()
+            )
+        except KeyError:
+            out[edge_key(*m.groups()[:2])] = {
+                m.groups()[2]: os.path.join(data_dir, m.group())
+            }
+        except AttributeError:  # File didn't match regex
+            continue
+    return out
+
+
+def _edge_file_path(node_1, node_2, data_dir):
+    """Find the edge file in data_dir for the provided node types."""
+
+    if isinstance(data_dir, dict):
+        edge_files = data_dir
+    elif isinstance(data_dir, str) and os.path.isdir(data_dir):
+        edge_files = _edge_files(data_dir)
+    else:
+        raise TypeError(
+            "Second argument must be a dictionary of files or directory."
+        )
+
+    name = edge_key(node_1, node_2)
+    try:
+        available_files = edge_files[name]
+    except KeyError:
+        raise FileNotFoundError(f"No file found for nodes {node_1}, {node_2}.")
+
+    ext_preference = ["npy", "tsv", "tsv.gz"]
+    for ext in ext_preference:
+        try:
+            return available_files[ext]
+        except KeyError:
+            continue
+
+    raise FileNotFoundError(
+        f"No file found for nodes {node_1}, {node_2} with a supported file"
+        " extension."
+    )
