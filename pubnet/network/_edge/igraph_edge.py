@@ -192,7 +192,7 @@ class IgraphEdge(Edge):
         `pubnet.network.from_dir`
         """
 
-        ext = {"binary": "npy", "gzip": "tsv.gz", "tsv": "tsv"}
+        ext = {"binary": "ig", "gzip": "tsv.gz", "tsv": "tsv"}
         data_dir = os.path.join(data_dir, graph_name)
 
         if not os.path.exists(data_dir):
