@@ -60,19 +60,19 @@ class IgraphEdge(Edge):
                 else:
                     e[self.start_id] = self._data.vs[e.tuple[1]]["id"]
                     e[self.end_id] = self._data.vs[e.tuple[0]]["id"]
-
-            nodesids, edges, overlaps = self.__weights()
-            self._weightedData = ig.Graph(n=0, edges=edges)
-            flipped_nodesids = {v: k for k, v in nodesids.items()}
-            nodes = self._weightedData.vs
-            for n in nodes:
-                n["id"] = flipped_nodesids[n.index]
-            edges = self._weightedData.es
-            for e in edges:
-                e["weight"] = (
-                    1
-                    / overlaps[(nodes[e.source]["id"], nodes[e.target]["id"])]
-                )
+            self._weightedData = None
+            # nodesids, edges, overlaps = self.__weights()
+            # self._weightedData = ig.Graph(n=0, edges=edges)
+            # flipped_nodesids = {v: k for k, v in nodesids.items()}
+            # nodes = self._weightedData.vs
+            # for n in nodes:
+            #     n["id"] = flipped_nodesids[n.index]
+            # edges = self._weightedData.es
+            # for e in edges:
+            #     e["weight"] = (
+            #         1
+            #         / overlaps[(nodes[e.source]["id"], nodes[e.target]["id"])]
+            #     )
 
     def __str__(self):
         return (
@@ -134,12 +134,13 @@ class IgraphEdge(Edge):
                 return False
         return True
 
-    def __weights(self):
-        overlap_edges = []
-        overlap_values = {}
+    def __add_weights(self, nodes):
+        current_nodes = self._weightedData.vs
+        edge_list = []
+        weights = []
         overlap_pubids = {}
-        node_index = 0
-        nodes = self._data.vs.select(NodeType_eq=self.start_id)
+        node_index = current_nodes[-1].index + 1
+
         for i in range(len(nodes)):
             if nodes[i]["id"] not in overlap_pubids.keys():
                 overlap_pubids[nodes[i]["id"]] = node_index
@@ -157,15 +158,77 @@ class IgraphEdge(Edge):
                     )
                 )
                 if overlap != 0:
-                    overlap_edges.append(
+                    edge_list.append(
                         [
                             overlap_pubids[nodes[i]["id"]],
                             overlap_pubids[nodes[j]["id"]],
                         ]
                     )
-                    overlap_values[(nodes[i]["id"], nodes[j]["id"])] = overlap
+                    weights.append(1 / overlap)
+            for k in range(len(current_nodes)):
+                first_node_neighbors = self._data.neighbors(nodes[i])
+                second_node_neighbors = self._data.neighbors(
+                    self._data.find(
+                        id_eq=nodes[k]["pubid"], NodeType_eq=self.start_id
+                    )
+                )
 
-        return overlap_pubids, overlap_edges, overlap_values
+                overlap = len(
+                    set(first_node_neighbors).intersection(
+                        second_node_neighbors
+                    )
+                )
+
+                if overlap != 0:
+                    edge_list.append(
+                        [
+                            overlap_pubids[nodes[i]["id"]],
+                            nodes[k].index,
+                        ]
+                    )
+                    weights.append(1 / overlap)
+
+        edge_splice = len(self._weightedData.es)
+        vertex_splice = len(self._weightedData.vs)
+        self._weightedData.add_vertices(overlap_pubids.values())
+        self._weightedData.add_edges(edge_list)
+        self._weightedData.es[edge_splice + 1 :]["weight"] = weights
+        self._weightedData.vs[vertex + 1 :]["pubid"] = overlap_pubids.keys()
+
+    def __weights(self, nodes):
+        edge_list = []
+        weights = []
+        overlap_pubids = {}
+        node_index = 0
+        for i in range(len(nodes)):
+            if nodes[i]["id"] not in overlap_pubids.keys():
+                overlap_pubids[nodes[i]["id"]] = node_index
+                node_index += 1
+            for j in range(i + 1, len(nodes)):
+                if nodes[j]["id"] not in overlap_pubids.keys():
+                    overlap_pubids[nodes[j]["id"]] = node_index
+                    node_index += 1
+                first_node_neighbors = self._data.neighbors(nodes[i])
+                second_node_neighbors = self._data.neighbors(nodes[j])
+
+                overlap = len(
+                    set(first_node_neighbors).intersection(
+                        second_node_neighbors
+                    )
+                )
+
+                if overlap != 0:
+                    edge_list.append(
+                        [
+                            overlap_pubids[nodes[i]["id"]],
+                            overlap_pubids[nodes[j]["id"]],
+                        ]
+                    )
+                    weights.append(1 / overlap)
+
+        self._weightedData = ig.Graph(edge_list)
+        self._weightedData.es["weight"] = weights
+        self._weightedData.vs["pubid"] = overlap_pubids.keys()
 
     def to_file(
         self, edge_name, graph_name, data_dir=default_data_dir(), format="tsv"
@@ -258,17 +321,39 @@ class IgraphEdge(Edge):
         return np.asarray(overlaps)
 
     def _shortest_path(self, target_publications):
-        pubids = list(set(target_publications))
-        nodeids = self._weightedData.vs.select(id_in=pubids)
-        distances = self._weightedData.distances(nodeids, nodeids, "weight")
+        pubids = set(target_publications)
+
+        if self._weightedData == None:
+            nodes = self._data.vs.select(
+                id_in=pubids, NodeType_eq=self.start_id
+            )
+            self.__weights(nodes)
+            distances = self._weightedData.distances(weights="weight")
+            nodeids = nodes["id"]
+        else:
+            weighted_nodes = self._weightedData.vs.select(pubid_in=pubids)
+            if pubids != set(weighted_nodes):
+                nodes = self._data.vs.select(
+                    id_in=pubids,
+                    NodeType_eq=self.start_id,
+                    id_notin=weighted_nodes["pubid"],
+                )
+                self.__add_weights(nodes)
+                weighted_nodes = self._weightedData.vs.select(pubid_in=pubids)
+
+            distances = self._weightedData.distances(
+                weighted_nodes, weighted_nodes, weights="weight"
+            )
+            nodeids = weighted_nodes["pubid"]
+
         shortest_paths = []
         for source_node_index, node_distances in enumerate(distances):
             for target_node_index, distance in enumerate(node_distances):
                 if source_node_index < target_node_index:
                     shortest_paths.append(
                         [
-                            pubids[source_node_index],
-                            pubids[target_node_index],
+                            nodeids[source_node_index],
+                            nodeids[target_node_index],
                             distance,
                         ]
                     )
