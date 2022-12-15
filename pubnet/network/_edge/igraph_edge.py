@@ -181,10 +181,14 @@ class IgraphEdge(Edge):
         vertex_splice = len(self._weighted_data.vs)
         self._weighted_data.add_vertices(overlap_pubids.values())
         self._weighted_data.add_edges(edge_list)
-        self._weighted_data.es[edge_splice + 1 :]["weight"] = weights
-        self._weighted_data.vs[vertex_splice + 1 :][
-            "pubid"
-        ] = overlap_pubids.keys()
+
+        for i in range(len(new_edges)):
+            new_edges[i]["weight"] = weights[i]
+
+        new_nodes = self._weighted_data.vs[vertex_splice + 1 :]
+        new_ids = list(overlap_pubids.keys())
+        for i in range(len(new_nodes)):
+            new_nodes[i]["pubid"] = new_ids[i]
 
     def __weights(self, nodes):
         edge_list = []
@@ -218,8 +222,14 @@ class IgraphEdge(Edge):
                     weights.append(1 / overlap)
 
         self._weighted_data = ig.Graph(edge_list)
-        self._weighted_data.es["weight"] = weights
-        self._weighted_data.vs["pubid"] = overlap_pubids.keys()
+        edges = self._weighted_data.es
+        for i in range(len(edges)):
+            edges[i]["weight"] = weights[i]
+        nodes = self._weighted_data.vs
+        ids = list(overlap_pubids.keys())
+        print(ids)
+        for i in range(len(nodes)):
+            nodes[i]["pubid"] = ids[i]
 
     def to_file(
         self, edge_name, graph_name, data_dir=default_data_dir(), format="tsv"
@@ -322,7 +332,7 @@ class IgraphEdge(Edge):
             distances = self._weighted_data.distances(weights="weight")
             nodeids = nodes["id"]
         else:
-            weighted_nodes = self._weighted_data.vs.select(pubid_in=pubids)
+            weighted_nodes = self._weighted_data.vs["pubid"]
             if pubids != set(weighted_nodes):
                 nodes = self._data.vs.select(
                     id_in=pubids,
@@ -331,11 +341,13 @@ class IgraphEdge(Edge):
                 )
                 self.__add_weights(nodes)
                 weighted_nodes = self._weighted_data.vs.select(pubid_in=pubids)
-
-            distances = self._weighted_data.distances(
-                weighted_nodes, weighted_nodes, weights="weight"
-            )
-            nodeids = weighted_nodes["pubid"]
+                distances = self._weighted_data.distances(
+                    weighted_nodes, weighted_nodes, weights="weight"
+                )
+                nodeids = weighted_nodes["pubid"]
+            else:
+                distances = self._weighted_data.distances(weights="weight")
+                nodeids = weighted_nodes
 
         shortest_paths = []
         for source_node_index, node_distances in enumerate(distances):
