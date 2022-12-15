@@ -3,6 +3,7 @@
 import gzip
 import re
 
+import igraph as ig
 import numpy as np
 
 from ._base import Edge
@@ -18,14 +19,14 @@ id_dtype = np.int64
 def from_file(file, representation):
     ext = file.split(".")[-1]
 
-    if ext == "tsv" or ext == "npy":
+    if ext in ("tsv", "npy", "ig"):
         ext_open = open
     elif ext == "gz":
         ext_open = gzip.open
     else:
         raise ValueError(f"Extension {ext} not supported")
 
-    if ext == "npy":
+    if ext in ("npy", "ig"):
         header_file = re.sub(r"(?:edges)\.(?:\w+)", "edge_header.tsv", file)
     else:
         header_file = file
@@ -42,6 +43,8 @@ def from_file(file, representation):
 
     if ext == "npy":
         data = np.load(file, allow_pickle=True)
+    elif ext == "ig":
+        data = ig.Graph.Read_Pickle(file)
     else:
         data = np.genfromtxt(
             file,

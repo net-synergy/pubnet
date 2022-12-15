@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 import pandas as pd
 import pubnet
@@ -301,3 +303,27 @@ class TestSnapshots:
             ),
             f"similarity_{method}_output.txt",
         )
+
+    @pytest.mark.parametrize("method", ["shortest_path"])
+    def test_repeated_overlap_calculations(self, simple_pubnet, method):
+        """Overlap is stored in a variable so subsequent runs should be quicker
+        than original run."""
+
+        publication_ids = simple_pubnet.ids_containing(
+            "Author", "LastName", "Smith"
+        )
+
+        t_start = time.time()
+        sim_1 = simple_pubnet["Author", "Publication"].similarity(
+            publication_ids, method
+        )
+        t_1 = time.time() - t_start
+
+        t_start = time.time()
+        sim_2 = simple_pubnet["Author", "Publication"].similarity(
+            publication_ids, method
+        )
+        t_2 = time.time() - t_start
+
+        assert t_2 < t_1
+        assert np.all(sim_1 == sim_2)

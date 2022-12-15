@@ -823,7 +823,7 @@ def _edge_file_path(node_1, node_2, data_dir):
     except KeyError:
         raise FileNotFoundError(f"No file found for nodes {node_1}, {node_2}.")
 
-    ext_preference = ["npy", "tsv", "tsv.gz"]
+    ext_preference = ["npy", "tsv", "tsv.gz","ig"]
     for ext in ext_preference:
         try:
             return available_files[ext]
