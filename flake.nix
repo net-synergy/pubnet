@@ -4,10 +4,7 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-22.11";
-    flake-utils = {
-      url = "github:numtide/flake-utils";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    flake-utils = { url = "github:numtide/flake-utils"; };
     pubmedparser = {
       url = "gitlab:net-synergy/pubmedparser/major-version-1";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -22,7 +19,7 @@
         python = pkgs.python3;
         # Nix does not expose `checkInputs` attribute.
         pubnetCheckInputs =
-          (with python.pkgs; [ pytest pytest-snapshot mypy black lxml ]);
+          (with python.pkgs; [ pytest pytest-snapshot mypy black lxml pdoc3 ]);
         pubnet = python.pkgs.buildPythonPackage rec {
           pname = "pubnet";
           version = "0.5.0";
