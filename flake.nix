@@ -67,6 +67,7 @@
                 pyls-isort
                 python-lsp-black
                 pylsp-mypy
+                pdoc3
               ] ++ pubnet.propagatedBuildInputs ++ pubnetCheckInputs))
             pkgs.astyle
             pkgs.bear
