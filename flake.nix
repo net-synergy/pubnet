@@ -9,7 +9,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     pubmedparser = {
-      url = "gitlab:DavidRConnell/pubmedparser/major-version-1";
+      url = "gitlab:net-synergy/pubmedparser/major-version-1";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-utils.follows = "flake-utils";
     };
@@ -39,6 +39,8 @@
           ]);
           checkInputs = pubnetCheckInputs;
           authors = [ "David Connell <davidconnell12@gmail.com>" ];
+          keywords = [ "publication" "network" ];
+          repository = "https://gitlab.com/net-synergy/pubnet";
           checkPhase = ''
             python -m pytest
           '';
@@ -87,10 +89,15 @@
                  builtins.concatStringsSep ",\n    "
                  (builtins.map (name: ''\"'' + name + ''\"'') pubnet.authors)
                }" \
+               keywords="${
+                 builtins.concatStringsSep ", "
+                 (builtins.map (name: ''\"'' + name + ''\"'') pubnet.keywords)
+               }" \
+               repository=${pubnet.repository} \
                dependencies="${
                  nix2poetryDependency pubnet.propagatedBuildInputs
                }" \
-               devDependencies="${nix2poetryDependency pubnetCheckInputs}" \
+               testDependencies="${nix2poetryDependency pubnetCheckInputs}" \
                ./.pyproject.toml.template
             fi
           '';

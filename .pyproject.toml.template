@@ -13,6 +13,8 @@ name = "$pname"
 version = "$version"
 description = "$description"
 license = "$license"
+keywords = [ $keywords ]
+repository = "$repository"
 authors = [
     $authors,
 ]
@@ -23,8 +25,8 @@ packages = [
 [tool.poetry.dependencies]
 $dependencies
 
-[tool.poetry.dev-dependencies]
-$devDependencies
+[tool.poetry.group.test.dependencies]
+$testDependencies
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

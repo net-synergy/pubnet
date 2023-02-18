@@ -10,6 +10,8 @@ name = "pubnet"
 version = "0.5.0"
 description = "A python package for storing and working with publication data in graph form."
 license = "MIT"
+keywords = [ "publication", "network" ]
+repository = "https://gitlab.com/net-synergy/pubnet"
 authors = [
     "David Connell <davidconnell12@gmail.com>",
 ]
@@ -26,7 +28,7 @@ igraph = "^0.10"
 pyarrow = "^9.0"
 python = "~3.10"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.test.dependencies]
 pytest = "^7.1"
 pytest-snapshot = "^0.9"
 mypy = "^0.981"

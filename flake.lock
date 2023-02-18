@@ -43,13 +43,13 @@
       "locked": {
         "lastModified": 1662609176,
         "narHash": "sha256-wpGQXRiv9bxXLmeQ5hHF3T27u9ojEXPR2TbDKj7Izsk=",
-        "owner": "DavidRConnell",
+        "owner": "net-synergy",
         "repo": "pubmedparser",
         "rev": "de8a682d5b48cb1fb719bf6ff654630737173fb0",
         "type": "gitlab"
       },
       "original": {
-        "owner": "DavidRConnell",
+        "owner": "net-synergy",
         "ref": "major-version-1",
         "repo": "pubmedparser",
         "type": "gitlab"
