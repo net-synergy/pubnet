@@ -7,3 +7,4 @@ example/*.tsv
 example/*.png
 example/*.pdf
 !tests/data/
+doc/

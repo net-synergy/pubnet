@@ -19,7 +19,8 @@
         python = pkgs.python3;
         # Nix does not expose `checkInputs` attribute.
         pubnetCheckInputs =
-          (with python.pkgs; [ pytest pytest-snapshot mypy black lxml pdoc3 ]);
+          (with python.pkgs; [ pytest pytest-snapshot mypy black lxml ]);
+        pubnetDocInputs = [ python.pkgs.pdoc3 ];
         pubnet = python.pkgs.buildPythonPackage rec {
           pname = "pubnet";
           version = "0.5.0";
@@ -67,8 +68,8 @@
                 pyls-isort
                 python-lsp-black
                 pylsp-mypy
-                pdoc3
-              ] ++ pubnet.propagatedBuildInputs ++ pubnetCheckInputs))
+              ] ++ pubnet.propagatedBuildInputs ++ pubnetCheckInputs
+              ++ pubnetDocInputs))
             pkgs.astyle
             pkgs.bear
             pubmedparser.defaultPackage.${system}
@@ -96,6 +97,7 @@
                  nix2poetryDependency pubnet.propagatedBuildInputs
                }" \
                testDependencies="${nix2poetryDependency pubnetCheckInputs}" \
+               docDependencies="${nix2poetryDependency pubnetDocInputs}" \
                ./.pyproject.toml.template
             fi
           '';

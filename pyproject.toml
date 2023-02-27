@@ -34,6 +34,8 @@ pytest-snapshot = "^0.9"
 mypy = "^0.981"
 black = "^22.10"
 lxml = "^4.9"
+
+[tool.poetry.group.doc.dependencies]
 pdoc3 = "^0.10"
 
 [build-system]
