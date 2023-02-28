@@ -23,7 +23,7 @@
         pubnetDocInputs = [ python.pkgs.pdoc3 ];
         pubnet = python.pkgs.buildPythonPackage rec {
           pname = "pubnet";
-          version = "0.5.0";
+          version = "0.6.0";
           src = ./.;
           format = "pyproject";
           buildInputs = (with python.pkgs; [ poetry ]);
@@ -39,6 +39,7 @@
           authors = [ "David Connell <davidconnell12@gmail.com>" ];
           keywords = [ "publication" "network" ];
           repository = "https://gitlab.com/net-synergy/pubnet";
+          documentation = "https://net-synergy.gitlab.io/pubnet";
           checkPhase = ''
             python -m pytest
           '';
@@ -93,6 +94,7 @@
                  (builtins.map (name: ''\"'' + name + ''\"'') pubnet.keywords)
                }" \
                repository=${pubnet.repository} \
+               documentation=${pubnet.documentation} \
                dependencies="${
                  nix2poetryDependency pubnet.propagatedBuildInputs
                }" \
