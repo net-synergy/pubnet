@@ -64,7 +64,7 @@ def list(data_dir=default_data_dir()):
 
 
 def delete(graph_name, data_dir=default_data_dir()):
-    """Delete the graph in data_dir"""
+    """Delete the graph from `data_dir`"""
 
     def delete_directory(path):
         for f in os.listdir(path):

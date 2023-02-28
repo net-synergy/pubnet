@@ -11,7 +11,8 @@ __all__ = ["Node", "from_file", "from_data"]
 
 
 class Node:
-    """Class for storing node data for PubNet class.
+    """
+    Class for storing node data for PubNet class.
 
     Provides a wrapper around a panda dataframe adding in information
     about the ID column, which is identified by the special syntax
@@ -19,24 +20,28 @@ class Node:
     data.  Here the value `namespace` refers to the node so it's not
     important since we already know the the node.
 
-    Arguments
-    ---------
-    data : pandas.DataFrame, containing node's features.
-    id : "detect" or str, if "detect" (default), determine the id
-        column based on the above mentioned Neo4j syntax. Otherwise,
-        use specified column name as the ID. If the column doesn't
-        exist it will be generated as 1:len(data).
-    features : "all" or list : If not "all" (default) provide a list
-        of the columns to keep. All names in list must be exact
-        matches to column names in the data file.
+    This class should primarily be initialized through `PubNet` methods.
+
+    Parameters
+    ----------
+    data : pandas.DataFrame
+        `DataFrame` containing node's features.
+    id : str, default "detect"
+        The `data` column to use as the ID. If `"detect"`, determine the id
+        column based on the above mentioned Neo4j syntax. If the provided
+        column name doesn't exist, the column will be generated as
+        `1:len(data)`.
+    features : "all" or list of str, default "all"
+        A list of the columns to keep. If "all" keep all columns.
 
     Attributes
     ----------
-    id : the name of the node id. This is the feature that will be
-        used in edges to link to the node.
-    features : a list of all features.
-    columns : alias for features to correspond with dataframe terminology.
-    shape : a touple with number of rows and number of features.
+    id : str
+        The name of the node id. This is the feature that will be used in edges
+        to link to the node.
+    features
+    columns
+    shape
     """
 
     def __init__(self, data, id="detect", features="all"):
@@ -127,35 +132,42 @@ class Node:
 
     @property
     def features(self):
+        """A list of all the node's features."""
         return self._data.columns
 
     @property
     def columns(self):
+        """Alias for features to correspond with dataframe terminology."""
         return self.features
 
     @property
     def shape(self):
+        """A tuple with number of rows and number of features."""
         return self._data.shape
 
     def get_random(self, n=1, seed=None):
-        """Sample n nodes.
+        """
+        Sample rows in `Node`.
 
-        Arguments
-        ---------
-        n : positive int, number of nodes to sample (default 1).
-        seed : positive int, random seed for reproducibility (default None).
-            If None seed is select at random.
+        Parameters
+        ----------
+        n : positive int, default 1
+            Number of nodes to sample.
+        seed : positive int, optional
+            Random seed for reproducibility. If not provided, seed is select at
+            random.
 
         Returns
         -------
-        nodes : dataframe, subset of nodes.
+        nodes : dataframe
+            Subset of nodes.
         """
 
         rng = np.random.default_rng(seed=seed)
         return self._data.loc[rng.integers(0, self._data.shape[0], size=(n,))]
 
     def isequal(self, node_2):
-        """Test if two nodes have the same values in all their columns."""
+        """Test if two `Node`s have the same values in all their columns."""
 
         if not (self.features == node_2.features).all():
             return False
@@ -173,30 +185,30 @@ class Node:
         data_dir=default_data_dir(),
         format="tsv",
     ):
-        """Save the node to file.
+        """
+        Save the `Node` to file.
 
         The node will be saved to a graph (a directory in the `data_dir` where
         the graphs nodes and edges are stored).
 
-        Arguments
-        ---------
-        node_name : str, name of the node.
-        graph_name : str, the name of the graph to store it under.
-        data_dir : str, where the graph is stored (default:
-            `default_data_dir`).
-        format : str {"tsv", "gzip", "binary"}, the format to save the file as
-            (default: "tsv"). The binary format uses apache feather.
-
-        Returns
-        -------
-        None
+        Parameters
+        ----------
+        node_name : str
+            Name of the `Node`.
+        graph_name : str
+            Name of the graph to store it under.
+        data_dir : str, optional
+            Where the graph is stored. If empty, uses `default_data_dir`.
+        format : {"tsv", "gzip", "binary"}, default "tsv"
+            the format to save the file as. The binary format uses apache
+            feather.
 
         See also
         --------
-        `pubmed.data.default_data_dir` : the system dependent default location
-            to store pubnet data.
-        `pubmed.network.pubnet.to_dir` : Saving an entire publication network.
-        `pubmed.network.pubnet.from_dir` : Loading a publication network.
+        `from_file`
+        `pubmed.data.default_data_dir`
+        `pubmed.network.pubnet.to_dir`
+        `pubmed.network.pubnet.from_dir`
         """
 
         self._data.columns = self._data.columns.str.replace(
@@ -222,17 +234,74 @@ class Node:
         )
 
 
-def from_file(file, *args):
-    ext = file.split(".")[-1]
+def from_file(file_name, graph_name, data_dir, *args):
+    """
+    Read a `Node` in from a file
+
+    The node will be saved to a graph (a directory in the `data_dir` where
+    the graphs nodes and edges are stored).
+
+    Parameters
+    ----------
+    node_name : str
+        Name of the `Node`.
+    graph_name : str
+        Name of the graph to store it under.
+    data_dir : str, optional
+        Where the graph is stored.
+
+    Returns
+    -------
+    node : Node
+
+    Other Parameters
+    ----------------
+    *args
+        All other args are passed forward to the `Node` class.
+
+    See Also
+    --------
+    `Node`
+    `Node.to_file`
+    `from_data`
+    `pubmed.data.default_data_dir`
+    `pubmed.network.pubnet.to_dir`
+    `pubmed.network.pubnet.from_dir`
+    """
+
+    ext = file_name.split(".")[-1]
     if ext == "feather":
-        data = pd.read_feather(file)
+        data = pd.read_feather(file_name)
     else:
         data = pd.read_csv(
-            file,
+            file_name,
             delimiter="\t",
         )
     return from_data(data, *args)
 
 
 def from_data(data, *args):
+    """
+    Create a node from a DataFrame.
+
+    Paramaters
+    ----------
+    Data, DataFrame
+
+    Returns
+    -------
+    node, Node
+
+    Other Parameters
+    ----------------
+    *args
+        All other args are passed forward to the `Node` class.
+
+    See Also
+    --------
+    `Node`
+    `from_file` : read a `Node` from file.
+    `Node.to_file` : save a `Node` to file.
+    """
+
     return Node(data, *args)
