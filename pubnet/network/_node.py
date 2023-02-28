@@ -234,7 +234,7 @@ class Node:
         )
 
 
-def from_file(file_name, graph_name, data_dir, *args):
+def from_file(file_name, *args):
     """
     Read a `Node` in from a file
 
