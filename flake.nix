@@ -4,10 +4,7 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-22.11";
-    flake-utils = {
-      url = "github:numtide/flake-utils";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    flake-utils = { url = "github:numtide/flake-utils"; };
     pubmedparser = {
       url = "gitlab:net-synergy/pubmedparser/major-version-1";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -23,6 +20,7 @@
         # Nix does not expose `checkInputs` attribute.
         pubnetCheckInputs =
           (with python.pkgs; [ pytest pytest-snapshot mypy black lxml ]);
+        pubnetDocInputs = [ python.pkgs.pdoc3 ];
         pubnet = python.pkgs.buildPythonPackage rec {
           pname = "pubnet";
           version = "0.5.0";
@@ -70,7 +68,8 @@
                 pyls-isort
                 python-lsp-black
                 pylsp-mypy
-              ] ++ pubnet.propagatedBuildInputs ++ pubnetCheckInputs))
+              ] ++ pubnet.propagatedBuildInputs ++ pubnetCheckInputs
+              ++ pubnetDocInputs))
             pkgs.astyle
             pkgs.bear
             pubmedparser.defaultPackage.${system}
@@ -98,6 +97,7 @@
                  nix2poetryDependency pubnet.propagatedBuildInputs
                }" \
                testDependencies="${nix2poetryDependency pubnetCheckInputs}" \
+               docDependencies="${nix2poetryDependency pubnetDocInputs}" \
                ./.pyproject.toml.template
             fi
           '';

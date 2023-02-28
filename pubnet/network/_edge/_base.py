@@ -5,33 +5,33 @@ import re
 
 
 class Edge:
-    """Provides a class for storing edges for PubNet.
-
-    Reads the data in from a file. The file should be in the form
-    f"{edge[0]}_{edge[1]}_edges.tsv, where the order the node types
-    are given in the edge argument is not important.
-
-    As with the Node class it expects ID columns to be in Neo4j format
-    f":START_ID({namespace})" and f":END_ID({namespace})". Start and
-    end will be important only if the graph is directed. The
-    `namespace` value provides the name of the node and will link to
-    that node's ID column.
+    """
+    Provides a class for storing edges for `PubNet`.
 
     In the future it may support weighted edges and directed columns.
 
-    Arguments
-    ---------
-    data : numpy.ndarray, the edges as a list of existing edges.
-    start_id : str, name of edge start node type.
-    end_id : str, name of edge end node type.
+    Parameters
+    ----------
+    data : numpy.ndarray
+        The edges as a list of existing edges.
+    start_id : str
+        Name of edge start node type.
+    end_id : str
+        Name of edge end node type.
 
     Attributes
     ----------
-    start_id : the node type in column 0.
-    end_id : the node type in column 1.
-    dtype : type, the data type used.
-    representation : str, which representation the edges are stored as.
-    isweighted : bool, whether the edges are weighted.
+    start_id : str
+        The node type in column 0.
+    end_id : str
+        The node type in column 1.
+    dtype : data type,
+        The data type used.
+    representation : {"numpy", "igraph"}
+        Which representation the edges are stored as.
+    isweighted : bool
+        Whether the edges are weighted.
+    shape
     """
 
     def __init__(self, data, start_id, end_id, dtype):
@@ -45,6 +45,7 @@ class Edge:
         self.isweighted = False
 
     def set(self, new_data):
+        """Replace the edge's data with a new array."""
         self._data = new_data
 
     def __str__(self):
@@ -57,7 +58,8 @@ class Edge:
         raise AbstractMethodError(self)
 
     def isin(self, column, test_elements):
-        """Find which elements from column are in the set of test_elements."""
+        """Find which elements from column are in the set of `test_elements`.
+        """
         raise AbstractMethodError(self)
 
     def isequal(self, other):
@@ -70,7 +72,7 @@ class Edge:
         raise AbstractMethodError(self)
 
     def to_file(self, edge_name, graph_name, data_dir, format):
-        """Save the edge to disk."""
+        """Save the edge to disc."""
         raise AbstractMethodError(self)
 
     @property
@@ -90,22 +92,23 @@ class Edge:
         raise AbstractMethodError(self)
 
     def similarity(self, target_publications, method="shortest_path"):
-        """Calculate similarity between publications based on edge's overlap.
+        """
+        Calculate similarity between publications based on edge's overlap.
 
-        Arguments
-        ---------
-        target_publication : array, an array of publications to return
-            similarity between which must be a subset of all edges in
-            `self.overlap`.
-        method : {'shortest_path'}, the method to use for
-            calculating similarity.
+        Parameters
+        ----------
+        target_publication : ndarray
+            An array of publications to return similarity between which must be
+            a subset of all edges in `self.overlap`.
+        method : {"shortest_path"}, default "shortest_path"
+            The method to use for calculating similarity.
 
         Returns
         -------
-        similarity : a 3 column 2d array, listing the similarity (3rd
-            column) between all pairs of publications (1st--2nd
-            column) in target_publications. Only non-zero similarities
-            are listed.
+        similarity : a 3 column 2d array
+            Listing the similarity (3rd column) between all pairs of
+            publications (1st--2nd column) in target_publications. Only
+            non-zero similarities are listed.
         """
 
         all_methods = {

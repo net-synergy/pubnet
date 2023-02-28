@@ -13,6 +13,7 @@ stages:
   - test
   - format
   - typecheck
+  - pages
 
 before_script:
   - pip install poetry
@@ -44,3 +45,16 @@ type-check:
     when: always
     reports:
       junit: mypy_report.xml
+
+pages:
+  stage: pages
+  needs: []
+  script:
+    - poetry run pdoc --html --output-dir build pubnet
+    - mv build/pubnet public
+  artifacts:
+    when: always
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

@@ -16,8 +16,22 @@ _edge_class = {"numpy": NumpyEdge, "igraph": IgraphEdge}
 id_dtype = np.int64
 
 
-def from_file(file, representation):
-    ext = file.split(".")[-1]
+def from_file(file_name, representation):
+    """
+    Read edge in from file
+
+    Reads the data in from a file. The file should be in the form
+    f"{edge[0]}_{edge[1]}_edges.tsv, where the order the node types
+    are given in the edge argument is not important.
+
+    As with the Node class it expects ID columns to be in Neo4j format
+    f":START_ID({namespace})" and f":END_ID({namespace})". Start and
+    end will be important only if the graph is directed. The
+    `namespace` value provides the name of the node and will link to
+    that node's ID column.
+    """
+
+    ext = file_name.split(".")[-1]
 
     if ext in ("tsv", "npy", "ig"):
         ext_open = open
@@ -27,9 +41,11 @@ def from_file(file, representation):
         raise ValueError(f"Extension {ext} not supported")
 
     if ext in ("npy", "ig"):
-        header_file = re.sub(r"(?:edges)\.(?:\w+)", "edge_header.tsv", file)
+        header_file = re.sub(
+            r"(?:edges)\.(?:\w+)", "edge_header.tsv", file_name
+        )
     else:
-        header_file = file
+        header_file = file_name
 
     with ext_open(header_file, "rt") as f:
         header_line = f.readline()
@@ -42,12 +58,12 @@ def from_file(file, representation):
             end_id = node
 
     if ext == "npy":
-        data = np.load(file, allow_pickle=True)
+        data = np.load(file_name, allow_pickle=True)
     elif ext == "ig":
-        data = ig.Graph.Read_Pickle(file)
+        data = ig.Graph.Read_Pickle(file_name)
     else:
         data = np.genfromtxt(
-            file,
+            file_name,
             # All edge values should be integer IDs.
             dtype=id_dtype,
             skip_header=1,
@@ -62,6 +78,22 @@ def from_file(file, representation):
 def from_data(
     data, representation, start_id=None, end_id=None, dtype=id_dtype
 ):
+    """
+    Make an edge from data.
+
+    Parameters
+    ----------
+    data : numpy.ndarray or pandas.DataFrame
+    representation : {"numpy", "igraph"}
+    start_id, end_id : str, optional
+       The name of the to and from node types. If `data` is a ndarray, must be
+       provided. For DataFrames, the IDs can be detected based on the column
+       names.
+
+    Returns
+    -------
+    Edge
+    """
     if start_id is None or end_id is None:
         try:
             columns = data.columns

@@ -1,4 +1,9 @@
-"""Object for storing publication data as a network."""
+"""Object for storing publication data as a network.
+
+Components
+----------
+A graph is made up of a list of node and a list of edges.
+"""
 
 import copy
 import os
@@ -12,28 +17,43 @@ from pandas.core.dtypes.common import is_list_like
 from pubnet import data
 from pubnet.data import default_data_dir
 from pubnet.network import _edge, _node
+from pubnet.network._edge._base import Edge
+from pubnet.network._node import Node
 
-__all__ = ["from_dir", "from_data", "edge_key"]
+__all__ = ["from_dir", "from_data", "edge_key", "PubNet", "Edge", "Node"]
 
 EDGE_KEY_DELIM = "-"
 
 
 class PubNet:
-    """Store publication network as a graph.
+    """
+    Store publication network as a set of graphs.
+
+    Parameters
+    ----------
+    root : str
+        The root of the network. This is used by function that filter the
+        network.
+    nodes : list-like, optional
+        The nodes to include in the network.
+    edges : list-like, optional
+        The edges to include in the network.
 
     Attributes
     ----------
-    root : str, the root of the network. This is used by function that filter
-        the network.
-    nodes : list, names of nodes in the network, both from nodes argument and
-        edges. If an edge has a node type not provided, a placeholder node of
-        shape (0,0) will be added to the node list.
-    edges : list, of edges as pairs of nodes.
-    id_dtype: class, datatype used to store id values (edge data).
+    nodes : list
+        Names of nodes in the network, both from nodes argument and edges. If
+        an edge has a node type not provided, a placeholder node of shape (0,0)
+        will be added to the node list.
+    edges : list
+        nodes.
+    id_dtype: Datatype
+        Datatype used to store id values (edge data).
 
     See also
     --------
-    `pubnet.from_dir` and `pubnet.from_data` for constructing.
+    `from_dir`
+    `from_data`
     """
 
     def __init__(self, root, nodes=None, edges=None):
@@ -73,13 +93,21 @@ class PubNet:
         self.id_dtype = _edge.id_dtype
 
     def add_node(self, name, data):
-        """Add a new node to the network.
+        """
+        Add a new node to the network.
 
-        Arguments
-        ---------
-        name : str, name of the node.
-        data : str, Node, or pandas.DataFrame, the data this can be in the form
-            of a file path, a DataFrame or an already constructed Node.
+        Parameters
+        ----------
+        name : str
+            Name of the node.
+        data : str
+            Node, or pandas.DataFrame, the data this can be in the form of a
+            file path, a DataFrame or an already constructed Node.
+
+        See also
+        --------
+        `PubNet.add_edge`
+        `PubNet.drop`
         """
 
         if name in self.nodes:
@@ -94,20 +122,30 @@ class PubNet:
         self._node_data[name] = data
 
     def add_edge(self, name, data, representation="numpy", **keys):
-        """Add a new edge set to the network.
+        """
+        Add a new edge set to the network.
 
-        Arguments
-        ---------
-        name : str, name of the node set (see `pubnet.network.edge_key` for
-            generating the name).
-        data : str, Edge, or np.ndarray, the data in the form of a file path,
-            an array or an already constructed Node.
-        representation : {"numpy", "igraph"}, the method used for storing the
-            edge (defaults to "numpy").
-        start_id : str, the name of the "from" node.
-        end_id : str, the name of the "to" node.
+        Parameters
+        ----------
+        name : str, tuple
+            Name of the node pair (see `edge_key` for generating
+            the name). If tuple, should be a pair of node types.
+        data : str, Edge, np.ndarray
+            The data in the form of a file path, an array or an already
+            constructed edge.
+        representation : {"numpy", "igraph"}, default "numpy"
+            The backend representation used for storing the edge.
+        start_id : str, optional
+            The name of the "from" node.
+        end_id : str, optional
+            The name of the "to" node.
 
         `start_id` and `end_id` are only needed if `data` is an np.ndarray.
+
+        See also
+        --------
+        `PubNet.add_node`
+        `PubNet.drop`
         """
 
         if isinstance(name, tuple):
@@ -148,8 +186,8 @@ class PubNet:
         raise KeyError(*args)
 
     def _slice(self, root_ids, mutate=False):
-        """Filter all the PubNet object's edges to those connecting to
-        root_ids.
+        """
+        Filter all the PubNet object's edges to those connecting to root_ids.
 
         If mutate is False return a new `PubNet` object otherwise
         return self after mutating the edges."""
@@ -192,29 +230,31 @@ class PubNet:
         return res
 
     def ids_where(self, node_type, func):
-        """Get a list of the root node's IDs that match a condition.
+        """
+        Get a list of the root node's IDs that match a condition.
 
-        Arguments
-        ---------
-        node_type : str, name of the type of nodes to perform
-            the search on.
-        func : function, a function that accepts a pandas.dataframe and returns
-            a list of indices.
+        Parameters
+        ----------
+        node_type : str
+            Name of the type of nodes to perform the search on.
+        func : function
+            A function that accepts a pandas.dataframe and returns a list of
+            indices.
 
         Returns
         -------
         root_ids : array, list of root IDs
 
-        Example
-        -------
-        publication_ids = net.root_where(
-            "Author",
-            lambda x: x["LastName" == "Smith"]
-        )
+        Examples
+        --------
+        >>> publication_ids = net.ids_where(
+        ...     "Author",
+        ...     lambda x: x["LastName" == "Smith"]
+        ... )
 
         See also
         --------
-        ids_containing
+        `PubNet.ids_containing`
         """
 
         nodes = self[node_type]
@@ -228,27 +268,26 @@ class PubNet:
         return np.asarray(root_ids, dtype=np.int64)
 
     def ids_containing(self, node_type, node_feature, value, steps=1):
-        """Get a list of publications connected to nodes with a given value.
+        """
+        Get a list of publications connected to nodes with a given value.
 
         Parameters
         ----------
-        node_type : str, name of the type of nodes to perform the search on.
-        node_feature : str, which feature to compare.
-        value : any, the value of the feature to find.
-        steps : positive int, number of steps away from the original
-            value. Defaults to 1, only publications with direct edges to the
-            desired node(s). If `steps > 1`, includes publications with
-            indirect edges up to `steps` steps away. For `steps == 2`, all
-            direct publications will be returned as well as all publications
-            with a node in common to that publication.
+        node_type : str
+            Name of the type of nodes to perform the search on.
+        node_feature : str
+            Which feature to compare.
+        value : any
+            The value of the feature to find.
+        steps : positive int, default 1
+            Number of steps away from the original value. Defaults to 1, only
+            publications with direct edges to the desired node(s). If steps >
+            1, includes publications with indirect edges up to `steps` steps
+            away. For `steps == 2`, all direct publications will be returned as
+            well as all publications with a node in common to that publication.
 
             For example:
-            pubnet.root_containing(
-                "Author",
-                "LastName",
-                "Smith",
-                steps=2
-            )
+            `>>> pubnet.ids_containing("Author", "LastName", "Smith", steps=2)`
 
             Will return publications with authors that have last name "Smith"
             and publications by authors who have coauthored a paper with an
@@ -256,11 +295,12 @@ class PubNet:
 
         Returns
         -------
-        root_ids : array, list of publication IDs
+        root_ids : array
+            List of publication IDs
 
         See also
         --------
-        `ids_where`
+        `PubNet.ids_where`
         """
 
         assert (
@@ -284,22 +324,26 @@ class PubNet:
         return root_ids
 
     def where(self, node_type, func):
-        """Filter network to root nodes satisfying a predicate function.
+        """
+        Filter network to root nodes satisfying a predicate function.
 
         See also
         --------
-        `ids_where`, `containing`.
+        `PubNet.ids_where`
+        `PubNet.containing`
         """
 
         root_ids = self.ids_where(node_type, func)
         return self[root_ids]
 
     def containing(self, node_type, node_feature, value, steps=1):
-        """Filter network to root nodes with a given node feature.
+        """
+        Filter network to root nodes with a given node feature.
 
         See also
         --------
-        `ids_containing`, `where`.
+        `PubNet.ids_containing`
+        `PubNet.where`
         """
 
         root_ids = self.ids_containing(node_type, node_feature, value, steps)
@@ -308,6 +352,23 @@ class PubNet:
     def plot_distribution(
         self, node_type, node_feature, threshold=1, fname=None
     ):
+        """
+        Plot the distribution of the values of a node's feature.
+
+        Parameters
+        ----------
+        node_type : str
+            Name of the node type to use.
+        node_feature : str
+            Name of one of `node_type`'s features.
+        threshold : int, optional
+            Minimum number of occurrences for a value to be included. In case
+            there are a lot of possible values, threshold reduces the which
+            values will be plotted to only the common values.
+        fname : str, optional
+            The name of the figure.
+        """
+
         distribution = self[self.root, node_type].distribution(node_type)
         names = self[node_type][node_feature].to_numpy()
 
@@ -341,10 +402,17 @@ class PubNet:
     def drop(self, nodes=None, edges=None):
         """Drop given nodes and edges from the network.
 
-        Arguments
-        ---------
-        nodes : str tuple, or None, if not none, drop the provided nodes.
-        edges : tuple of tuples, None, if not none, drop the provided edges.
+        Parameters
+        ----------
+        nodes : str or tuple of str, optional
+            Drop the provided nodes.
+        edges : tuple of tuples of str, optional
+            Drop the provided edges.
+
+        See also
+        --------
+        `PubNet.add_node`
+        `PubNet.add_edge`
         """
 
         assert len(self._missing_nodes(nodes)) == 0, (
@@ -378,7 +446,8 @@ class PubNet:
         self.edges = list(filter(lambda e: e not in edges, self.edges))
 
     def update(self, other):
-        """Add the data from other to the current network.
+        """
+        Add the data from other to the current network.
 
         Behaves similar to Dict.update(), if other contains nodes or edges in
         this network, the values in other will replace this network's.
@@ -434,15 +503,17 @@ class PubNet:
         return [edge_key(*e) for e in edges]
 
     def _missing_edges(self, edges):
-        """Find all edges not in self.
+        """
+        Find all edges not in self.
 
-        Arguments
-        ---------
-        edges : list-like, None
+        Parameters
+        ----------
+        edges : list-like, optional
 
         Returns
         -------
-        missing_edges : list, edges not in self.
+        missing_edges : list
+            Edges not in self.
         """
 
         if edges is None:
@@ -456,15 +527,18 @@ class PubNet:
         )
 
     def _missing_nodes(self, nodes):
-        """Find all node names in a list not in self.nodes.
+        """
+        Find all node names in a list not in self.nodes.
 
-        Arguments
-        ---------
-        nodes : str, list-like, or None, list of names to test.
+        Parameters
+        ----------
+        nodes : str or list-like of str, optional
+            List of names to test.
 
         Returns
         -------
-        missing_nodes : list, nodes not in self.
+        missing_nodes : list
+            Nodes not in self.
         """
 
         if nodes is None:
@@ -484,38 +558,42 @@ class PubNet:
         format="tsv",
         overwrite=False,
     ):
-        """Save a graph to disk.
+        """
+        Save a graph to disk.
 
-        Arguments
-        ---------
-        graph_name : str, what to name the graph (the directory under
-            `data_dir` to store files.).
-        nodes : tuple or "all", a list of nodes to save (default "all").
-        edges : tuple or "all", a list of edges to save (default "all").
-        data_dir : location to save the graph (default `default_data_dir`)
-        format : str {"tsv", "gzip", "binary"}, how to store the files.
-        overwrite : bool, if true delete the current graph on disk. This may be
-            useful for replacing a plain text representation with a binary
-            represention if storage is a concern. WARNING: This can lose data
-            if the self does not contain all the nodes/edges that are in the
-            saved graph. Tries to perform the deletion as late as possible to
-            prevent errors from erasing data without replacing it, but it may
-            be safer to save the data to a new location then delete the graph
-            (with `pubnet.data.delete`) after confirming the safe worked
-            correctly.
+        Parameters
+        ----------
+        graph_name : str
+            What to name the graph (the directory under `data_dir` to store
+            files.).
+        nodes : tuple or "all", default "all"
+            A list of nodes to save. If "all", see notes.
+        edges : tuple or "all", default "all"
+            A list of edges to save. If "all", see notes.
+        data_dir : str, default `default_data_dir`
+            Location to save the graph.
+        format : {"tsv", "gzip", "binary"}, default "tsv"
+            How to store the files.
+        overwrite : bool, default False
+            If true delete the current graph on disk. This may be useful for
+            replacing a plain text representation with a binary represention if
+            storage is a concern. WARNING: This can lose data if the self does
+            not contain all the nodes/edges that are in the saved graph. Tries
+            to perform the deletion as late as possible to prevent errors from
+            erasing data without replacing it, but it may be safer to save the
+            data to a new location then delete the graph (with
+            `pubnet.data.delete`) after confirming the save worked correctly.
 
+        Notes
+        -----
         If nodes and edges are both "all" store the entire graph. If nodes is
         "all" and edges is a tuple, save all nodes in the list of
         edges. Similarly, if edges is "all" and nodes is a tuple, save all
         edges where both the start and end nodes are in the node list.
 
-        Returns
-        -------
-        None
-
         See also
         --------
-        `default_data_dir`
+        `pubnet.data.default_data_dir`
         `from_dir`
         """
 
@@ -575,19 +653,32 @@ def from_dir(
     data_dir=default_data_dir(),
     representation="numpy",
 ):
-    """Collect all node and edge files in data_dir and use them to make a
+    """
+    Collect all node and edge files in data_dir and use them to make a
     PubNet object.
 
-    Arguments
+    Parameters
     ----------
-    root : str, the root node.
-    nodes : touple or "all", a list of nodes to read in (default "all").
-    edges : touple or "all", a list of pairs of nodes to read in
-    (default "all").
-    data_dir : str, location of the files (default `default_data_dir`).
-    graph_name : str, name of the graph.
-    representation : {"numpy", "igraph"}, which edge representation to use.
+    root : str,
+       The root node.
+    nodes : touple or "all", (default "all")
+       A list of nodes to read in.
+    edges : touple or "all", (default "all")
+       A list of pairs of nodes to read in.
+    graph_name : str, optional
+       Name of the graph. If not provided, assume files are directly under
+       `data_dir`.
+    data_dir : str,  default `default_data_dir`
+       Location of the files.
+    representation : {"numpy", "igraph"}, default "numpy"
+       Which edge backend representation to use.
 
+    Returns
+    -------
+    A PubNet object.
+
+    Notes
+    -----
     Node files are exepected to be in the form f"{node_name}_nodes.tsv" and
     edge files should be of the form f"{node_1_name}_{node_2_name}_edges.tsv".
     The order nodes are supplied for edges does not matter, it will look for
@@ -607,16 +698,18 @@ def from_dir(
     `defalut_data_dir` by only passing a `graph_name` and leaving `data_dir` as
     default.
 
-    Example
-    -------
-    net = pubnet.from_dir(
-        ("Author", "Publication"),
-        (("Author", "Publication"), ("Publication", "Chemical")),
-    )
+    Examples
+    --------
+    >>> net = pubnet.from_dir(
+    ...     ("Author", "Publication"),
+    ...     (("Author", "Publication"), ("Publication", "Chemical")),
+    ... )
 
     See also
     --------
-    `pubnet.PubNet`, `pubnet.data.default_data_dir`
+    `pubnet.network.PubNet`
+    `pubnet.data.default_data_dir`
+    `from_data`
     """
 
     def node_files_containing(nodes):
@@ -694,14 +787,27 @@ def from_dir(
 
 
 def from_data(root, nodes=None, edges=None, representation="numpy"):
-    """Make PubNet object from given nodes and edges.
+    """
+    Make PubNet object from given nodes and edges.
 
-    Arguments
-    ---------
-    root : str, root node.
-    nodes : Dict, a dictionary of node data of the form {name: DataFrame}.
-    edges : Dict, a dictionary of edge data of the form {name: Array}.
-    representation : {"numpy", "igraph"} : the edge representation.
+    Parameters
+    ----------
+    root : str
+        Root node.
+    nodes : Dict, optional
+        A dictionary of node data of the form {name: DataFrame}.
+    edges : Dict, optional
+        A dictionary of edge data of the form {name: Array}.
+    representation : {"numpy", "igraph"}, default "numpy"
+       The edge representation.
+
+    Returns
+    -------
+    A PubNet object
+
+    See Also
+    --------
+    `from_dir`
     """
 
     for name, data in nodes:
@@ -715,7 +821,8 @@ def from_data(root, nodes=None, edges=None, representation="numpy"):
 
 
 def edge_key(node_1, node_2):
-    """Generate a dictionary key for the given pair of nodes.
+    """
+    Generate a dictionary key for the given pair of nodes.
 
     Known future issue:
         If we need directed edges, the order of nodes in the file name
@@ -823,7 +930,7 @@ def _edge_file_path(node_1, node_2, data_dir):
     except KeyError:
         raise FileNotFoundError(f"No file found for nodes {node_1}, {node_2}.")
 
-    ext_preference = ["npy", "tsv", "tsv.gz","ig"]
+    ext_preference = ["npy", "tsv", "tsv.gz", "ig"]
     for ext in ext_preference:
         try:
             return available_files[ext]
