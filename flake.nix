@@ -26,7 +26,7 @@
           version = "0.6.0";
           src = ./.;
           format = "pyproject";
-          buildInputs = (with python.pkgs; [ poetry ]);
+          buildInputs = (with python.pkgs; [ poetry-core ]);
           propagatedBuildInputs = (with python.pkgs; [
             numpy
             pandas
