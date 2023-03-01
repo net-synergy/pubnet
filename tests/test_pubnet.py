@@ -20,10 +20,10 @@ class TestEdges:
 
     def test_handles_swapped_start_and_close_id(self):
         net = pubnet.from_dir(
-            "Publication",
+            "simple_pubnet",
             ("Publication",),
             (("Publication", "Flippedheaders"),),
-            data_dir="tests/data/simple_pubnet",
+            data_dir="tests/data",
         )
         edges = net["Publication", "Flippedheaders"]
         assert edges[edges.start_id][0] == 2
@@ -121,10 +121,10 @@ class TestNetwork:
     )
     def test_handles_no_nodes(self):
         net = pubnet.from_dir(
-            "Publication",
+            "simple_pubnet",
             None,
             (("Publication", "Author"),),
-            data_dir="tests/data/simple_pubnet",
+            data_dir="tests/data",
         )
         assert len(net["Publication"]) == 0
         assert len(net["Author"]) == 0
@@ -134,10 +134,10 @@ class TestNetwork:
 
     def test_handles_no_edges(self):
         net = pubnet.from_dir(
-            "Publication",
+            "simple_pubnet",
             ("Publication",),
             None,
-            data_dir="tests/data/simple_pubnet",
+            data_dir="tests/data",
         )
         assert len(net.edges) == 0
 

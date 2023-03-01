@@ -8,11 +8,10 @@ __all__ = ["simple_pubnet", "other_pubnet", "author_node"]
 def simple_pubnet(request):
     try:
         return pubnet.from_dir(
-            "Publication",
+            "simple_pubnet",
             ("Author", "Publication"),
             (("Publication", "Author"), ("Publication", "Chemical")),
             data_dir="tests/data",
-            graph_name="simple_pubnet",
             representation=request.param,
         )
     except NotImplementedError:
@@ -22,11 +21,10 @@ def simple_pubnet(request):
 @pytest.fixture
 def other_pubnet():
     return pubnet.from_dir(
-        "Publication",
+        "other_pubnet",
         ("Chemical",),
         (("Publication", "Chemical"),),
         data_dir="tests/data",
-        graph_name="other_pubnet",
     )
 
 

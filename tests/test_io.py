@@ -9,7 +9,7 @@ class TestIO:
     @pytest.mark.parametrize("format", ["tsv", "gzip", "binary"])
     def test_edge_io(self, simple_pubnet, tmp_path, format):
         simple_pubnet.to_dir(
-            "edge",
+            graph_name="edge",
             nodes=None,
             edges=(("Author", "Publication"),),
             data_dir=tmp_path,
@@ -18,7 +18,6 @@ class TestIO:
 
         representation = simple_pubnet["Author", "Publication"].representation
         new = from_dir(
-            "Publication",
             graph_name="edge",
             data_dir=tmp_path,
             representation=representation,
@@ -31,14 +30,14 @@ class TestIO:
     @pytest.mark.parametrize("format", ["tsv", "gzip", "binary"])
     def test_node_io(self, simple_pubnet, tmp_path, format):
         simple_pubnet.to_dir(
-            "node",
+            graph_name="node",
             nodes=("Publication", "Author"),
             edges=None,
             data_dir=tmp_path,
             format=format,
         )
 
-        new = from_dir("Publication", graph_name="node", data_dir=tmp_path)
+        new = from_dir(graph_name="node", data_dir=tmp_path)
 
         assert simple_pubnet["Publication"].isequal(new["Publication"])
         assert simple_pubnet["Author"].isequal(new["Author"])
@@ -49,7 +48,6 @@ class TestIO:
 
         representation = simple_pubnet["Author", "Publication"].representation
         new = from_dir(
-            "Publication",
             graph_name="graph",
             data_dir=tmp_path,
             representation=representation,

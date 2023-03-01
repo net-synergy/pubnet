@@ -31,9 +31,9 @@ class PubNet:
 
     Parameters
     ----------
-    root : str
-        The root of the network. This is used by function that filter the
-        network.
+    root : str, default "Publication"
+        The root of the network. This is used by functions that filter the
+        network. (Note: names are case-sensitive)
     nodes : list-like, optional
         The nodes to include in the network.
     edges : list-like, optional
@@ -50,16 +50,18 @@ class PubNet:
     id_dtype: Datatype
         Datatype used to store id values (edge data).
 
+    Notes
+    -----
+    Use `from_dir` to construct a PubNet object instead of initializing
+    directly.
+
     See also
     --------
     `from_dir`
     `from_data`
     """
 
-    def __init__(self, root, nodes=None, edges=None):
-        # Maybe should be an optional and if it exists should be used as the
-        # default in filtering functions but an alternate could also be
-        # supplied.
+    def __init__(self, nodes=None, edges=None, root="Publication"):
         self.root = root
 
         if nodes is None:
@@ -243,10 +245,12 @@ class PubNet:
 
         Returns
         -------
-        root_ids : array, list of root IDs
+        root_ids : ndarray
+            List of root IDs.
 
         Examples
         --------
+        >>> net = from_dir(graph_name="author_net", root="Publication")
         >>> publication_ids = net.ids_where(
         ...     "Author",
         ...     lambda x: x["LastName" == "Smith"]
@@ -269,7 +273,9 @@ class PubNet:
 
     def ids_containing(self, node_type, node_feature, value, steps=1):
         """
-        Get a list of publications connected to nodes with a given value.
+        Get a list of root IDs connected to nodes with a given value.
+
+        Root IDs is based on the root of the PubNet.
 
         Parameters
         ----------
@@ -295,8 +301,8 @@ class PubNet:
 
         Returns
         -------
-        root_ids : array
-            List of publication IDs
+        root_ids : ndarray
+            List of publication IDs.
 
         See also
         --------
@@ -326,6 +332,14 @@ class PubNet:
     def where(self, node_type, func):
         """
         Filter network to root nodes satisfying a predicate function.
+
+        All graphs are reduced to a subset of edges related to those associated
+        with the root nodes that satisfy the predicate function.
+
+        Returns
+        -------
+        subnet : PubNet
+            A new PubNet object that is subset of the original.
 
         See also
         --------
@@ -646,10 +660,10 @@ class PubNet:
 
 
 def from_dir(
-    root,
+    graph_name=None,
     nodes="all",
     edges="all",
-    graph_name=None,
+    root="Publication",
     data_dir=default_data_dir(),
     representation="numpy",
 ):
@@ -657,17 +671,19 @@ def from_dir(
     Collect all node and edge files in data_dir and use them to make a
     PubNet object.
 
+    See `PubNet` for more information about parameters.
+
     Parameters
     ----------
-    root : str,
-       The root node.
+    graph_name : str, optional
+       Name of the graph. If not provided, assume files are directly under
+       `data_dir`.
     nodes : touple or "all", (default "all")
        A list of nodes to read in.
     edges : touple or "all", (default "all")
        A list of pairs of nodes to read in.
-    graph_name : str, optional
-       Name of the graph. If not provided, assume files are directly under
-       `data_dir`.
+    root : str, default "Publication
+       The root node.
     data_dir : str,  default `default_data_dir`
        Location of the files.
     representation : {"numpy", "igraph"}, default "numpy"
@@ -701,6 +717,7 @@ def from_dir(
     Examples
     --------
     >>> net = pubnet.from_dir(
+    ...     "author_net"
     ...     ("Author", "Publication"),
     ...     (("Author", "Publication"), ("Publication", "Chemical")),
     ... )
@@ -783,21 +800,23 @@ def from_dir(
     for name, file in edge_files.items():
         edges[name] = _edge.from_file(file, representation)
 
-    return PubNet(root, nodes, edges)
+    return PubNet(root=root, nodes=nodes, edges=edges)
 
 
-def from_data(root, nodes=None, edges=None, representation="numpy"):
+def from_data(
+    nodes=None, edges=None, root="Publication", representation="numpy"
+):
     """
     Make PubNet object from given nodes and edges.
 
     Parameters
     ----------
-    root : str
-        Root node.
     nodes : Dict, optional
         A dictionary of node data of the form {name: DataFrame}.
     edges : Dict, optional
         A dictionary of edge data of the form {name: Array}.
+    root : str, default "Publication"
+        Root node.
     representation : {"numpy", "igraph"}, default "numpy"
        The edge representation.
 
@@ -817,7 +836,7 @@ def from_data(root, nodes=None, edges=None, representation="numpy"):
         start_id, end_id = edge_parts(name)
         edges[name] = _edge.from_data(data, start_id, end_id, representation)
 
-    return PubNet(root, nodes, edges)
+    return PubNet(root=root, nodes=nodes, edges=edges)
 
 
 def edge_key(node_1, node_2):
