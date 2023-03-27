@@ -7,7 +7,6 @@ cache:
   paths:
     - .cache/pip
     - .venv
-    - poetry.lock
 
 stages:
   - test
@@ -18,7 +17,7 @@ stages:
 before_script:
   - pip install poetry
   - poetry config virtualenvs.in-project true
-  - poetry install -vv
+  - poetry install --with docs -vv
 
 test:
   stage: test

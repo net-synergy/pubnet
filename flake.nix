@@ -16,93 +16,30 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        python = pkgs.python3;
-        # Nix does not expose `checkInputs` attribute.
-        pubnetCheckInputs =
-          (with python.pkgs; [ pytest pytest-snapshot mypy black lxml ]);
-        pubnetDocInputs = [ python.pkgs.pdoc3 ];
-        pubnet = python.pkgs.buildPythonPackage rec {
-          pname = "pubnet";
-          version = "0.6.0";
-          src = ./.;
-          format = "pyproject";
-          buildInputs = (with python.pkgs; [ poetry-core ]);
-          propagatedBuildInputs = (with python.pkgs; [
-            numpy
-            pandas
-            scipy
-            matplotlib
-            igraph
-            pyarrow
-          ]);
-          checkInputs = pubnetCheckInputs;
-          authors = [ "David Connell <davidconnell12@gmail.com>" ];
-          keywords = [ "publication" "network" ];
-          repository = "https://gitlab.com/net-synergy/pubnet";
-          documentation = "https://net-synergy.gitlab.io/pubnet";
-          checkPhase = ''
-            python -m pytest
-          '';
+        pubnetEnv = pkgs.poetry2nix.mkPoetryEnv {
+          projectDir = ./.;
+          editablePackageSources = { pubnet = ./pubnet; };
+          extraPackages = (ps:
+            with ps; [
+              ipython
+              python-lsp-server
+              pyls-isort
+              python-lsp-black
+              pylsp-mypy
+            ]);
+          groups = [ "test" ];
         };
-        nix2poetryDependency = list:
-          builtins.concatStringsSep "\n" (builtins.map (dep:
-            let
-              pname = if dep.pname == "python3" then "python" else dep.pname;
-              versionList = builtins.splitVersion dep.version;
-              major = builtins.elemAt versionList 0;
-              minor = builtins.elemAt versionList 1;
-              version = if pname == "python" then
-                ''\"~${major}.${minor}\"''
-              else
-                ''\"^${major}.${minor}\"'';
-            in pname + " = " + version) list);
+        pubnet = pkgs.poetry2nix.mkPoetryPackage { projectDir = ./.; };
       in {
         packages.pubnet = pubnet;
         packages.default = self.packages.${system}.pubnet;
         devShells.default = pkgs.mkShell {
           packages = [
-            (python.withPackages (p:
-              with p;
-              [
-                ipython
-                python-lsp-server
-                pyls-isort
-                python-lsp-black
-                pylsp-mypy
-              ] ++ pubnet.propagatedBuildInputs ++ pubnetCheckInputs
-              ++ pubnetDocInputs))
+            pubnetEnv
             pkgs.astyle
             pkgs.bear
             pubmedparser.defaultPackage.${system}
           ];
-          shellHook = ''
-            export PYTHONPATH=.
-            export C_INCLUDE_PATH=${python}/include/python3.9
-
-            if [ ! -f pyproject.toml ] || \
-               [ $(date +%s -r flake.nix) -gt $(date +%s -r pyproject.toml) ]; then
-               pname=${pubnet.pname} \
-               version=${pubnet.version} \
-               description='A python package for storing and working with publication data in graph form.' \
-               license=MIT \
-               authors="${
-                 builtins.concatStringsSep ",\n    "
-                 (builtins.map (name: ''\"'' + name + ''\"'') pubnet.authors)
-               }" \
-               keywords="${
-                 builtins.concatStringsSep ", "
-                 (builtins.map (name: ''\"'' + name + ''\"'') pubnet.keywords)
-               }" \
-               repository=${pubnet.repository} \
-               documentation=${pubnet.documentation} \
-               dependencies="${
-                 nix2poetryDependency pubnet.propagatedBuildInputs
-               }" \
-               testDependencies="${nix2poetryDependency pubnetCheckInputs}" \
-               docDependencies="${nix2poetryDependency pubnetDocInputs}" \
-               ./.pyproject.toml.template
-            fi
-          '';
         };
       });
 }
