@@ -19,6 +19,7 @@
         pubnetEnv = pkgs.poetry2nix.mkPoetryEnv {
           projectDir = ./.;
           editablePackageSources = { pubnet = ./pubnet; };
+          preferWheels = true;
           extraPackages = (ps:
             with ps; [
               ipython
@@ -38,6 +39,7 @@
             pubnetEnv
             pkgs.astyle
             pkgs.bear
+            pkgs.poetry
             pubmedparser.defaultPackage.${system}
           ];
         };
