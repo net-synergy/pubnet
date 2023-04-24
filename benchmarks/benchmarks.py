@@ -6,20 +6,26 @@ import pubnet
 import pytest
 
 class TimeEdges:
+    params = [('igraph',100),('igraph',1000),('igraph',10000),('numpy',100),('numpy',1000),('numpy',10000)]
         
-    simple_pubnet =  pubnet.from_dir(
+    def setup(self,n):
+        global simple_pubnet 
+        simple_pubnet = pubnet.from_dir(
             graph_name="graphs",
-            nodes=("Author", "Publication", "Descriptor", "Chemical"),
-            edges=(("Author", "Publication"),("Descriptor", "Publication"),("Chemical", "Publication")),
+            nodes=("Author", "Publication"),
+            edges=(("Author", "Publication")),
             data_dir="../",
             root="Publication",
-            representation="numpy",
+            representation=n[0],
         )        
-    
+        
+        
+        
+        
     def time_finds_start_id(self):
         for e in self.simple_pubnet.edges:
             self.simple_pubnet[e].start_id == "Publication"
- 
+    time_finds_start_id.setup = setup
 
 
     def time_finds_end_id(self):
