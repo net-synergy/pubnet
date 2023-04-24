@@ -33,10 +33,6 @@ class TimeEdges:
         for e in self.simple_pubnet.edges:
             self.simple_pubnet[e].end_id in expected
 
-    def time_shape(self):
-        self.simple_pubnet["Author", "Publication"].shape[0] == 12
-        self.simple_pubnet["Chemical", "Publication"].shape[0] == 10
-
     def time_overlap(self):
         expected = np.array(
             [
@@ -73,9 +69,6 @@ class TimeNodes:
     
     def time_finds_namespace(self):
         self.author_node.id == "AuthorId"
-
-    def time_shape(self):
-        self.author_node.shape == (4, 3)
 
     def time_slice_column(self):
         self.author_node["LastName"][0] == "Smith"
@@ -229,36 +222,6 @@ class TimeNetwork:
             np.unique(subnet["Chemical", "Publication"]["Publication"]),
             expected_publication_ids,
         )
-
-    def time_drops_node(self):
-        node = "Author"
-        self.simple_pubnet.drop(nodes=node)
-
-    def time_drops_nodes(self):
-        nodes = ["Author", "Chemical"]
-        self.simple_pubnet.drop(nodes)
-
-        np.isin(nodes, self.simple_pubnet.nodes, invert=True).all()
-        np.isin(
-            nodes, self.simple_pubnet._node_data.keys(), invert=True
-        ).all()
-
-    def time_drops_edge(self):
-        edge = ("Author", "Publication")
-        self.simple_pubnet.drop(edges=edge)
-
-
-    def time_drops_edges(self):
-        edges = (("Author", "Publication"), ("Chemical", "Publication"))
-        self.simple_pubnet.drop(edges=edges)
-
-        edges = self.simple_pubnet._as_keys(edges)
-        np.isin(
-            edges, self.simple_pubnet._as_keys(self.simple_pubnet.edges), invert=True
-        ).all()
-        np.isin(
-            edges, self.simple_pubnet._edge_data.keys(), invert=True
-        ).all()
 
     def time_update(self):
         expected_nodes = set(self.simple_pubnet.nodes).union(
