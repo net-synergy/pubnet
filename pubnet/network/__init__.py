@@ -14,6 +14,7 @@ from warnings import warn
 import matplotlib.pyplot as plt
 import numpy as np
 from pandas.core.dtypes.common import is_list_like
+
 from pubnet import data
 from pubnet.data import default_data_dir
 from pubnet.network import _edge, _node

@@ -5,6 +5,7 @@ import re
 
 import numpy as np
 import pandas as pd
+
 from pubnet.data import default_data_dir
 
 __all__ = ["Node", "from_file", "from_data"]

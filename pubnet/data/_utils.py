@@ -1,6 +1,7 @@
 import os
 
 import appdirs
+
 from pubnet import __name__ as pkg_name
 
 __all__ = ["default_cache_dir", "default_data_dir", "delete", "list"]

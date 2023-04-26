@@ -5,6 +5,7 @@ import os
 
 import igraph as ig
 import numpy as np
+
 from pubnet.data import default_data_dir
 
 from ._base import Edge
