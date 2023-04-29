@@ -4,10 +4,10 @@
     "version": 1,
 
     // The name of the project being benchmarked
-    "project": "project",
+    "project": "pubnet",
 
     // The project's homepage
-    "project_url": "http://project-homepage.org/",
+    "project_url": "https://gitlab.com/net-synergy/pubnet",
 
     // The URL or local path of the source code repository for the
     // project being benchmarked
