@@ -129,14 +129,16 @@ class TimeNetwork:
 
         subsubnet.isequal(subnet_2)
 
-    # not working
     def time_filter_to_author(self, n):
-        subnet = self.simple_pubnet.containing("Author", "LastName", "Smith")
+        random_author = net["Author"].get_random(1).LastName
+        subnet = self.simple_pubnet.containing(
+            "Author", "LastName", random_author
+        )
 
-    # not working
     def time_filter_to_author_multiple_steps(self, n):
+        random_author = net["Author"].get_random(1).LastName
         publication_ids = self.simple_pubnet.ids_containing(
-            "Author", "LastName", "Smith", steps=2
+            "Author", "LastName", random_author, steps=2
         )
         subnet = self.simple_pubnet[publication_ids]
 
