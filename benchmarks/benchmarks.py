@@ -4,7 +4,8 @@ import shutil
 import numpy as np
 
 import pubnet
-from pubnet import from_dir
+
+from ._utils import simple_pubnet
 
 LOG_NUM_NODE_RANGE = (2, 5)
 PARAMS = (("numpy", "igraph"), 10 ** np.arange(*LOG_NUM_NODE_RANGE))
@@ -16,23 +17,7 @@ class TimeEdges:
     param_names = PARAM_NAMES
 
     def setup(self, representation, n_nodes):
-        data_dir = os.path.dirname(__file__)
-        simple_pubnet = pubnet.from_dir(
-            graph_name="graphs",
-            nodes=("Author", "Publication", "Descriptor", "Chemical"),
-            edges=(
-                ("Author", "Publication"),
-                ("Descriptor", "Publication"),
-                ("Chemical", "Publication"),
-            ),
-            data_dir=data_dir,
-            root="Publication",
-            representation=representation,
-        )
-        random_nodes = simple_pubnet["Author"].get_random(n_nodes)
-        self.simple_pubnet = simple_pubnet.containing(
-            "Author", "AuthorId", random_nodes["AuthorId"]
-        )
+        self.simple_pubnet = simple_pubnet(representation, n_nodes)
 
     def time_finds_start_id(self, *args):
         for e in self.simple_pubnet.edges:
