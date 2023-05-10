@@ -1,28 +1,21 @@
 import os
 import shutil
-import time
 
 import numpy as np
-import pandas as pd
-import pytest
 
 import pubnet
 from pubnet import from_dir
 
+LOG_NUM_NODE_RANGE = (2, 5)
+PARAMS = (("numpy", "igraph"), 10 ** np.arange(*LOG_NUM_NODE_RANGE))
+PARAM_NAMES = ("Representation", "N_NODES")
+
 
 class TimeEdges:
-    params = [
-        [
-            ["igraph", 100],
-            ["igraph", 1000],
-            ["igraph", 10000],
-            ["numpy", 100],
-            ["numpy", 1000],
-            ["numpy", 10000],
-        ]
-    ]
+    params = PARAMS
+    param_names = PARAM_NAMES
 
-    def setup(self, n):
+    def setup(self, representation, n_nodes):
         data_dir = os.path.dirname(__file__)
         simple_pubnet = pubnet.from_dir(
             graph_name="graphs",
@@ -34,22 +27,22 @@ class TimeEdges:
             ),
             data_dir=data_dir,
             root="Publication",
-            representation=n[0],
+            representation=representation,
         )
-        random_nodes = simple_pubnet["Author"].get_random(n[1])
+        random_nodes = simple_pubnet["Author"].get_random(n_nodes)
         self.simple_pubnet = simple_pubnet.containing(
             "Author", "AuthorId", random_nodes["AuthorId"]
         )
 
-    def time_finds_start_id(self, n):
+    def time_finds_start_id(self, *args):
         for e in self.simple_pubnet.edges:
             self.simple_pubnet[e].start_id
 
-    def time_finds_end_id(self, n):
+    def time_finds_end_id(self, *args):
         for e in self.simple_pubnet.edges:
             self.simple_pubnet[e].end_id
 
-    def time_overlap(self, n):
+    def time_overlap(self, *args):
         self.simple_pubnet["Author", "Publication"].overlap
 
     time_overlap.timeout = 480
