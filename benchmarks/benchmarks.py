@@ -1,15 +1,16 @@
 import os
-import shutil
 
 import numpy as np
 
 import pubnet
 
-from ._utils import simple_pubnet
+from ._utils import simple_pubnet, mktmpdir
 
 LOG_NUM_NODE_RANGE = (2, 5)
 PARAMS = (("numpy", "igraph"), 10 ** np.arange(*LOG_NUM_NODE_RANGE))
-PARAM_NAMES = ("Representation", "N_NODES")
+PARAM_NAMES = ("Representation", "n_nodes")
+IO_PARAMS = PARAMS + (("node", "edge", "graph"), ("tsv", "gzip", "binary"))
+IO_PARAM_NAMES = PARAM_NAMES + ("scope", "format")
 
 
 class TimeEdges:
@@ -226,269 +227,103 @@ def time_update(self, n):
 time_update.setup = update_setup
 
 
-class TimeIO:
-    #  params = [[['igraph',100],['igraph',1000],['igraph',10000],['numpy',100],['numpy',1000],['numpy',10000]]]
-    params = [[["igraph", 100]]]
+    # not working
+    def time_filter_to_author(self, n):
+        subnet = self.simple_pubnet.containing("Author", "LastName", "Smith")
 
-    def setup(self, n):
-        data_dir = os.path.dirname(__file__)
-        simple_pubnet = pubnet.from_dir(
-            graph_name="graphs",
-            nodes=("Author", "Publication", "Descriptor", "Chemical"),
-            edges=(
-                ("Author", "Publication"),
-                ("Descriptor", "Publication"),
-                ("Chemical", "Publication"),
-            ),
-            data_dir=data_dir,
-            root="Publication",
-            representation=n[0],
+    # not working
+    def time_filter_to_author_multiple_steps(self, n):
+        publication_ids = self.simple_pubnet.ids_containing(
+            "Author", "LastName", "Smith", steps=2
         )
-        random_nodes = simple_pubnet["Author"].get_random(n[1])
-        self.simple_pubnet = simple_pubnet.containing(
-            "Author", "AuthorId", random_nodes["AuthorId"]
+        subnet = self.simple_pubnet[publication_ids]
+
+        subnet["Author", "Publication"]["Publication"]
+        subnet["Chemical", "Publication"]["Publication"]
+
+    def time_update(self, n):
+        expected_nodes = set(self.simple_pubnet.nodes).union(
+            set(other_pubnet.nodes)
         )
 
-    def write_edge_setup(self):
-        params = [
-            ["igraph", 100],
-            ["igraph", 1000],
-            ["igraph", 10000],
-            ["numpy", 100],
-            ["numpy", 1000],
-            ["numpy", 10000],
-        ]
+        expected_edges = set(self.simple_pubnet.edges).union(
+            set(other_pubnet.edges)
+        )
 
-        working_dir = os.path.dirname(__file__)
-        dirname = os.path.join(working_dir, "io/write_edge")
+        self.simple_pubnet.update(other_pubnet)
+        set(self.simple_pubnet.nodes) == expected_nodes
+        set(self.simple_pubnet.edges) == expected_edges
+        self.simple_pubnet["Author", "Publication"].isequal(
+            other_pubnet["Author", "Publication"]
+        )
 
-        if not os.path.exists(dirname):
-            os.mkdir(dirname)
-        for n in params:
-            subdirname = os.path.join(dirname, n[0] + str(n[1]))
-            if not os.path.exists(subdirname):
-                os.mkdir(subdirname)
+    time_update.setup = update_setup
 
-    def read_edge_setup(self):
-        params = [
-            ["igraph", 100],
-            ["igraph", 1000],
-            ["igraph", 10000],
-            ["numpy", 100],
-            ["numpy", 1000],
-            ["numpy", 10000],
-        ]
 
-        working_dir = os.path.dirname(__file__)
-        dirname = os.path.join(working_dir, "io/read_edge")
+class TimeReadIO:
+    params = IO_PARAMS
+    param_names = IO_PARAM_NAMES
 
-        if not os.path.exists(dirname):
-            os.mkdir(dirname)
-        for n in params:
-            subdirname = os.path.join(dirname, n[0] + str(n[1]))
-            if not os.path.exists(subdirname):
-                os.mkdir(subdirname)
-            self.simple_pubnet.to_dir(
-                "edge",
-                nodes=None,
-                edges=(("Author", "Publication"),),
-                data_dir=subdirname,
-                format="tsv",
-            )
+    def setup(self, representation, n_nodes, scope):
+        self.graph_name = f"{representation}_{n_nodes}"
+        self._data_dir_obj = mktmpdir()
+        self.data_dir = self._data_dir_obj.name
+        self.simple_pubnet = simple_pubnet(representation, n_nodes)
 
-    def write_node_setup(self):
-        params = [
-            ["igraph", 100],
-            ["igraph", 1000],
-            ["igraph", 10000],
-            ["numpy", 100],
-            ["numpy", 1000],
-            ["numpy", 10000],
-        ]
+        nodes = None
+        edges = None
+        if scope in ("node", "graph"):
+            nodes = ("Publication", "Author")
+        if scope in ("edge", "graph"):
+            edges = (("Author", "Publication"),)
 
-        working_dir = os.path.dirname(__file__)
-        dirname = os.path.join(working_dir, "io/write_node")
+        self.simple_pubnet.to_dir(
+            self.graph_name,
+            nodes=nodes,
+            edges=edges,
+            data_dir=self.data_dir,
+            format=format,
+        )
 
-        if not os.path.exists(dirname):
-            os.mkdir(dirname)
-        for n in params:
-            subdirname = os.path.join(dirname, n[0] + str(n[1]))
-            if not os.path.exists(subdirname):
-                os.mkdir(subdirname)
+    def teardown(self, *args):
+        self._data_dir_obj.cleanup()
 
-    def read_node_setup(self):
-        params = [
-            ["igraph", 100],
-            ["igraph", 1000],
-            ["igraph", 10000],
-            ["numpy", 100],
-            ["numpy", 1000],
-            ["numpy", 10000],
-        ]
-
-        working_dir = os.path.dirname(__file__)
-        dirname = os.path.join(working_dir, "io/read_node")
-
-        if not os.path.exists(dirname):
-            os.mkdir(dirname)
-        for n in params:
-            subdirname = os.path.join(dirname, n[0] + str(n[1]))
-            if not os.path.exists(subdirname):
-                os.mkdir(subdirname)
-            self.simple_pubnet.to_dir(
-                "node",
-                nodes=("Publication", "Author"),
-                edges=None,
-                data_dir=subdirname,
-                format="tsv",
-            )
-
-    def write_graph_setup(self):
-        params = [
-            ["igraph", 100],
-            ["igraph", 1000],
-            ["igraph", 10000],
-            ["numpy", 100],
-            ["numpy", 1000],
-            ["numpy", 10000],
-        ]
-
-        working_dir = os.path.dirname(__file__)
-        dirname = os.path.join(working_dir, "io/write_graph")
-
-        if not os.path.exists(dirname):
-            os.mkdir(dirname)
-        for n in params:
-            subdirname = os.path.join(dirname, n[0] + str(n[1]))
-            if not os.path.exists(subdirname):
-                os.mkdir(subdirname)
-
-    def read_graph_setup(self):
-        params = [
-            ["igraph", 100],
-            ["igraph", 1000],
-            ["igraph", 10000],
-            ["numpy", 100],
-            ["numpy", 1000],
-            ["numpy", 10000],
-        ]
-
-        working_dir = os.path.dirname(__file__)
-        dirname = os.path.join(working_dir, "io/read_graph")
-
-        if not os.path.exists(dirname):
-            os.mkdir(dirname)
-        for n in params:
-            subdirname = os.path.join(dirname, n[0] + str(n[1]))
-            if not os.path.exists(subdirname):
-                os.mkdir(subdirname)
-            self.simple_pubnet.to_dir(
-                "graph", data_dir=subdirname, format="tsv"
-            )
-
-    def write_edge_teardown(self):
-        working_dir = os.path.dirname(__file__)
-        dirname = os.path.join(working_dir, "io/write_edge")
-        shutil.rmtree(dirname)
-
-    def read_edge_teardown(self):
-        working_dir = os.path.dirname(__file__)
-        dirname = os.path.join(working_dir, "io/read_edge")
-        shutil.rmtree(dirname)
-
-    def write_node_teardown(self):
-        working_dir = os.path.dirname(__file__)
-        dirname = os.path.join(working_dir, "io/write_node")
-        shutil.rmtree(dirname)
-
-    def read_node_teardown(self):
-        working_dir = os.path.dirname(__file__)
-        dirname = os.path.join(working_dir, "io/read_node")
-        shutil.rmtree(dirname)
-
-    def write_graph_teardown(self):
-        working_dir = os.path.dirname(__file__)
-        dirname = os.path.join(working_dir, "io/write_graph")
-        shutil.rmtree(dirname)
-
-    def read_graph_teardown(self):
-        working_dir = os.path.dirname(__file__)
-        dirname = os.path.join(working_dir, "io/read_graph")
-        shutil.rmtree(dirname)
-
-    # def time_write_edge_io(self,n):
-    #     working_dir = os.path.dirname(__file__)
-    #     dirname = os.path.join(working_dir, 'io/write_edge')
-    #     subdirname = os.path.join(dirname, n[0]+str(n[1]))
-
-    #     self.simple_pubnet.to_dir(
-    #         "edge",
-    #         nodes=None,
-    #         edges=(("Author", "Publication"),),
-    #         data_dir=subdirname,
-    #         format="tsv",
-    #     )
-    # time_write_edge_io.setup = write_edge_setup
-    # time_write_edge_io.teardown = write_edge_teardown
-
-    def time_read_edge_io(self, n):
-        working_dir = os.path.dirname(__file__)
-        dirname = os.path.join(working_dir, "io/read_edge")
-        subdirname = os.path.join(dirname, n[0] + str(n[1]))
-
+    def time_read_graph(self, representation, *args):
         new = from_dir(
-            graph_name="edge",
-            data_dir=subdirname,
-            representation=n[0],
+            graph_name=self.graph_name,
+            data_dir=self.data_dir,
+            representation=representation,
         )
 
-    time_read_edge_io.setup = read_edge_setup
-    time_read_edge_io.teardown = read_edge_teardown
 
-    # def time_write_node_io(self,n):
-    #     working_dir = os.path.dirname(__file__)
-    #     dirname = os.path.join(working_dir, 'io/write_node')
-    #     subdirname = os.path.join(dirname, n[0]+str(n[1]))
+class TimeWriteIO:
+    params = IO_PARAMS
+    param_names = IO_PARAM_NAMES
 
-    #     self.simple_pubnet.to_dir(
-    #         "node",
-    #         nodes=("Publication", "Author"),
-    #         edges=None,
-    #         data_dir=subdirname,
-    #         format="tsv",
-    #     )
-    # time_write_node_io.setup = write_node_setup
-    # time_write_node_io.teardown = write_node_teardown
+    def setup(self, representation, n_nodes, scope):
+        self.graph_name = f"{representation}_{n_nodes}"
+        self._data_dir_obj = mktmpdir()
+        self.data_dir = self._data_dir_obj.name
+        self.simple_pubnet = simple_pubnet(representation, n_nodes)
 
-    def time_read_node_io(self, n):
-        working_dir = os.path.dirname(__file__)
-        dirname = os.path.join(working_dir, "io/read_node")
-        subdirname = os.path.join(dirname, n[0] + str(n[1]))
+        nodes = None
+        edges = None
+        if scope in ("node", "graph"):
+            nodes = ("Publication", "Author")
+        if scope in ("edge", "graph"):
+            edges = (("Author", "Publication"),)
 
-        new = from_dir(graph_name="node", data_dir=subdirname)
+        self.nodes = nodes
+        self.edges = edges
 
-    time_read_node_io.setup = read_node_setup
-    time_read_node_io.teardown = read_node_teardown
+    def teardown(self, *args):
+        self._data_dir_obj.cleanup()
 
-    # def time_write_graph_io(self,n):
-    #     working_dir = os.path.dirname(__file__)
-    #     dirname = os.path.join(working_dir, 'io/write_graph')
-    #     subdirname = os.path.join(dirname, n[0]+str(n[1]))
-
-    #     self.simple_pubnet.to_dir("graph", data_dir=subdirname, format="tsv")
-    # time_write_graph_io.setup = write_graph_setup
-    # time_write_graph_io.teardown = write_graph_teardown
-
-    def time_read_graph_io(self, n):
-        working_dir = os.path.dirname(__file__)
-        dirname = os.path.join(working_dir, "io/read_graph")
-        subdirname = os.path.join(dirname, n[0] + str(n[1]))
-
-        new = from_dir(
-            graph_name="graph",
-            data_dir=subdirname,
-            representation=n[0],
+    def time_write_graph(self, representation, n_nodes, scope, format):
+        self.simple_pubnet.to_dir(
+            self.graph_name,
+            nodes=self.nodes,
+            edges=self.edges,
+            data_dir=self.data_dir,
+            format=format,
         )
-
-    time_read_graph_io.setup = read_graph_setup
-    time_read_graph_io.teardown = read_graph_teardown
