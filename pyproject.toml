@@ -28,7 +28,6 @@ pandas = "^1.4"
 scipy = "^1.9"
 matplotlib = "^3.5"
 igraph = "^0.10"
-pyarrow = "^9.0"
 appdirs = "^1.4.4"
 
 [tool.poetry.group.test]
