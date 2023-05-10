@@ -1,82 +1,130 @@
-import time
 import os
-from pubnet import from_dir
+import shutil
+import time
+
 import numpy as np
 import pandas as pd
-import pubnet
 import pytest
-import shutil
+
+import pubnet
+from pubnet import from_dir
+
 
 class TimeEdges:
-    params = [[['igraph',100],['igraph',1000],['igraph',10000],['numpy',100],['numpy',1000],['numpy',10000]]]
-    def setup(self,n):
+    params = [
+        [
+            ["igraph", 100],
+            ["igraph", 1000],
+            ["igraph", 10000],
+            ["numpy", 100],
+            ["numpy", 1000],
+            ["numpy", 10000],
+        ]
+    ]
+
+    def setup(self, n):
         data_dir = os.path.dirname(__file__)
         simple_pubnet = pubnet.from_dir(
-           graph_name="graphs",
+            graph_name="graphs",
             nodes=("Author", "Publication", "Descriptor", "Chemical"),
-            edges=(("Author", "Publication"),("Descriptor", "Publication"),("Chemical", "Publication")),
+            edges=(
+                ("Author", "Publication"),
+                ("Descriptor", "Publication"),
+                ("Chemical", "Publication"),
+            ),
             data_dir=data_dir,
             root="Publication",
             representation=n[0],
         )
-        random_nodes = simple_pubnet['Author'].get_random(n[1])
-        self.simple_pubnet = simple_pubnet.containing("Author", "AuthorId", random_nodes['AuthorId'])
+        random_nodes = simple_pubnet["Author"].get_random(n[1])
+        self.simple_pubnet = simple_pubnet.containing(
+            "Author", "AuthorId", random_nodes["AuthorId"]
+        )
 
-    def time_finds_start_id(self,n):
+    def time_finds_start_id(self, n):
         for e in self.simple_pubnet.edges:
             self.simple_pubnet[e].start_id
 
-
-    def time_finds_end_id(self,n):
+    def time_finds_end_id(self, n):
         for e in self.simple_pubnet.edges:
             self.simple_pubnet[e].end_id
 
-
-    def time_overlap(self,n):
+    def time_overlap(self, n):
         self.simple_pubnet["Author", "Publication"].overlap
+
     time_overlap.timeout = 480
 
+
 class TimeNodes:
-    params = [[['igraph',100],['igraph',1000],['igraph',10000],['numpy',100],['numpy',1000],['numpy',10000]]]
-    def setup(self,n):
+    params = [
+        [
+            ["igraph", 100],
+            ["igraph", 1000],
+            ["igraph", 10000],
+            ["numpy", 100],
+            ["numpy", 1000],
+            ["numpy", 10000],
+        ]
+    ]
+
+    def setup(self, n):
         data_dir = os.path.dirname(__file__)
         simple_pubnet = pubnet.from_dir(
-           graph_name="graphs",
+            graph_name="graphs",
             nodes=("Author", "Publication", "Descriptor", "Chemical"),
-            edges=(("Author", "Publication"),("Descriptor", "Publication"),("Chemical", "Publication")),
+            edges=(
+                ("Author", "Publication"),
+                ("Descriptor", "Publication"),
+                ("Chemical", "Publication"),
+            ),
             data_dir=data_dir,
             root="Publication",
             representation=n[0],
         )
-        random_nodes = simple_pubnet['Author'].get_random(n[1])
-        self.simple_pubnet = simple_pubnet.containing("Author", "AuthorId", random_nodes['AuthorId'])
+        random_nodes = simple_pubnet["Author"].get_random(n[1])
+        self.simple_pubnet = simple_pubnet.containing(
+            "Author", "AuthorId", random_nodes["AuthorId"]
+        )
 
-def time_finds_namespace(self,n):
+
+def time_finds_namespace(self, n):
     self.simple_pubnet["Author"].id == "AuthorId"
 
-def time_slice_column(self,n):
+
+def time_slice_column(self, n):
     self.simple_pubnet["Author"]["LastName"]
 
-def time_slice_columns(self,n):
+
+def time_slice_columns(self, n):
     features = ["LastName", "ForeName"]
     self.simple_pubnet["Author"][features].columns.values
 
 
-def time_slice_column_by_index(self,n):
-    self.simple_pubnet["Author"][0] is self.simple_pubnet["Author"][self.simple_pubnet["Author"].features[0]]
-    self.simple_pubnet["Author"][1] is self.simple_pubnet["Author"][self.simple_pubnet["Author"].features[1]]
+def time_slice_column_by_index(self, n):
+    self.simple_pubnet["Author"][0] is self.simple_pubnet["Author"][
+        self.simple_pubnet["Author"].features[0]
+    ]
+    self.simple_pubnet["Author"][1] is self.simple_pubnet["Author"][
+        self.simple_pubnet["Author"].features[1]
+    ]
 
-def time_slice_rows_by_index(self,n):
+
+def time_slice_rows_by_index(self, n):
     actual = self.simple_pubnet["Author"][0:2]
 
-def time_slice_rows_by_mask(self,n):
-    self.simple_pubnet["Author"][self.simple_pubnet["Author"]["LastName"] == "Smith"]
+
+def time_slice_rows_by_mask(self, n):
+    self.simple_pubnet["Author"][
+        self.simple_pubnet["Author"]["LastName"] == "Smith"
+    ]
 
 
-def time_slice_rows_and_columns(self,n):
+def time_slice_rows_and_columns(self, n):
     actual = {
         "Slices": self.simple_pubnet["Author"][0:2, 0:2],
-        "Slice + List": self.simple_pubnet["Author"][0:2, ["AuthorId", "LastName"]],
+        "Slice + List": self.simple_pubnet["Author"][
+            0:2, ["AuthorId", "LastName"]
+        ],
         "Mask + Slice": self.simple_pubnet["Author"][
             self.simple_pubnet["Author"]["ForeName"] == "John", 0:2
         ],
@@ -84,41 +132,58 @@ def time_slice_rows_and_columns(self,n):
 
 
 class TimeNetwork:
-    params = [[['igraph',100],['igraph',1000],['igraph',10000],['numpy',100],['numpy',1000],['numpy',10000]]]
+    params = [
+        [
+            ["igraph", 100],
+            ["igraph", 1000],
+            ["igraph", 10000],
+            ["numpy", 100],
+            ["numpy", 1000],
+            ["numpy", 10000],
+        ]
+    ]
 
-
-    def setup(self,n):
+    def setup(self, n):
         data_dir = os.path.dirname(__file__)
         simple_pubnet = pubnet.from_dir(
-           graph_name="graphs",
+            graph_name="graphs",
             nodes=("Author", "Publication", "Descriptor", "Chemical"),
-            edges=(("Author", "Publication"),("Descriptor", "Publication"),("Chemical", "Publication")),
+            edges=(
+                ("Author", "Publication"),
+                ("Descriptor", "Publication"),
+                ("Chemical", "Publication"),
+            ),
             data_dir=data_dir,
             root="Publication",
             representation=n[0],
         )
 
-        random_nodes = simple_pubnet['Author'].get_random(n[1])['AuthorId']
+        random_nodes = simple_pubnet["Author"].get_random(n[1])["AuthorId"]
 
-        self.simple_pubnet = simple_pubnet.containing("Author", "AuthorId", random_nodes)
+        self.simple_pubnet = simple_pubnet.containing(
+            "Author", "AuthorId", random_nodes
+        )
 
     def update_setup(self):
         working_dir = os.path.dirname(__file__)
-        data_dir = os.path.join(working_dir[0:working_dir.rindex("/")], 'tests/data')
+        data_dir = os.path.join(
+            working_dir[0 : working_dir.rindex("/")], "tests/data"
+        )
         global other_pubnet
         other_pubnet = pubnet.from_dir(
             graph_name="simple_pubnet",
-            nodes=("Author","Publication"),
+            nodes=("Author", "Publication"),
             edges=(("Publication", "Author"),),
             data_dir=data_dir,
             representation="numpy",
         )
 
 
-def time_creates_empty_nodes_for_missing_edge_nodes(self,n):
+def time_creates_empty_nodes_for_missing_edge_nodes(self, n):
     len(self.simple_pubnet["Chemical"]) == 0
 
-def time_filter_to_single_publication_id(self,n):
+
+def time_filter_to_single_publication_id(self, n):
     publication_id = 1
     subnet = self.simple_pubnet[publication_id]
 
@@ -126,7 +191,8 @@ def time_filter_to_single_publication_id(self,n):
 
     subnet["Publication"][subnet["Publication"].id]
 
-def time_filter_to_publicaiton_ids(self,n):
+
+def time_filter_to_publicaiton_ids(self, n):
     publication_ids = np.asarray([1, 2], dtype=self.simple_pubnet.id_dtype)
     subnet = self.simple_pubnet[publication_ids]
 
@@ -134,7 +200,8 @@ def time_filter_to_publicaiton_ids(self,n):
 
     subnet["Publication"][subnet["Publication"].id]
 
-def time_filter_twice(self,n):
+
+def time_filter_twice(self, n):
     publication_ids_1 = np.asarray([4, 6], dtype=self.simple_pubnet.id_dtype)
     publication_ids_2 = 4
 
@@ -144,12 +211,14 @@ def time_filter_twice(self,n):
 
     subsubnet.isequal(subnet_2)
 
-#not working
-def time_filter_to_author(self,n):
+
+# not working
+def time_filter_to_author(self, n):
     subnet = self.simple_pubnet.containing("Author", "LastName", "Smith")
 
-#not working
-def time_filter_to_author_multiple_steps(self,n):
+
+# not working
+def time_filter_to_author_multiple_steps(self, n):
     publication_ids = self.simple_pubnet.ids_containing(
         "Author", "LastName", "Smith", steps=2
     )
@@ -158,7 +227,8 @@ def time_filter_to_author_multiple_steps(self,n):
     subnet["Author", "Publication"]["Publication"]
     subnet["Chemical", "Publication"]["Publication"]
 
-def time_update(self,n):
+
+def time_update(self, n):
     expected_nodes = set(self.simple_pubnet.nodes).union(
         set(other_pubnet.nodes)
     )
@@ -173,6 +243,8 @@ def time_update(self,n):
     self.simple_pubnet["Author", "Publication"].isequal(
         other_pubnet["Author", "Publication"]
     )
+
+
 time_update.setup = update_setup
 
 
