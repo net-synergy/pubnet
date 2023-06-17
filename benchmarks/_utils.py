@@ -14,8 +14,8 @@ def simple_pubnet(representation, n_nodes):
             ("Descriptor", "Publication"),
             ("Chemical", "Publication"),
         ),
-        data_dir=data_dir,
         root="Publication",
+        data_dir=data_dir,
         representation=representation,
     )
     random_nodes = net["Author"].get_random(n_nodes)
