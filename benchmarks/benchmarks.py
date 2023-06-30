@@ -18,6 +18,7 @@ IO_PARAM_NAMES = PARAM_NAMES + ("scope", "formats")
 class TimeEdges:
     params = PARAMS
     param_names = PARAM_NAMES
+    timeout = 480
 
     def setup(self, representation, n_nodes):
         self.simple_pubnet = simple_pubnet(representation, n_nodes)
@@ -32,8 +33,6 @@ class TimeEdges:
 
     def time_overlap(self, *args):
         self.simple_pubnet["Author", "Publication"].overlap
-
-    time_overlap.timeout = 480
 
 
 class TimeNodes:
@@ -244,12 +243,11 @@ class MemEdges:
     def peakmem_overlap(self, *args):
         self.simple_pubnet["Author", "Publication"].overlap
 
-    peakmem_overlap.timeout = 480
-
 
 class MemNodes:
     params = PARAMS
     param_names = PARAM_NAMES
+    timeout = 480
 
     def setup(self, representation, n_nodes):
         self.simple_pubnet = simple_pubnet(representation, n_nodes)
