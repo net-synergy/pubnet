@@ -1,4 +1,4 @@
-image: python:3.10
+image: python:3.10-slim
 
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
@@ -7,18 +7,16 @@ cache:
   paths:
     - .cache/pip
     - .venv
-    - poetry.lock
 
 stages:
   - test
-  - format
   - typecheck
   - pages
 
 before_script:
   - pip install poetry
   - poetry config virtualenvs.in-project true
-  - poetry install -vv
+  - poetry install --with test,dev,docs -vv
 
 test:
   stage: test
@@ -29,12 +27,6 @@ test:
     when: always
     reports:
       junit: pytest_report.xml
-
-format:
-  stage: format
-  needs: []
-  script:
-    - poetry run black .
 
 type-check:
   stage: typecheck

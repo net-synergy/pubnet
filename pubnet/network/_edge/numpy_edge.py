@@ -3,9 +3,10 @@
 import os
 
 import numpy as np
-from pubnet.data import default_data_dir
 from scipy import sparse as sp
 from scipy.stats import rankdata
+
+from pubnet.data import default_data_dir
 
 from ._base import Edge
 
