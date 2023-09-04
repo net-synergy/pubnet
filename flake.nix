@@ -30,7 +30,7 @@
             ]);
           groups = [ "test" ];
         };
-        pubnet = pkgs.poetry2nix.mkPoetryPackage { projectDir = ./.; };
+        pubnet = pkgs.poetry2nix.mkPoetryPackages { projectDir = ./.; };
       in {
         packages.pubnet = pubnet;
         packages.default = self.packages.${system}.pubnet;
