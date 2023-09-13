@@ -16,53 +16,7 @@ class IgraphEdge(Edge):
         super().__init__(*args)
         self.representation = "igraph"
         if not isinstance(self._data, ig.Graph):
-            edge_data = self._data
-            node_id = 0
-            node_dic = {self.start_id: {}, self.end_id: {}}
-            edge_list = []
-            for i in range(len(edge_data)):
-                data = edge_data[i]
-                if int(data[0]) not in node_dic[self.start_id].keys():
-                    node_dic[self.start_id][int(data[0])] = node_id
-                    node_id += 1
-
-                if int(data[1]) not in node_dic[self.end_id].keys():
-                    node_dic[self.end_id][int(data[1])] = node_id
-                    node_id += 1
-
-                edge_list.append(
-                    [
-                        node_dic[self.start_id][int(data[0])],
-                        node_dic[self.end_id][int(data[1])],
-                    ]
-                )
-
-            self._data = ig.Graph(n=0, edges=edge_list)
-            nodes = self._data.vs
-            id_dic = {self.start_id: {}, self.end_id: {}}
-            id_dic[self.start_id] = dict(
-                (v, k) for k, v in node_dic[self.start_id].items()
-            )
-            id_dic[self.end_id] = dict(
-                (v, k) for k, v in node_dic[self.end_id].items()
-            )
-            for n in nodes:
-                if n.index in id_dic[self.start_id].keys():
-                    n["NodeType"] = self.start_id
-                    n["id"] = id_dic[self.start_id][n.index]
-                else:
-                    n["NodeType"] = self.end_id
-                    n["id"] = id_dic[self.end_id][n.index]
-
-            edges = self._data.es
-            for e in edges:
-                if self._data.vs[e.tuple[0]]["NodeType"] == self.start_id:
-                    e[self.start_id] = self._data.vs[e.tuple[0]]["id"]
-                    e[self.end_id] = self._data.vs[e.tuple[1]]["id"]
-                else:
-                    e[self.start_id] = self._data.vs[e.tuple[1]]["id"]
-                    e[self.end_id] = self._data.vs[e.tuple[0]]["id"]
-            self._weighted_data = None
+            self._data = ig.Graph(self._data)
 
     def __str__(self):
         return (
