@@ -5,6 +5,8 @@ import re
 
 import igraph as ig
 import numpy as np
+from igraph import Graph
+from numpy.typing import NDArray
 
 from ._base import Edge
 from .igraph_edge import IgraphEdge
@@ -16,7 +18,7 @@ _edge_class = {"numpy": NumpyEdge, "igraph": IgraphEdge}
 id_dtype = np.int64
 
 
-def from_file(file_name, representation):
+def from_file(file_name: str, representation: str) -> Edge:
     """
     Read edge in from file
 
@@ -33,13 +35,6 @@ def from_file(file_name, representation):
 
     ext = file_name.split(".")[-1]
 
-    if ext in ("tsv", "npy", "ig"):
-        ext_open = open
-    elif ext == "gz":
-        ext_open = gzip.open
-    else:
-        raise ValueError(f"Extension {ext} not supported")
-
     if ext in ("npy", "ig"):
         header_file = re.sub(
             r"(?:edges)\.(?:\w+)", "edge_header.tsv", file_name
@@ -47,8 +42,14 @@ def from_file(file_name, representation):
     else:
         header_file = file_name
 
-    with ext_open(header_file, "rt") as f:
-        header_line = f.readline()
+    if ext in ("tsv", "npy", "ig"):
+        with open(header_file, "rt") as f:
+            header_line = f.readline()
+    elif ext == "gz":
+        with gzip.open(header_file, "rt") as f:
+            header_line = f.readline()
+    else:
+        raise ValueError(f"Extension {ext} not supported")
 
     ids = re.findall(r":((?:START)|(?:END))_ID\((\w+)\)", header_line)
     for id, node in ids:
@@ -76,14 +77,18 @@ def from_file(file_name, representation):
 
 
 def from_data(
-    data, representation, start_id=None, end_id=None, dtype=id_dtype
-):
+    data,
+    representation: str,
+    start_id: str | None = None,
+    end_id: str | None = None,
+    dtype: type = id_dtype,
+) -> Edge:
     """
     Make an edge from data.
 
     Parameters
     ----------
-    data : numpy.ndarray or pandas.DataFrame
+    data : numpy.ndarray, igraph.Graph, pandas.DataFrame
     representation : {"numpy", "igraph"}
     start_id, end_id : str, optional
        The name of the to and from node types. If `data` is a ndarray, must be
@@ -101,22 +106,25 @@ def from_data(
             columns = None
 
     if (start_id is None) and (columns is not None):
-        start_id = list(
+        start_id_i = list(
             filter(
                 lambda x: x is not None,
                 [re.search(r":START_ID\((\w+)\)", name) for name in columns],
             )
         )[0]
-        start_id = start_id.groups()[0]
+
+        if start_id_i is not None:
+            start_id = start_id_i.groups()[0]
 
     if (end_id is None) and (columns is not None):
-        end_id = list(
+        end_id_i = list(
             filter(
                 lambda x: x is not None,
                 [re.search(r":END_ID\((\w+)\)", name) for name in columns],
             )
         )[0]
-        end_id = end_id.groups()[0]
+        if end_id_i is not None:
+            end_id = end_id_i.groups()[0]
 
         if start_id is None or end_id is None:
             raise TypeError(

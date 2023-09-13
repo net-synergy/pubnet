@@ -12,7 +12,7 @@ class Edge:
 
     Parameters
     ----------
-    data : numpy.ndarray
+    data : numpy.ndarray, igraph.Graph
         The edges as a list of existing edges.
     start_id : str
         Name of edge start node type.
@@ -34,7 +34,7 @@ class Edge:
     shape
     """
 
-    def __init__(self, data, start_id, end_id, dtype):
+    def __init__(self, data, start_id: str, end_id: str, dtype: type):
         self._data = data
         self.start_id = start_id
         self.end_id = end_id
