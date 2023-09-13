@@ -3,15 +3,14 @@ import os
 import numpy as np
 
 import pubnet
-
 from pubnet import from_dir
 
-from ._utils import simple_pubnet, mktmpdir
+from ._utils import mktmpdir, simple_pubnet
 
 LOG_NUM_NODE_RANGE = (1, 5)
-PARAMS = (("numpy","igraph"), 10 ** np.arange(*LOG_NUM_NODE_RANGE))
+PARAMS = (("numpy", "igraph"), 10 ** np.arange(*LOG_NUM_NODE_RANGE))
 PARAM_NAMES = ("Representation", "n_nodes")
-IO_PARAMS = PARAMS + (("node", "edge", "graph"), ("tsv","gzip"))
+IO_PARAMS = PARAMS + (("node", "edge", "graph"), ("tsv", "gzip"))
 IO_PARAM_NAMES = PARAM_NAMES + ("scope", "formats")
 
 
@@ -157,11 +156,12 @@ class TimeNetwork:
 
         self.simple_pubnet.update(self.other_pubnet)
 
+
 class TimeReadIO:
     params = IO_PARAMS
     param_names = IO_PARAM_NAMES
 
-    def setup(self, representation, n_nodes, scope,formats):
+    def setup(self, representation, n_nodes, scope, formats):
         self.graph_name = f"{representation}_{n_nodes}"
         self._data_dir_obj = mktmpdir()
         self.data_dir = self._data_dir_obj.name
@@ -197,7 +197,7 @@ class TimeWriteIO:
     params = IO_PARAMS
     param_names = IO_PARAM_NAMES
 
-    def setup(self, representation, n_nodes, scope,formats):
+    def setup(self, representation, n_nodes, scope, formats):
         self.graph_name = f"{representation}_{n_nodes}"
         self._data_dir_obj = mktmpdir()
         self.data_dir = self._data_dir_obj.name
@@ -224,6 +224,7 @@ class TimeWriteIO:
             data_dir=self.data_dir,
             format=formats,
         )
+
 
 class MemEdges:
     params = PARAMS
@@ -356,8 +357,7 @@ class MemNetwork:
         subnet["Author", "Publication"]["Publication"]
         subnet["Chemical", "Publication"]["Publication"]
 
-      
-    def  peakmem_update(self, *args):
+    def peakmem_update(self, *args):
         expected_nodes = set(self.simple_pubnet.nodes).union(
             set(self.other_pubnet.nodes)
         )
@@ -367,13 +367,13 @@ class MemNetwork:
         )
 
         self.simple_pubnet.update(self.other_pubnet)
-      
-           
+
+
 class MemReadIO:
     params = IO_PARAMS
     param_names = IO_PARAM_NAMES
 
-    def setup(self, representation, n_nodes, scope,formats):
+    def setup(self, representation, n_nodes, scope, formats):
         self.graph_name = f"{representation}_{n_nodes}"
         self._data_dir_obj = mktmpdir()
         self.data_dir = self._data_dir_obj.name
@@ -409,7 +409,7 @@ class MemWriteIO:
     params = IO_PARAMS
     param_names = IO_PARAM_NAMES
 
-    def setup(self, representation, n_nodes, scope,formats):
+    def setup(self, representation, n_nodes, scope, formats):
         self.graph_name = f"{representation}_{n_nodes}"
         self._data_dir_obj = mktmpdir()
         self.data_dir = self._data_dir_obj.name
@@ -436,4 +436,3 @@ class MemWriteIO:
             data_dir=self.data_dir,
             format=formats,
         )
-        
