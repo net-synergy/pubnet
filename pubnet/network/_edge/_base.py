@@ -76,7 +76,7 @@ class Edge:
         raise AbstractMethodError(self)
 
     @property
-    def shape(self):
+    def len(self):
         """Find number of edges."""
         raise AbstractMethodError(self)
 
