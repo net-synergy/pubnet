@@ -3,6 +3,7 @@
 import os
 
 import numpy as np
+from numpy.typing import ArrayLike, NDArray
 from scipy import sparse as sp
 from scipy.stats import rankdata
 
@@ -41,7 +42,9 @@ class NumpyEdge(Edge):
     def __contains__(self, item: int) -> bool:
         return self._data.__contains__(item)
 
-    def isin(self, column, test_elements):
+    def isin(
+        self, column: str | int, test_elements: ArrayLike
+    ) -> NDArray[np.bool_]:
         """Check which elements of column are members of test_elements.
 
         Arguments

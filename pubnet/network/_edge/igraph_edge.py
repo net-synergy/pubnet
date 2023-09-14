@@ -5,6 +5,7 @@ import os
 
 import igraph as ig
 import numpy as np
+from numpy.typing import ArrayLike, NDArray
 
 from pubnet.data import default_data_dir
 
@@ -65,18 +66,14 @@ class IgraphEdge(Edge):
 
         return len(node.all_edges()) > 0
 
-    def isin(self, column, test_elements):
+    def isin(
+        self, column: str | int, test_elements: ArrayLike
+    ) -> NDArray[np.bool_]:
         """Find which elements from column are in the set of test_elements."""
-        isin = []
-        t_elm = set(test_elements)
-        nodes = self[column]
-        for node in nodes:
-            if node in t_elm:
-                isin.append(True)
-            else:
-                isin.append(False)
 
-        return np.asarray(isin)
+        return np.isin(
+            np.fromiter(self[:, column], dtype=self.dtype), test_elements
+        )
 
     def isequal(self, other):
         """Determine if two edges are equivalent."""

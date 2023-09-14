@@ -3,6 +3,9 @@
 from locale import LC_ALL, setlocale
 from math import ceil, log10
 
+import numpy as np
+from numpy.typing import ArrayLike, NDArray
+
 
 class Edge:
     """
@@ -147,7 +150,9 @@ class Edge:
     def __contains__(self, item: int) -> bool:
         raise AbstractMethodError(self)
 
-    def isin(self, column, test_elements):
+    def isin(
+        self, column: str | int, test_elements: ArrayLike
+    ) -> NDArray[np.bool_]:
         """Find which elements from column are in the set of `test_elements`.
         """
         raise AbstractMethodError(self)
