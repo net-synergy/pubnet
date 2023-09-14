@@ -22,52 +22,36 @@ class IgraphEdge(Edge):
             self._data = ig.Graph(self._data, directed=True)
 
     def __getitem__(self, key):
-        if isinstance(key, str):
-            if key == self.start_id:
+        row, col = self._parse_key(key)
+
+        if (row is None) and (col is not None):
+            if col == 0:
                 return (eid.source for eid in self._data.es.select())
-            elif key == self.end_id:
+            else:
                 return (eid.target for eid in self._data.es.select())
+
+        if isinstance(row, int) and (col is not None):
+            if col == 0:
+                return self._data.es[row].source
             else:
-                raise KeyError(
-                    f'Key "{key}" not one of "{self.start_id}" or'
-                    f' "{self.end_id}".'
-                )
+                return self._data.es[row].target
 
-        col_index = None
-        if isinstance(key, tuple):
-            if len(key) > 2:
-                raise IndexError(
-                    "Index out of range. Can have at most two indices."
-                )
-            if len(key) == 2:
-                col_index = key[1]
-
-            key = key[0]
-
-        if (col_index is not None) and (col_index > 1):
-            raise IndexError(
-                "Index out of range. Column index must be 0 or 1."
-            )
-
-        if isinstance(key, int) and (col_index is not None):
-            if col_index == 0:
-                return self._data.es[key].source
-            else:
-                return self._data.es[key].target
-
-        if isinstance(key, int):
+        if isinstance(row, int):
             return np.asarray(
-                (self._data.es[key].source, self._data.es[key].target)
+                (
+                    self._data.es[row].source,
+                    self._data.es[row].target,
+                )
             )
 
-        if col_index is not None:
-            if col_index == 0:
-                return (eid.source for eid in self._data.es[key].select())
+        if col is not None:
+            if col == 0:
+                return (eid.source for eid in self._data.es[row].select())
             else:
-                return (eid.target for eid in self._data.es[key].select())
+                return (eid.target for eid in self._data.es[row].select())
 
         return (
-            (eid.source, eid.target) for eid in self._data.es[key].select()
+            (eid.source, eid.target) for eid in self._data.es[row].select()
         )
 
     def __len__(self) -> int:

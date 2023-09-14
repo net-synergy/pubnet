@@ -85,6 +85,46 @@ class Edge:
     def __repr__(self) -> str:
         return self.__str__()
 
+    def _parse_key(self, key):
+        """Parse the key used in __getitem__ to determine the correct row and
+        column indices."""
+
+        row_index = None
+        col_index = None
+
+        if isinstance(key, tuple):
+            if len(key) > 2:
+                raise IndexError(
+                    "Index out of range. Can have at most two indices."
+                )
+            if len(key) == 2:
+                col_index = key[1]
+
+            row_index = key[0]
+
+        elif isinstance(key, str):
+            col_index = key
+        else:
+            row_index = key
+
+        if isinstance(col_index, str):
+            if col_index == self.start_id:
+                col_index = 0
+            elif col_index == self.end_id:
+                col_index = 1
+            else:
+                raise KeyError(
+                    f'Key "{key}" not one of "{self.start_id}" or'
+                    f' "{self.end_id}".'
+                )
+
+        if (col_index is not None) and (col_index > 1):
+            raise IndexError(
+                "Index out of range. Column index must be 0 or 1."
+            )
+
+        return (row_index, col_index)
+
     def __getitem__(self, key):
         raise AbstractMethodError(self)
 

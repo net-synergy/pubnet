@@ -25,19 +25,15 @@ class NumpyEdge(Edge):
             self._data = np.asarray(self._data, self.dtype)
 
     def __getitem__(self, key):
-        if isinstance(key, str):
-            if key == self.start_id:
-                key = 0
-            elif key == self.end_id:
-                key = 1
-            else:
-                raise KeyError(
-                    f'Key "{key}" not one of "{self.start_id}" or'
-                    f' "{self.end_id}".'
-                )
-            return self._data[:, key]
+        row, col = self._parse_key(key)
 
-        return self._data[key]
+        if (row is None) and (col is not None):
+            return self._data[:, col]
+
+        if (row is not None) and (col is None):
+            return self._data[row, :]
+
+        return self._data[row, col]
 
     def __len__(self) -> int:
         return self._data.shape[0]
