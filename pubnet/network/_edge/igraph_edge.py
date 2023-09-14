@@ -2,8 +2,6 @@
 
 
 import os
-from locale import LC_ALL, setlocale
-from math import ceil, log10
 
 import igraph as ig
 import numpy as np
@@ -23,63 +21,65 @@ class IgraphEdge(Edge):
             # column 2.
             self._data = ig.Graph(self._data, directed=True)
 
-    def __str__(self) -> str:
-        setlocale(LC_ALL, "")
-        n_edges = f"Edge set with {self.len:n} edges\n"
-        columns = f"{self.start_id}\t{self.end_id}"
-
-        def sep(src) -> str:
-            return (
-                1
-                + ceil((len(self.start_id) + 0.01) / 8)
-                - ceil((log10(src) + 1.01) / 8)
-            ) * "\t"
-
-        if self.len < 10:
-            first_edges = self.len
-            last_edges = 0
-        else:
-            first_edges = 5
-            last_edges = 5
-
-        edges = "%s" % "\n".join(
-            f"{e.source}{sep(e.source)}{e.target}"
-            for e in self._data.es.select(range(first_edges))
-        )
-        if last_edges > 0:
-            edges += "\n.\n.\n.\n"
-            edges += "%s" % "\n".join(
-                f"{e.source}{sep(e.source)}{e.target}"
-                for e in self._data.es.select(
-                    range(
-                        self._data.ecount() - 1,
-                        self._data.ecount() - (last_edges + 1),
-                        -1,
-                    )
-                )
-            )
-        return "\n".join((n_edges, columns, edges))
-
-    def __repr__(self) -> str:
-        return self.__str__()
-
     def __getitem__(self, key):
         if isinstance(key, str):
-            if key == self.start_id or key == self.end_id:
-                return np.asarray(self._data.es[key])
+            if key == self.start_id:
+                return (eid.source for eid in self._data.es.select())
+            elif key == self.end_id:
+                return (eid.target for eid in self._data.es.select())
             else:
                 raise KeyError(
                     f'Key "{key}" not one of "{self.start_id}" or'
                     f' "{self.end_id}".'
                 )
 
-        edges = self._data.es
-        new_edges = []
-        for index in range(len(edges)):
-            if key[index]:
-                new_edges.append(edges[index])
+        col_index = None
+        if isinstance(key, tuple):
+            if len(key) > 2:
+                raise IndexError(
+                    "Index out of range. Can have at most two indices."
+                )
+            if len(key) == 2:
+                col_index = key[1]
 
-        return self._data.subgraph_edges(edges=new_edges)
+            key = key[0]
+
+        if (col_index is not None) and (col_index > 1):
+            raise IndexError(
+                "Index out of range. Column index must be 0 or 1."
+            )
+
+        if isinstance(key, int) and (col_index is not None):
+            if col_index == 0:
+                return self._data.es[key].source
+            else:
+                return self._data.es[key].target
+
+        if isinstance(key, int):
+            return np.asarray(
+                (self._data.es[key].source, self._data.es[key].target)
+            )
+
+        if col_index is not None:
+            if col_index == 0:
+                return (eid.source for eid in self._data.es[key].select())
+            else:
+                return (eid.target for eid in self._data.es[key].select())
+
+        return (
+            (eid.source, eid.target) for eid in self._data.es[key].select()
+        )
+
+    def __len__(self) -> int:
+        return self._data.ecount()
+
+    def __contains__(self, item: int) -> bool:
+        try:
+            node = list(self._data.vs.select(item))[0]
+        except ValueError:
+            return False
+
+        return len(node.all_edges()) > 0
 
     def isin(self, column, test_elements):
         """Find which elements from column are in the set of test_elements."""
@@ -286,11 +286,6 @@ class IgraphEdge(Edge):
             header=header,
             comments="",
         )
-
-    @property
-    def len(self):
-        """Find number of edges."""
-        return self._data.ecount()
 
     @property
     def overlap(self):

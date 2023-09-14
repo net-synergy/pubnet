@@ -1,7 +1,7 @@
 """Abstract base class for storing edges."""
 
-import os
-import re
+from locale import LC_ALL, setlocale
+from math import ceil, log10
 
 
 class Edge:
@@ -36,6 +36,7 @@ class Edge:
 
     def __init__(self, data, start_id: str, end_id: str, dtype: type):
         self._data = data
+        self._n_iter = 0
         self.start_id = start_id
         self.end_id = end_id
         self.dtype = dtype
@@ -44,17 +45,66 @@ class Edge:
         # Weighted not implemented yet
         self.isweighted = False
 
-    def set(self, new_data):
+    def set(self, new_data) -> None:
         """Replace the edge's data with a new array."""
         self._data = new_data
 
-    def __str__(self):
-        raise AbstractMethodError(self)
+    def __str__(self) -> str:
+        setlocale(LC_ALL, "")
 
-    def __repr__(self):
-        raise AbstractMethodError(self)
+        n_edges = f"Edge set with {len(self):n} edges\n"
+        columns = f"{self.start_id}\t{self.end_id}"
+
+        def sep(src: int) -> str:
+            return (
+                1
+                + ceil((len(self.start_id) + 0.01) / 8)
+                - ceil((log10(src) + 1.01) / 8)
+            ) * "\t"
+
+        if len(self) < 10:
+            first_edges = len(self)
+            last_edges = 0
+        else:
+            first_edges = 5
+            last_edges = 5
+
+        edges = "%s" % "\n".join(
+            f"{e[0]}{sep(e[0])}{e[1]}" for e in self[range(first_edges),]
+        )
+        if last_edges > 0:
+            edges += "\n.\n.\n.\n"
+            edges += "%s" % "\n".join(
+                f"{e[0]}{sep(e[0])}{e[1]}"
+                for e in self[
+                    range(len(self) - 1, len(self) - (last_edges + 1), -1),
+                ]
+            )
+        return "\n".join((n_edges, columns, edges))
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
     def __getitem__(self, key):
+        raise AbstractMethodError(self)
+
+    def __iter__(self):
+        self._n_iter = 0
+        return self
+
+    def __next__(self):
+        if self._n_iter == len(self):
+            raise StopIteration
+
+        res = self[self._n_iter,]
+        self._n_iter += 1
+        return res
+
+    def __len__(self) -> int:
+        """Find number of edges."""
+        raise AbstractMethodError(self)
+
+    def __contains__(self, item: int) -> bool:
         raise AbstractMethodError(self)
 
     def isin(self, column, test_elements):
@@ -73,11 +123,6 @@ class Edge:
 
     def to_file(self, edge_name, graph_name, data_dir, format):
         """Save the edge to disc."""
-        raise AbstractMethodError(self)
-
-    @property
-    def len(self):
-        """Find number of edges."""
         raise AbstractMethodError(self)
 
     @property

@@ -5,8 +5,6 @@ import re
 
 import igraph as ig
 import numpy as np
-from igraph import Graph
-from numpy.typing import NDArray
 
 from ._base import Edge
 from .igraph_edge import IgraphEdge

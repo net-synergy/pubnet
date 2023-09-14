@@ -1,8 +1,6 @@
 """Implementation of the Edge class storing edges as numpy arrays."""
 
 import os
-from locale import LC_ALL, setlocale
-from math import ceil, log10
 
 import numpy as np
 from scipy import sparse as sp
@@ -26,42 +24,6 @@ class NumpyEdge(Edge):
         if not isinstance(self._data, np.ndarray):
             self._data = np.asarray(self._data, self.dtype)
 
-    def __str__(self) -> str:
-        setlocale(LC_ALL, "")
-
-        n_edges = f"Edge set with {self.len:n} edges\n"
-        columns = f"{self.start_id}\t{self.end_id}"
-
-        def sep(src) -> str:
-            return (
-                1
-                + ceil((len(self.start_id) + 0.01) / 8)
-                - ceil((log10(src) + 1.01) / 8)
-            ) * "\t"
-
-        if self.len < 10:
-            first_edges = self.len
-            last_edges = 0
-        else:
-            first_edges = 5
-            last_edges = 5
-
-        edges = "%s" % "\n".join(
-            f"{e[0]}{sep(e[0])}{e[1]}" for e in self._data[range(first_edges),]
-        )
-        if last_edges > 0:
-            edges += "\n.\n.\n.\n"
-            edges += "%s" % "\n".join(
-                f"{e[0]}{sep(e[0])}{e[1]}"
-                for e in self._data[
-                    range(self.len - 1, self.len - (last_edges + 1), -1),
-                ]
-            )
-        return "\n".join((n_edges, columns, edges))
-
-    def __repr__(self) -> str:
-        return self.__str__()
-
     def __getitem__(self, key):
         if isinstance(key, str):
             if key == self.start_id:
@@ -76,6 +38,12 @@ class NumpyEdge(Edge):
             return self._data[:, key]
 
         return self._data[key]
+
+    def __len__(self) -> int:
+        return self._data.shape[0]
+
+    def __contains__(self, item: int) -> bool:
+        return self._data.__contains__(item)
 
     def isin(self, column, test_elements):
         """Check which elements of column are members of test_elements.
@@ -172,10 +140,6 @@ class NumpyEdge(Edge):
             header=header,
             comments="",
         )
-
-    @property
-    def len(self):
-        return self._data.shape[0]
 
     def _calc_overlap(self):
         """Calculate the neighbor overlap between nodes.
