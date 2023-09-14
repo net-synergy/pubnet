@@ -17,6 +17,7 @@ from pandas.core.dtypes.common import is_list_like
 
 from pubnet import data
 from pubnet.data import default_data_dir
+from pubnet.data import list as list_graphs
 from pubnet.network import _edge, _node
 from pubnet.network._edge._base import Edge
 from pubnet.network._node import Node
@@ -767,6 +768,12 @@ def from_dir(
 
     if graph_name is not None:
         data_dir = os.path.join(data_dir, graph_name)
+
+    if not os.path.exists(data_dir):
+        raise FileNotFoundError(
+            f'Graph "{graph_name}" not found. Available graphs are: \n\t%s'
+            % "\n\t".join(g for g in list_graphs())
+        )
 
     node_files = {}
     edge_files = {}
