@@ -2,6 +2,7 @@
 
 from locale import LC_ALL, setlocale
 from math import ceil, log10
+from typing import Iterable, Optional, Sequence, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -37,13 +38,13 @@ class Edge:
     shape
     """
 
-    def __init__(self, data, start_id: str, end_id: str, dtype: type):
-        self._data = data
+    def __init__(self, data, start_id: str, end_id: str, dtype: type) -> None:
+        self.set(data)
         self._n_iter = 0
         self.start_id = start_id
         self.end_id = end_id
         self.dtype = dtype
-        self.representation = None
+        self.representation = "Generic"
 
         # Weighted not implemented yet
         self.isweighted = False
@@ -88,7 +89,31 @@ class Edge:
     def __repr__(self) -> str:
         return self.__str__()
 
-    def _parse_key(self, key):
+    def _column_to_int(self, key: Optional[str | int]) -> Optional[int]:
+        if key is None:
+            return key
+
+        if isinstance(key, int):
+            if key not in (0, 1):
+                raise IndexError(
+                    "Index out of range. Column index must be 0 or 1."
+                )
+            return key
+
+        if isinstance(key, str):
+            if key == self.start_id:
+                return 0
+            elif key == self.end_id:
+                return 1
+            else:
+                raise KeyError(
+                    f'Key "{key}" not one of "{self.start_id}" or'
+                    f' "{self.end_id}".'
+                )
+
+        return key
+
+    def _parse_key(self, key) -> Tuple[Optional[int], Optional[int]]:
         """Parse the key used in __getitem__ to determine the correct row and
         column indices."""
 
@@ -110,21 +135,8 @@ class Edge:
         else:
             row_index = key
 
-        if isinstance(col_index, str):
-            if col_index == self.start_id:
-                col_index = 0
-            elif col_index == self.end_id:
-                col_index = 1
-            else:
-                raise KeyError(
-                    f'Key "{key}" not one of "{self.start_id}" or'
-                    f' "{self.end_id}".'
-                )
-
-        if (col_index is not None) and (col_index > 1):
-            raise IndexError(
-                "Index out of range. Column index must be 0 or 1."
-            )
+        row_index = self._column_to_int(row_index)
+        col_index = self._column_to_int(col_index)
 
         return (row_index, col_index)
 

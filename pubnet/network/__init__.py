@@ -181,7 +181,7 @@ class PubNet:
         if (is_string_array or isinstance(args, tuple)) and (len(args) == 2):
             return self._edge_data[edge_key(*args)]
 
-        if isinstance(args, np.ndarray):
+        if isinstance(args, np.ndarray | range):
             return self._slice(args)
 
         if isinstance(args, (self.id_dtype, int)):
@@ -226,10 +226,10 @@ class PubNet:
         res = "PubNet"
         res += "\nNodes (number of nodes)"
         for n in self.nodes:
-            res += f"\n\t{n}\t({self._node_data[n].shape[0]})"
+            res += f"\n\t{n}\t({len(self._node_data[n])})"
         res += "\n\nEdges (number of edges)"
         for e in self.edges:
-            res += f"\n\t{e}\t({self._edge_data[e].shape[0]})"
+            res += f"\n\t{e}\t({len(self._edge_data[e])})"
 
         return res
 
