@@ -121,7 +121,6 @@ class IgraphEdge(Edge):
         if format == "binary":
             self._to_binary(file_name, header_name, header)
         else:
-            # `np.savetxt` handles "gz" extensions so nothing extra to do.
             self._to_tsv(file_name, header)
 
     def _to_binary(self, file_name, header_name, header):
@@ -135,9 +134,7 @@ class IgraphEdge(Edge):
         # are likely going to be floats.
         np.savetxt(
             file_name,
-            np.column_stack(
-                (self._data.es[self.start_id], self._data.es[self.end_id])
-            ),
+            np.asarray(self._data.get_edgelist()),
             fmt="%d",
             delimiter="\t",
             header=header,
