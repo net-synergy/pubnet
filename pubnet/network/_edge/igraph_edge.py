@@ -30,11 +30,16 @@ class IgraphEdge(Edge):
     def __getitem__(self, key):
         row, col = self._parse_key(key)
 
+        if self._is_mask(row):
+            row = np.arange(len(self))[row]
+
         if (row is None) and (col is not None):
             if col == 0:
-                return (eid.source for eid in self._data.es.select())
+                res = (eid.source for eid in self._data.es.select())
             else:
-                return (eid.target for eid in self._data.es.select())
+                res = (eid.target for eid in self._data.es.select())
+
+            return np.fromiter(res, dtype=self.dtype)
 
         if isinstance(row, int) and (col is not None):
             if col == 0:
@@ -44,14 +49,35 @@ class IgraphEdge(Edge):
 
         if col is not None:
             if col == 0:
-                return (eid.source for eid in self._data.es[row].select())
+                res = (eid.source for eid in self._data.es[row].select())
             else:
-                return (eid.target for eid in self._data.es[row].select())
+                res = (eid.target for eid in self._data.es[row].select())
+
+            return np.fromiter(res, dtype=self.dtype)
 
         if isinstance(row, int):
-            return self._data.subgraph_edges(row)
+            return (self._data.es[row].source, self._data.es[row].target)
 
-        return self._data.subgraph_edges(self._data.es[row].select())
+        return IgraphEdge(
+            ((eid.source, eid.target) for eid in self._data.es[row].select()),
+            self.start_id,
+            self.end_id,
+            self.dtype,
+        )
+
+    def _is_mask(self, arr):
+        if not isinstance(arr, np.ndarray):
+            return False
+
+        if not isinstance(arr[0], np.bool_):
+            return False
+
+        if arr.shape[0] != len(self):
+            raise KeyError(
+                "Boolean mask must have same size as edge set for indexing"
+            )
+
+        return True
 
     def __len__(self) -> int:
         return self._data.ecount()
@@ -134,12 +160,18 @@ class IgraphEdge(Edge):
         # are likely going to be floats.
         np.savetxt(
             file_name,
-            np.asarray(self._data.get_edgelist()),
+            self.as_array(),
             fmt="%d",
             delimiter="\t",
             header=header,
             comments="",
         )
+
+    def as_array(self):
+        return np.asarray(self._data.get_edgelist())
+
+    def as_igraph(self):
+        return self._data.copy()
 
     @property
     def overlap(self):

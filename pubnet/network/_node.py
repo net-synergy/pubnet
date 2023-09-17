@@ -116,9 +116,9 @@ class Node:
         if not isinstance(rows, slice):
             is_mask = len(rows) > 1
             if is_mask and isinstance(rows, pd.Series):
-                is_mask = isinstance(rows.values[0], (bool, np.bool8))
+                is_mask = isinstance(rows.values[0], (bool, np.bool_))
             else:
-                is_mask = is_mask and isinstance(rows[0], (bool, np.bool8))
+                is_mask = is_mask and isinstance(rows[0], (bool, np.bool_))
 
             if is_mask:
                 return self._data[columns].loc[rows]

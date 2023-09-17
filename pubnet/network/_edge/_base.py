@@ -59,6 +59,9 @@ class Edge:
         n_edges = f"Edge set with {len(self):n} edges\n"
         columns = f"{self.start_id}\t{self.end_id}"
 
+        if len(self) == 0:
+            return "Empty edge set\n" + columns
+
         def sep(src: int) -> str:
             return (
                 1
@@ -66,7 +69,7 @@ class Edge:
                 - ceil((log10(src) + 1.01) / 8)
             ) * "\t"
 
-        if len(self) < 10:
+        if len(self) < 15:
             first_edges = len(self)
             last_edges = 0
         else:
@@ -74,15 +77,15 @@ class Edge:
             last_edges = 5
 
         edges = "%s" % "\n".join(
-            f"{e[0]}{sep(e[0])}{e[1]}" for e in self[range(first_edges),]
+            f"{e[0]}{sep(e[0])}{e[1]}" for e in self[:first_edges].as_array()
         )
         if last_edges > 0:
             edges += "\n.\n.\n.\n"
             edges += "%s" % "\n".join(
                 f"{e[0]}{sep(e[0])}{e[1]}"
                 for e in self[
-                    range(len(self) - 1, len(self) - (last_edges + 1), -1),
-                ]
+                    len(self) - 1 : len(self) - (last_edges + 1) : -1
+                ].as_array()
             )
         return "\n".join((n_edges, columns, edges))
 
@@ -135,7 +138,6 @@ class Edge:
         else:
             row_index = key
 
-        row_index = self._column_to_int(row_index)
         col_index = self._column_to_int(col_index)
 
         return (row_index, col_index)
@@ -180,6 +182,14 @@ class Edge:
 
     def to_file(self, edge_name, graph_name, data_dir, format):
         """Save the edge to disc."""
+        raise AbstractMethodError(self)
+
+    def as_array(self):
+        """Return the edge list as a numpy array"""
+        raise AbstractMethodError(self)
+
+    def as_igraph(self):
+        """Return the edge as an igraph graph"""
         raise AbstractMethodError(self)
 
     @property

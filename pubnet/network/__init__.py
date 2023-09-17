@@ -215,6 +215,10 @@ class PubNet:
                     edge = self[key, self.root]
                 except KeyError:
                     continue
+
+                if len(edge) == 0:
+                    continue
+
                 node_ids = edge[key]
 
             node_locs = self[key][self[key].id].isin(node_ids)
@@ -649,7 +653,7 @@ class PubNet:
             edges = []
 
         nodes = [n for n in nodes if self[n].shape[0] > 0]
-        edges = [e for e in edges if self[e].shape[0] > 0]
+        edges = [e for e in edges if len(self[e]) > 0]
 
         if overwrite:
             data.delete(graph_name, data_dir)

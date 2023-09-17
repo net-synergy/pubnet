@@ -22,8 +22,6 @@ class NumpyEdge(Edge):
         super().__init__(*args)
 
         self.representation = "numpy"
-        if not isinstance(self._data, np.ndarray):
-            self._data = np.asarray(self._data, self.dtype)
 
     def __getitem__(self, key):
         row, col = self._parse_key(key)
@@ -31,10 +29,21 @@ class NumpyEdge(Edge):
         if (row is None) and (col is not None):
             return self._data[:, col]
 
-        if (row is not None) and (col is None):
-            return self._data[row, :]
+        if col is None:
+            if isinstance(row, int):
+                return self._data[row, :]
+            else:
+                return NumpyEdge(
+                    self._data[row, :], self.start_id, self.end_id, self.dtype
+                )
 
         return self._data[row, col]
+
+    def set(self, new_data):
+        if isinstance(new_data, np.ndarray):
+            self._data = new_data
+        else:
+            self._data = np.asarray(new_data, self.dtype)
 
     def __len__(self) -> int:
         return self._data.shape[0]
@@ -139,6 +148,12 @@ class NumpyEdge(Edge):
             header=header,
             comments="",
         )
+
+    def as_array(self):
+        return self._data
+
+    def as_igraph(self):
+        return self._data.copy()
 
     def _calc_overlap(self):
         """Calculate the neighbor overlap between nodes.
