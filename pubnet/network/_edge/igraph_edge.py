@@ -5,6 +5,7 @@ import os
 
 import igraph as ig
 import numpy as np
+from numpy.typing import ArrayLike, NDArray
 
 from pubnet.data import default_data_dir
 
@@ -15,222 +16,93 @@ class IgraphEdge(Edge):
     def __init__(self, *args):
         super().__init__(*args)
         self.representation = "igraph"
-        if not isinstance(self._data, ig.Graph):
-            edge_data = self._data
-            node_id = 0
-            node_dic = {self.start_id: {}, self.end_id: {}}
-            edge_list = []
-            for i in range(len(edge_data)):
-                data = edge_data[i]
-                if int(data[0]) not in node_dic[self.start_id].keys():
-                    node_dic[self.start_id][int(data[0])] = node_id
-                    node_id += 1
 
-                if int(data[1]) not in node_dic[self.end_id].keys():
-                    node_dic[self.end_id][int(data[1])] = node_id
-                    node_id += 1
+    def set(self, new_data) -> None:
+        # Treating the graph as directed prevents igraph from flipping the
+        # columns so source is always the data in column 1 and target
+        # column 2.
 
-                edge_list.append(
-                    [
-                        node_dic[self.start_id][int(data[0])],
-                        node_dic[self.end_id][int(data[1])],
-                    ]
-                )
-
-            self._data = ig.Graph(n=0, edges=edge_list)
-            nodes = self._data.vs
-            id_dic = {self.start_id: {}, self.end_id: {}}
-            id_dic[self.start_id] = dict(
-                (v, k) for k, v in node_dic[self.start_id].items()
-            )
-            id_dic[self.end_id] = dict(
-                (v, k) for k, v in node_dic[self.end_id].items()
-            )
-            for n in nodes:
-                if n.index in id_dic[self.start_id].keys():
-                    n["NodeType"] = self.start_id
-                    n["id"] = id_dic[self.start_id][n.index]
-                else:
-                    n["NodeType"] = self.end_id
-                    n["id"] = id_dic[self.end_id][n.index]
-
-            edges = self._data.es
-            for e in edges:
-                if self._data.vs[e.tuple[0]]["NodeType"] == self.start_id:
-                    e[self.start_id] = self._data.vs[e.tuple[0]]["id"]
-                    e[self.end_id] = self._data.vs[e.tuple[1]]["id"]
-                else:
-                    e[self.start_id] = self._data.vs[e.tuple[1]]["id"]
-                    e[self.end_id] = self._data.vs[e.tuple[0]]["id"]
-            self._weighted_data = None
-
-    def __str__(self):
-        return (
-            f"col 0: {self.start_id}\ncol 1: {self.end_id}\n{str(self._data)}"
-        )
-
-    def __repr__(self):
-        return (
-            f"col 0: {self.start_id}\ncol 1: {self.end_id}\n{repr(self._data)}"
-        )
+        if isinstance(new_data, ig.Graph):
+            self._data = new_data
+        else:
+            self._data = ig.Graph(new_data, directed=True)
 
     def __getitem__(self, key):
-        if isinstance(key, str):
-            if key == self.start_id or key == self.end_id:
-                return np.asarray(self._data.es[key])
+        row, col = self._parse_key(key)
+
+        if self._is_mask(row):
+            row = np.arange(len(self))[row]
+
+        if (row is None) and (col is not None):
+            if col == 0:
+                res = (eid.source for eid in self._data.es.select())
             else:
-                raise KeyError(
-                    f'Key "{key}" not one of "{self.start_id}" or'
-                    f' "{self.end_id}".'
-                )
+                res = (eid.target for eid in self._data.es.select())
 
-        edges = self._data.es
-        new_edges = []
-        for index in range(len(edges)):
-            if key[index]:
-                new_edges.append(edges[index])
+            return np.fromiter(res, dtype=self.dtype)
 
-        return self._data.subgraph_edges(edges=new_edges)
-
-    def isin(self, column, test_elements):
-        """Find which elements from column are in the set of test_elements."""
-        isin = []
-        t_elm = set(test_elements)
-        nodes = self[column]
-        for node in nodes:
-            if node in t_elm:
-                isin.append(True)
+        if isinstance(row, int) and (col is not None):
+            if col == 0:
+                return self._data.es[row].source
             else:
-                isin.append(False)
+                return self._data.es[row].target
 
-        return np.asarray(isin)
+        if col is not None:
+            if col == 0:
+                res = (eid.source for eid in self._data.es[row].select())
+            else:
+                res = (eid.target for eid in self._data.es[row].select())
 
-    def isequal(self, other):
-        """Determine if two edges are equivalent."""
-        nodes = self._data.vs
-        other_nodes = other._data.vs
-        for index in range(len(nodes)):
-            if nodes[index].attributes() != other_nodes[index].attributes():
-                return False
-        edges = self._data.es
-        other_edges = other._data.es
-        for index in range(len(edges)):
-            if (
-                not edges[index].tuple[0] == other_edges[index].tuple[0]
-                and edges[index].tuple[1] == other_edges[index].tuple[1]
-                or edges[index].tuple[0] == other_edges[index].tuple[1]
-                and edges[index].tuple[1] == other_edges[index].tuple[0]
-            ):
-                return False
+            return np.fromiter(res, dtype=self.dtype)
+
+        if isinstance(row, int):
+            return (self._data.es[row].source, self._data.es[row].target)
+
+        return IgraphEdge(
+            ((eid.source, eid.target) for eid in self._data.es[row].select()),
+            self.start_id,
+            self.end_id,
+            self.dtype,
+        )
+
+    def _is_mask(self, arr):
+        if not isinstance(arr, np.ndarray):
+            return False
+
+        if not isinstance(arr[0], np.bool_):
+            return False
+
+        if arr.shape[0] != len(self):
+            raise KeyError(
+                "Boolean mask must have same size as edge set for indexing"
+            )
+
         return True
 
-    def __add_weights(self, nodes):
-        current_nodes = self._weighted_data.vs
-        edge_list = []
-        weights = []
-        overlap_pubids = {}
-        node_index = current_nodes[-1].index + 1
+    def __len__(self) -> int:
+        return self._data.ecount()
 
-        for i in range(len(nodes)):
-            if nodes[i]["id"] not in overlap_pubids.keys():
-                overlap_pubids[nodes[i]["id"]] = node_index
-                node_index += 1
-            for j in range(i + 1, len(nodes)):
-                if nodes[j]["id"] not in overlap_pubids.keys():
-                    overlap_pubids[nodes[j]["id"]] = node_index
-                    node_index += 1
-                first_node_neighbors = self._data.neighbors(nodes[i])
-                second_node_neighbors = self._data.neighbors(nodes[j])
+    def __contains__(self, item: int) -> bool:
+        try:
+            node = list(self._data.vs.select(item))[0]
+        except ValueError:
+            return False
 
-                overlap = len(
-                    set(first_node_neighbors).intersection(
-                        second_node_neighbors
-                    )
-                )
-                if overlap != 0:
-                    edge_list.append(
-                        [
-                            overlap_pubids[nodes[i]["id"]],
-                            overlap_pubids[nodes[j]["id"]],
-                        ]
-                    )
-                    weights.append(1 / overlap)
-            for k in range(len(current_nodes)):
-                first_node_neighbors = self._data.neighbors(nodes[i])
-                second_node_neighbors = self._data.neighbors(
-                    self._data.find(
-                        id_eq=nodes[k]["pubid"], NodeType_eq=self.start_id
-                    )
-                )
+        return len(node.all_edges()) > 0
 
-                overlap = len(
-                    set(first_node_neighbors).intersection(
-                        second_node_neighbors
-                    )
-                )
+    def isin(
+        self, column: str | int, test_elements: ArrayLike
+    ) -> NDArray[np.bool_]:
+        """Find which elements from column are in the set of test_elements."""
 
-                if overlap != 0:
-                    edge_list.append(
-                        [
-                            overlap_pubids[nodes[i]["id"]],
-                            nodes[k].index,
-                        ]
-                    )
-                    weights.append(1 / overlap)
+        return np.isin(
+            np.fromiter(self[:, column], dtype=self.dtype), test_elements
+        )
 
-        edge_splice = len(self._weighted_data.es)
-        vertex_splice = len(self._weighted_data.vs)
-        self._weighted_data.add_vertices(overlap_pubids.values())
-        self._weighted_data.add_edges(edge_list)
+    def isequal(self, other: Edge):
+        """Determine if two edge sets are equivalent."""
 
-        for i in range(len(new_edges)):
-            new_edges[i]["weight"] = weights[i]
-
-        new_nodes = self._weighted_data.vs[vertex_splice + 1 :]
-        new_ids = list(overlap_pubids.keys())
-        for i in range(len(new_nodes)):
-            new_nodes[i]["pubid"] = new_ids[i]
-
-    def __weights(self, nodes):
-        edge_list = []
-        weights = []
-        overlap_pubids = {}
-        node_index = 0
-        for i in range(len(nodes)):
-            if nodes[i]["id"] not in overlap_pubids.keys():
-                overlap_pubids[nodes[i]["id"]] = node_index
-                node_index += 1
-            for j in range(i + 1, len(nodes)):
-                if nodes[j]["id"] not in overlap_pubids.keys():
-                    overlap_pubids[nodes[j]["id"]] = node_index
-                    node_index += 1
-                first_node_neighbors = self._data.neighbors(nodes[i])
-                second_node_neighbors = self._data.neighbors(nodes[j])
-
-                overlap = len(
-                    set(first_node_neighbors).intersection(
-                        second_node_neighbors
-                    )
-                )
-
-                if overlap != 0:
-                    edge_list.append(
-                        [
-                            overlap_pubids[nodes[i]["id"]],
-                            overlap_pubids[nodes[j]["id"]],
-                        ]
-                    )
-                    weights.append(1 / overlap)
-
-        self._weighted_data = ig.Graph(edge_list)
-        edges = self._weighted_data.es
-        for i in range(len(edges)):
-            edges[i]["weight"] = weights[i]
-        nodes = self._weighted_data.vs
-        ids = list(overlap_pubids.keys())
-        print(ids)
-        for i in range(len(nodes)):
-            nodes[i]["pubid"] = ids[i]
+        return self._data.get_edgelist() == other._data.get_edgelist()
 
     def to_file(
         self, edge_name, graph_name, data_dir=default_data_dir(), format="tsv"
@@ -275,7 +147,6 @@ class IgraphEdge(Edge):
         if format == "binary":
             self._to_binary(file_name, header_name, header)
         else:
-            # `np.savetxt` handles "gz" extensions so nothing extra to do.
             self._to_tsv(file_name, header)
 
     def _to_binary(self, file_name, header_name, header):
@@ -289,19 +160,18 @@ class IgraphEdge(Edge):
         # are likely going to be floats.
         np.savetxt(
             file_name,
-            np.column_stack(
-                (self._data.es[self.start_id], self._data.es[self.end_id])
-            ),
+            self.as_array(),
             fmt="%d",
             delimiter="\t",
             header=header,
             comments="",
         )
 
-    @property
-    def shape(self):
-        """Find number of edges."""
-        return [self._data.ecount(), 2]
+    def as_array(self):
+        return np.asarray(self._data.get_edgelist())
+
+    def as_igraph(self):
+        return self._data.copy()
 
     @property
     def overlap(self):
@@ -321,44 +191,3 @@ class IgraphEdge(Edge):
                     overlaps.append([nodes[i]["id"], nodes[j]["id"], overlap])
 
         return np.asarray(overlaps)
-
-    def _shortest_path(self, target_publications):
-        pubids = set(target_publications)
-
-        if self._weighted_data is None:
-            nodes = self._data.vs.select(
-                id_in=pubids, NodeType_eq=self.start_id
-            )
-            self.__weights(nodes)
-            distances = self._weighted_data.distances(weights="weight")
-            nodeids = nodes["id"]
-        else:
-            weighted_nodes = self._weighted_data.vs["pubid"]
-            if pubids != set(weighted_nodes):
-                nodes = self._data.vs.select(
-                    id_in=pubids,
-                    NodeType_eq=self.start_id,
-                    id_notin=weighted_nodes["pubid"],
-                )
-                self.__add_weights(nodes)
-                weighted_nodes = self._weighted_data.vs.select(pubid_in=pubids)
-                distances = self._weighted_data.distances(
-                    weighted_nodes, weighted_nodes, weights="weight"
-                )
-                nodeids = weighted_nodes["pubid"]
-            else:
-                distances = self._weighted_data.distances(weights="weight")
-                nodeids = weighted_nodes
-
-        shortest_paths = []
-        for source_node_index, node_distances in enumerate(distances):
-            for target_node_index, distance in enumerate(node_distances):
-                if source_node_index < target_node_index:
-                    shortest_paths.append(
-                        [
-                            nodeids[source_node_index],
-                            nodeids[target_node_index],
-                            distance,
-                        ]
-                    )
-        return np.asarray(shortest_paths)

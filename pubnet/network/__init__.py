@@ -17,6 +17,7 @@ from pandas.core.dtypes.common import is_list_like
 
 from pubnet import data
 from pubnet.data import default_data_dir
+from pubnet.data import list as list_graphs
 from pubnet.network import _edge, _node
 from pubnet.network._edge._base import Edge
 from pubnet.network._node import Node
@@ -180,7 +181,7 @@ class PubNet:
         if (is_string_array or isinstance(args, tuple)) and (len(args) == 2):
             return self._edge_data[edge_key(*args)]
 
-        if isinstance(args, np.ndarray):
+        if isinstance(args, np.ndarray | range):
             return self._slice(args)
 
         if isinstance(args, (self.id_dtype, int)):
@@ -214,6 +215,10 @@ class PubNet:
                     edge = self[key, self.root]
                 except KeyError:
                     continue
+
+                if len(edge) == 0:
+                    continue
+
                 node_ids = edge[key]
 
             node_locs = self[key][self[key].id].isin(node_ids)
@@ -225,10 +230,10 @@ class PubNet:
         res = "PubNet"
         res += "\nNodes (number of nodes)"
         for n in self.nodes:
-            res += f"\n\t{n}\t({self._node_data[n].shape[0]})"
+            res += f"\n\t{n}\t({len(self._node_data[n])})"
         res += "\n\nEdges (number of edges)"
         for e in self.edges:
-            res += f"\n\t{e}\t({self._edge_data[e].shape[0]})"
+            res += f"\n\t{e}\t({len(self._edge_data[e])})"
 
         return res
 
@@ -648,7 +653,7 @@ class PubNet:
             edges = []
 
         nodes = [n for n in nodes if self[n].shape[0] > 0]
-        edges = [e for e in edges if self[e].shape[0] > 0]
+        edges = [e for e in edges if len(self[e]) > 0]
 
         if overwrite:
             data.delete(graph_name, data_dir)
@@ -767,6 +772,12 @@ def from_dir(
 
     if graph_name is not None:
         data_dir = os.path.join(data_dir, graph_name)
+
+    if not os.path.exists(data_dir):
+        raise FileNotFoundError(
+            f'Graph "{graph_name}" not found. Available graphs are: \n\t%s'
+            % "\n\t".join(g for g in list_graphs())
+        )
 
     node_files = {}
     edge_files = {}

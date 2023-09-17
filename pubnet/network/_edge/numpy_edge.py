@@ -3,6 +3,7 @@
 import os
 
 import numpy as np
+from numpy.typing import ArrayLike, NDArray
 from scipy import sparse as sp
 from scipy.stats import rankdata
 
@@ -21,35 +22,38 @@ class NumpyEdge(Edge):
         super().__init__(*args)
 
         self.representation = "numpy"
-        if not isinstance(self._data, np.ndarray):
-            self._data = np.asarray(self._data, self.dtype)
-
-    def __str__(self):
-        return (
-            f"col 0: {self.start_id}\ncol 1: {self.end_id}\n{str(self._data)}"
-        )
-
-    def __repr__(self):
-        return (
-            f"col 0: {self.start_id}\ncol 1: {self.end_id}\n{repr(self._data)}"
-        )
 
     def __getitem__(self, key):
-        if isinstance(key, str):
-            if key == self.start_id:
-                key = 0
-            elif key == self.end_id:
-                key = 1
+        row, col = self._parse_key(key)
+
+        if (row is None) and (col is not None):
+            return self._data[:, col]
+
+        if col is None:
+            if isinstance(row, int):
+                return self._data[row, :]
             else:
-                raise KeyError(
-                    f'Key "{key}" not one of "{self.start_id}" or'
-                    f' "{self.end_id}".'
+                return NumpyEdge(
+                    self._data[row, :], self.start_id, self.end_id, self.dtype
                 )
-            return self._data[:, key]
 
-        return self._data[key]
+        return self._data[row, col]
 
-    def isin(self, column, test_elements):
+    def set(self, new_data):
+        if isinstance(new_data, np.ndarray):
+            self._data = new_data
+        else:
+            self._data = np.asarray(new_data, self.dtype)
+
+    def __len__(self) -> int:
+        return self._data.shape[0]
+
+    def __contains__(self, item: int) -> bool:
+        return self._data.__contains__(item)
+
+    def isin(
+        self, column: str | int, test_elements: ArrayLike
+    ) -> NDArray[np.bool_]:
         """Check which elements of column are members of test_elements.
 
         Arguments
@@ -145,9 +149,11 @@ class NumpyEdge(Edge):
             comments="",
         )
 
-    @property
-    def shape(self):
-        return self._data.shape
+    def as_array(self):
+        return self._data
+
+    def as_igraph(self):
+        return self._data.copy()
 
     def _calc_overlap(self):
         """Calculate the neighbor overlap between nodes.
