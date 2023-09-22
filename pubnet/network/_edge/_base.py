@@ -1,5 +1,6 @@
 """Abstract base class for storing edges."""
 
+import os
 from locale import LC_ALL, setlocale
 from math import ceil, log10
 from typing import Optional, Tuple
@@ -180,8 +181,60 @@ class Edge:
 
         raise AbstractMethodError(self)
 
-    def to_file(self, edge_name, graph_name, data_dir, format):
-        """Save the edge to disc."""
+    def to_file(
+        self, edge_name: str, data_dir: str, format: str = "tsv"
+    ) -> None:
+        """Save the edge to disk.
+
+        Arguments
+        ---------
+        edge_name : str, the name of the edge.
+        data_dir : str, where to store the graph.
+        format : str {"tsv", "gzip", "binary"}, how to store the edge (default
+            "tsv"). Binary uses numpy's npy format.
+
+        Returns
+        -------
+        None
+
+        See also
+        --------
+        `pubnet.storage.default_data_dir`
+        `pubnet.network.PubNet.save_graph`
+        `pubnet.network.load_graph`
+        """
+
+        ext = {"gzip": "tsv.gz", "tsv": "tsv"}
+
+        if self.representation == "igraph":
+            ext["binary"] = "ig"
+        elif self.representation == "numpy":
+            ext["binary"] = "npy"
+
+        if not os.path.exists(data_dir):
+            os.mkdir(data_dir)
+
+        if isinstance(edge_name, tuple):
+            n1, n2 = edge_name[:2]
+        else:
+            n1, n2 = edge_name.split("-")
+
+        file_name = os.path.join(data_dir, f"{n1}_{n2}_edges.{ext[format]}")
+        header_name = os.path.join(data_dir, f"{n1}_{n2}_edge_header.tsv")
+        header = f":START_ID({self.start_id})\t:END_ID({self.end_id})"
+
+        if format == "binary":
+            self._to_binary(file_name, header_name, header)
+        else:
+            # `np.savetxt` handles "gz" extensions so nothing extra to do.
+            self._to_tsv(file_name, header)
+
+    def _to_binary(self, file_name, header_name, header):
+        """Save an edge to a binary file type."""
+        raise AbstractMethodError(self)
+
+    def _to_tsv(self, file_name, header):
+        """Save an edge to a tsv."""
         raise AbstractMethodError(self)
 
     def as_array(self):

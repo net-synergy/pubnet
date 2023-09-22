@@ -1,14 +1,10 @@
 """Implementation of the Edge class storing edges as numpy arrays."""
 
-import os
-
 import igraph as ig
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from scipy import sparse as sp
 from scipy.stats import rankdata
-
-from pubnet.storage import default_data_dir
 
 from ._base import Edge
 
@@ -85,47 +81,6 @@ class NumpyEdge(Edge):
         # Because id's start at 1 but the 0th value in the distribution is
         # reserved for id == 0.
         return dist[1:]
-
-    def to_file(self, edge_name, data_dir, format="tsv"):
-        """Save the edge to disk.
-
-        Arguments
-        ---------
-        edge_name : str, the name of the edge.
-        data_dir : str, where to store graphs.
-        format : str {"tsv", "gzip", "binary"}, how to store the edge (default
-            "tsv"). Binary uses numpy's npy format.
-
-        Returns
-        -------
-        None
-
-        See also
-        --------
-        `pubnet.storage.default_data_dir`
-        `pubnet.network.PubNet.save_graph`
-        `pubnet.network.load_graph`
-        """
-
-        ext = {"binary": "npy", "gzip": "tsv.gz", "tsv": "tsv"}
-
-        if not os.path.exists(data_dir):
-            os.mkdir(data_dir)
-
-        if isinstance(edge_name, tuple):
-            n1, n2 = edge_name[:2]
-        else:
-            n1, n2 = edge_name.split("-")
-
-        file_name = os.path.join(data_dir, f"{n1}_{n2}_edges.{ext[format]}")
-        header_name = os.path.join(data_dir, f"{n1}_{n2}_edge_header.tsv")
-        header = f":START_ID({self.start_id})\t:END_ID({self.end_id})"
-
-        if format == "binary":
-            self._to_binary(file_name, header_name, header)
-        else:
-            # `np.savetxt` handles "gz" extensions so nothing extra to do.
-            self._to_tsv(file_name, header)
 
     def _to_binary(self, file_name, header_name, header):
         np.save(file_name, self._data)
