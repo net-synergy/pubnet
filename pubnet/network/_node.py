@@ -204,9 +204,9 @@ class Node:
         See also
         --------
         `from_file`
-        `pubmed.data.default_data_dir`
-        `pubmed.network.pubnet.to_dir`
-        `pubmed.network.pubnet.from_dir`
+        `pubmed.storage.default_data_dir`
+        `pubmed.network.pubnet.save_graph`
+        `pubmed.network.pubnet.load_graph`
         """
 
         self._data.columns = self._data.columns.str.replace(
@@ -261,9 +261,9 @@ def from_file(file_name, *args):
     `Node`
     `Node.to_file`
     `from_data`
-    `pubmed.data.default_data_dir`
-    `pubmed.network.pubnet.to_dir`
-    `pubmed.network.pubnet.from_dir`
+    `pubmed.storage.default_data_dir`
+    `pubmed.network.pubnet.save_graph`
+    `pubmed.network.pubnet.load_graph`
     """
 
     ext = file_name.split(".")[-1]

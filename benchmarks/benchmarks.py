@@ -3,7 +3,7 @@ import os
 import numpy as np
 
 import pubnet
-from pubnet import from_dir
+from pubnet import PubNet
 
 from ._utils import mktmpdir, simple_pubnet
 
@@ -90,8 +90,8 @@ class TimeNetwork:
         data_dir = os.path.join(
             working_dir[0 : working_dir.rindex("/")], "tests/data"
         )
-        self.other_pubnet = pubnet.from_dir(
-            graph_name="simple_pubnet",
+        self.other_pubnet = PubNet.load_graph(
+            "simple_pubnet",
             nodes=("Author", "Publication"),
             edges=(("Publication", "Author"),),
             data_dir=data_dir,
@@ -174,7 +174,7 @@ class TimeReadIO:
         if scope in ("edge", "graph"):
             edges = (("Author", "Publication"),)
 
-        self.simple_pubnet.to_dir(
+        self.simple_pubnet.save_graph(
             self.graph_name,
             nodes=nodes,
             edges=edges,
@@ -186,8 +186,8 @@ class TimeReadIO:
         self._data_dir_obj.cleanup()
 
     def time_read_graph(self, representation, *args):
-        new = from_dir(
-            graph_name=self.graph_name,
+        new = PubNet.load_graph(
+            self.graph_name,
             data_dir=self.data_dir,
             representation=representation,
         )
@@ -217,7 +217,7 @@ class TimeWriteIO:
         self._data_dir_obj.cleanup()
 
     def time_write_graph(self, representation, n_nodes, scope, formats):
-        self.simple_pubnet.to_dir(
+        self.simple_pubnet.save_graph(
             self.graph_name,
             nodes=self.nodes,
             edges=self.edges,
@@ -302,8 +302,8 @@ class MemNetwork:
         data_dir = os.path.join(
             working_dir[0 : working_dir.rindex("/")], "tests/data"
         )
-        self.other_pubnet = pubnet.from_dir(
-            graph_name="simple_pubnet",
+        self.other_pubnet = PubNet.load_graph(
+            "simple_pubnet",
             nodes=("Author", "Publication"),
             edges=(("Publication", "Author"),),
             data_dir=data_dir,
@@ -386,7 +386,7 @@ class MemReadIO:
         if scope in ("edge", "graph"):
             edges = (("Author", "Publication"),)
 
-        self.simple_pubnet.to_dir(
+        self.simple_pubnet.save_graph(
             self.graph_name,
             nodes=nodes,
             edges=edges,
@@ -398,8 +398,8 @@ class MemReadIO:
         self._data_dir_obj.cleanup()
 
     def peakmem_read_graph(self, representation, *args):
-        new = from_dir(
-            graph_name=self.graph_name,
+        new = PubNet.load_graph(
+            self.graph_name,
             data_dir=self.data_dir,
             representation=representation,
         )
@@ -429,7 +429,7 @@ class MemWriteIO:
         self._data_dir_obj.cleanup()
 
     def peakmem_write_graph(self, representation, n_nodes, scope, formats):
-        self.simple_pubnet.to_dir(
+        self.simple_pubnet.save_graph(
             self.graph_name,
             nodes=self.nodes,
             edges=self.edges,

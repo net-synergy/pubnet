@@ -121,8 +121,8 @@ class IgraphEdge(Edge):
         See also
         --------
         `pubnet.storage.default_data_dir`
-        `pubnet.network.PubNet.to_dir`
-        `pubnet.network.from_dir`
+        `pubnet.network.PubNet.save_graph`
+        `pubnet.network.load_graph`
         """
 
         ext = {"binary": "ig", "gzip": "tsv.gz", "tsv": "tsv"}

@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 
 import pubnet
+from pubnet import PubNet
 
 from ._test_fixtures import author_node, other_pubnet, simple_pubnet
 
@@ -20,7 +21,7 @@ class TestEdges:
             assert simple_pubnet[e].end_id in expected
 
     def test_handles_swapped_start_and_close_id(self):
-        net = pubnet.from_dir(
+        net = PubNet.load_graph(
             "simple_pubnet",
             ("Publication",),
             (("Publication", "Flippedheaders"),),
@@ -122,7 +123,7 @@ class TestNetwork:
         "ignore:Constructing PubNet object without Publication nodes."
     )
     def test_handles_no_nodes(self):
-        net = pubnet.from_dir(
+        net = PubNet.load_graph(
             "simple_pubnet",
             None,
             (("Publication", "Author"),),
@@ -135,7 +136,7 @@ class TestNetwork:
         assert len(simple_pubnet["Chemical"]) == 0
 
     def test_handles_no_edges(self):
-        net = pubnet.from_dir(
+        net = PubNet.load_graph(
             "simple_pubnet",
             ("Publication",),
             None,

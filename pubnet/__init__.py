@@ -12,6 +12,6 @@ and edge types), selecting a node or edge from a graph, and running graph
 algorithms on selected edges or nodes.
 """
 
-from pubnet.network import from_data, from_dir
+from pubnet.network import PubNet
 
-__all__ = ["from_dir", "from_data"]
+__all__ = ["PubNet"]

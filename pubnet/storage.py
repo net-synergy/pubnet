@@ -243,7 +243,7 @@ def list_graphs(data_dir: Optional[str] = None) -> List[str]:
     return os.listdir(data_dir)
 
 
-def delete_graph(graph_name: str, data_dir: Optional[str] = None) -> None:
+def delete_graph(name: str, data_dir: Optional[str] = None) -> None:
     """Delete the graph from `data_dir`"""
 
     def delete_directory(path):
@@ -251,10 +251,8 @@ def delete_graph(graph_name: str, data_dir: Optional[str] = None) -> None:
             os.unlink(os.path.join(path, f))
         os.rmdir(path)
 
-    path = graph_path(graph_name, data_dir)
+    path = graph_path(name, data_dir)
     if os.path.isdir(path):
         delete_directory(path)
     else:
-        raise NotADirectoryError(
-            f"{graph_name} not found in {default_data_dir()}"
-        )
+        raise NotADirectoryError(f"{name} not found in {default_data_dir()}")

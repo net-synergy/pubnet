@@ -1,5 +1,6 @@
-import pubnet
 import pytest
+
+from pubnet import PubNet
 
 __all__ = ["simple_pubnet", "other_pubnet", "author_node"]
 
@@ -7,7 +8,7 @@ __all__ = ["simple_pubnet", "other_pubnet", "author_node"]
 @pytest.fixture(params=["numpy", "igraph"])
 def simple_pubnet(request):
     try:
-        return pubnet.from_dir(
+        return PubNet.load_graph(
             "simple_pubnet",
             ("Author", "Publication"),
             (("Publication", "Author"), ("Publication", "Chemical")),
@@ -20,7 +21,7 @@ def simple_pubnet(request):
 
 @pytest.fixture
 def other_pubnet():
-    return pubnet.from_dir(
+    return PubNet.load_graph(
         "other_pubnet",
         ("Chemical",),
         (("Publication", "Chemical"),),
