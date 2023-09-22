@@ -11,7 +11,6 @@ import re
 from functools import reduce
 from warnings import warn
 
-import matplotlib.pyplot as plt
 import numpy as np
 from pandas.core.dtypes.common import is_list_like
 
@@ -386,6 +385,8 @@ class PubNet:
         fname : str, optional
             The name of the figure.
         """
+
+        import matplotlib.pyplot as plt
 
         distribution = self[self.root, node_type].distribution(node_type)
         names = self[node_type][node_feature].to_numpy()
