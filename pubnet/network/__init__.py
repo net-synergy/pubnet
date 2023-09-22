@@ -18,7 +18,7 @@ from pandas.core.dtypes.common import is_list_like
 from pubnet.network import _edge, _node
 from pubnet.network._edge._base import Edge
 from pubnet.network._node import Node
-from pubnet.storage import default_data_dir, delete_graph, list_graphs
+from pubnet.storage import delete_graph, graph_path, list_graphs
 
 __all__ = ["from_dir", "from_data", "edge_key", "PubNet", "Edge", "Node"]
 
@@ -651,10 +651,7 @@ class PubNet:
         nodes = [n for n in nodes if self[n].shape[0] > 0]
         edges = [e for e in edges if len(self[e]) > 0]
 
-        if data_dir:
-            save_dir = os.path.join(data_dir, graph_name)
-        else:
-            save_dir = default_data_dir(graph_name)
+        save_dir = graph_path(graph_name, data_dir)
 
         if overwrite:
             delete_graph(graph_name, data_dir)
@@ -768,11 +765,7 @@ def from_dir(
 
     assert isinstance(edges, (str, tuple)), 'Edges must be a tuple or "all".'
 
-    if data_dir:
-        save_dir = os.path.join(data_dir, graph_name)
-    else:
-        save_dir = default_data_dir(graph_name)
-
+    save_dir = graph_path(graph_name, data_dir)
     if not os.path.exists(save_dir):
         raise FileNotFoundError(
             f'Graph "{graph_name}" not found. Available graphs are: \n\t%s'

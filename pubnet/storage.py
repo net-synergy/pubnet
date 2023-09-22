@@ -18,6 +18,7 @@ import appdirs
 from pubnet import __name__ as pkg_name
 
 __all__ = [
+    "graph_path",
     "set_default_cache_dir",
     "set_default_data_dir",
     "default_cache_dir",
@@ -30,18 +31,70 @@ __all__ = [
 
 _APPAUTHOR = "net_synergy"
 
-pkg_cache_dir = ""
-pkg_data_dir = ""
+_cache_dir = ""
+_data_dir = ""
+
+
+def graph_path(name: str, data_dir: Optional[str] = None) -> str:
+    """Return the path to a graph with the given name.
+
+    Arguments
+    ---------
+    name : str
+        The name of the graph
+    data_dir : str, optional
+        The location of the graph, defaults to the `default_data_dir`
+
+    Returns
+    -------
+    path : str
+        The absolute path to the requested graph.
+
+    See also
+    --------
+    `default_data_dir`
+    """
+
+    if data_dir is None:
+        return default_data_dir(name)
+
+    return os.path.join(data_dir, name)
 
 
 def set_default_cache_dir(new_path: str = "") -> None:
-    global pkg_cache_dir
-    pkg_cache_dir = new_path
+    """Change the location of the default cache directory.
+
+    Arguments
+    ---------
+    new_path : str
+        The path to the default cache directory.
+
+    See also
+    --------
+    `default_cache_dir`
+    `set_default_data_dir`
+    """
+
+    global _cache_dir
+    _cache_dir = new_path
 
 
 def set_default_data_dir(new_path: str = "") -> None:
-    global pkg_data_dir
-    pkg_data_dir = new_path
+    """Change the location of the default data directory.
+
+    Arguments
+    ---------
+    new_path : str
+        The path to the default cache directory.
+
+    See also
+    --------
+    `default_data_dir`
+    `set_default_cache_dir`
+    """
+
+    global _data_dir
+    _data_dir = new_path
 
 
 def default_cache_dir(path: str = "") -> str:
@@ -72,8 +125,8 @@ def default_cache_dir(path: str = "") -> str:
     `set_cache_dir`, `default_data_dir`
     """
 
-    if pkg_cache_dir:
-        cache_dir = pkg_cache_dir
+    if _cache_dir:
+        cache_dir = _cache_dir
     else:
         cache_dir = appdirs.user_cache_dir(pkg_name, _APPAUTHOR)
 
@@ -113,8 +166,8 @@ def default_data_dir(path: str = "") -> str:
     `set_cache_dir`, `default_data_dir`
     """
 
-    if pkg_data_dir:
-        data_dir = pkg_data_dir
+    if _data_dir:
+        data_dir = _data_dir
     else:
         data_dir = appdirs.user_data_dir(pkg_name, _APPAUTHOR)
 
@@ -198,11 +251,7 @@ def delete_graph(graph_name: str, data_dir: Optional[str] = None) -> None:
             os.unlink(os.path.join(path, f))
         os.rmdir(path)
 
-    if data_dir:
-        path = os.path.join(data_dir, graph_name)
-    else:
-        path = default_data_dir(graph_name)
-
+    path = graph_path(graph_name, data_dir)
     if os.path.isdir(path):
         delete_directory(path)
     else:
