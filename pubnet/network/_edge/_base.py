@@ -2,7 +2,7 @@
 
 from locale import LC_ALL, setlocale
 from math import ceil, log10
-from typing import Iterable, Optional, Sequence, Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray

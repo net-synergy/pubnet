@@ -6,7 +6,7 @@ import re
 import numpy as np
 import pandas as pd
 
-from pubnet.data import default_data_dir
+from pubnet.storage import default_data_dir
 
 __all__ = ["Node", "from_file", "from_data"]
 
@@ -182,8 +182,7 @@ class Node:
     def to_file(
         self,
         node_name,
-        graph_name,
-        data_dir=default_data_dir(),
+        data_dir,
         format="tsv",
     ):
         """
@@ -196,10 +195,8 @@ class Node:
         ----------
         node_name : str
             Name of the `Node`.
-        graph_name : str
-            Name of the graph to store it under.
-        data_dir : str, optional
-            Where the graph is stored. If empty, uses `default_data_dir`.
+        data_dir : str
+            Where the graph is stored.
         format : {"tsv", "gzip", "binary"}, default "tsv"
             the format to save the file as. The binary format uses apache
             feather.
@@ -218,7 +215,6 @@ class Node:
 
         ext = {"binary": "feather", "gzip": "tsv.gz", "tsv": "tsv"}
         file_name = node_name + "_nodes." + ext[format]
-        data_dir = os.path.join(data_dir, graph_name)
 
         if not os.path.exists(data_dir):
             os.mkdir(data_dir)

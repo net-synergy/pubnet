@@ -2,12 +2,13 @@
 
 import os
 
+import igraph as ig
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from scipy import sparse as sp
 from scipy.stats import rankdata
 
-from pubnet.data import default_data_dir
+from pubnet.storage import default_data_dir
 
 from ._base import Edge
 
@@ -85,17 +86,13 @@ class NumpyEdge(Edge):
         # reserved for id == 0.
         return dist[1:]
 
-    def to_file(
-        self, edge_name, graph_name, data_dir=default_data_dir(), format="tsv"
-    ):
+    def to_file(self, edge_name, data_dir, format="tsv"):
         """Save the edge to disk.
 
         Arguments
         ---------
         edge_name : str, the name of the edge.
-        graph_name : str, directory under `data_dir` to store the graph's
-            files.
-        data_dir : str, where to store graphs (default `default_data_dir`)
+        data_dir : str, where to store graphs.
         format : str {"tsv", "gzip", "binary"}, how to store the edge (default
             "tsv"). Binary uses numpy's npy format.
 
@@ -105,13 +102,12 @@ class NumpyEdge(Edge):
 
         See also
         --------
-        `pubnet.data.default_data_dir`
+        `pubnet.storage.default_data_dir`
         `pubnet.network.PubNet.to_dir`
         `pubnet.network.from_dir`
         """
 
         ext = {"binary": "npy", "gzip": "tsv.gz", "tsv": "tsv"}
-        data_dir = os.path.join(data_dir, graph_name)
 
         if not os.path.exists(data_dir):
             os.mkdir(data_dir)
@@ -150,10 +146,10 @@ class NumpyEdge(Edge):
         )
 
     def as_array(self):
-        return self._data
+        return self._data.copy()
 
     def as_igraph(self):
-        return self._data.copy()
+        return ig.Graph(self._data)
 
     def _calc_overlap(self):
         """Calculate the neighbor overlap between nodes.

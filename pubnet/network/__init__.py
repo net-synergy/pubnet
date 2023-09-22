@@ -15,12 +15,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pandas.core.dtypes.common import is_list_like
 
-from pubnet import data
-from pubnet.data import default_data_dir
-from pubnet.data import list as list_graphs
 from pubnet.network import _edge, _node
 from pubnet.network._edge._base import Edge
 from pubnet.network._node import Node
+from pubnet.storage import default_data_dir, delete_graph, list_graphs
 
 __all__ = ["from_dir", "from_data", "edge_key", "PubNet", "Edge", "Node"]
 
@@ -574,7 +572,7 @@ class PubNet:
         graph_name,
         nodes="all",
         edges="all",
-        data_dir=default_data_dir(),
+        data_dir=None,
         format="tsv",
         overwrite=False,
     ):
@@ -584,14 +582,11 @@ class PubNet:
         Parameters
         ----------
         graph_name : str
-            What to name the graph (the directory under `data_dir` to store
-            files.).
+            What to name the graph.
         nodes : tuple or "all", default "all"
             A list of nodes to save. If "all", see notes.
         edges : tuple or "all", default "all"
             A list of edges to save. If "all", see notes.
-        data_dir : str, default `default_data_dir`
-            Location to save the graph.
         format : {"tsv", "gzip", "binary"}, default "tsv"
             How to store the files.
         overwrite : bool, default False
@@ -602,7 +597,8 @@ class PubNet:
             to perform the deletion as late as possible to prevent errors from
             erasing data without replacing it, but it may be safer to save the
             data to a new location then delete the graph (with
-            `pubnet.data.delete`) after confirming the save worked correctly.
+            `pubnet.storage.delete_graph`) after confirming the save worked
+            correctly.
 
         Notes
         -----
@@ -613,7 +609,7 @@ class PubNet:
 
         See also
         --------
-        `pubnet.data.default_data_dir`
+        `pubnet.storage.default_data_dir`
         `from_dir`
         """
 
@@ -655,22 +651,27 @@ class PubNet:
         nodes = [n for n in nodes if self[n].shape[0] > 0]
         edges = [e for e in edges if len(self[e]) > 0]
 
+        if data_dir:
+            save_dir = os.path.join(data_dir, graph_name)
+        else:
+            save_dir = default_data_dir(graph_name)
+
         if overwrite:
-            data.delete(graph_name, data_dir)
+            delete_graph(graph_name, data_dir)
 
         for n in nodes:
-            self[n].to_file(n, graph_name, data_dir=data_dir, format=format)
+            self[n].to_file(n, save_dir, format=format)
 
         for e in edges:
-            self[e].to_file(e, graph_name, data_dir=data_dir, format=format)
+            self[e].to_file(e, save_dir, format=format)
 
 
 def from_dir(
-    graph_name=None,
+    graph_name,
     nodes="all",
     edges="all",
     root="Publication",
-    data_dir=default_data_dir(),
+    data_dir=None,
     representation="numpy",
 ):
     """
@@ -681,17 +682,14 @@ def from_dir(
 
     Parameters
     ----------
-    graph_name : str, optional
-       Name of the graph. If not provided, assume files are directly under
-       `data_dir`.
+    graph_name : str
+       Name of the graph, stored in `default_data_dir`.
     nodes : touple or "all", (default "all")
        A list of nodes to read in.
     edges : touple or "all", (default "all")
        A list of pairs of nodes to read in.
     root : str, default "Publication
        The root node.
-    data_dir : str,  default `default_data_dir`
-       Location of the files.
     representation : {"numpy", "igraph"}, default "numpy"
        Which edge backend representation to use.
 
@@ -701,7 +699,7 @@ def from_dir(
 
     Notes
     -----
-    Node files are exepected to be in the form f"{node_name}_nodes.tsv" and
+    Node files are expected to be in the form f"{node_name}_nodes.tsv" and
     edge files should be of the form f"{node_1_name}_{node_2_name}_edges.tsv".
     The order nodes are supplied for edges does not matter, it will look for
     files in both orders.
@@ -711,13 +709,13 @@ def from_dir(
     it will only look for files containing the provided nodes. For example, if
     nodes = ("Author", "Publication", "Chemical") and edges = "all", it will
     only look for edges between those nodes and would ignore files such as
-    "Publication_Desrciptor_edges.tsv".
+    "Publication_Descriptor_edges.tsv".
 
     Graph name is the name of the directory the graph specific files are found
     in. It is added to the end of the `data_dir`, so it is equivalent to
     passing `os.path.join(data_dir, graph_name)` for `data_dir`, the reason to
-    seperate them is to easily store multiple seperate graphs in the
-    `defalut_data_dir` by only passing a `graph_name` and leaving `data_dir` as
+    separate them is to easily store multiple separate graphs in the
+    `default_data_dir` by only passing a `graph_name` and leaving `data_dir` as
     default.
 
     Examples
@@ -731,19 +729,19 @@ def from_dir(
     See also
     --------
     `pubnet.network.PubNet`
-    `pubnet.data.default_data_dir`
+    `pubnet.storage.default_data_dir`
     `from_data`
     """
 
     def node_files_containing(nodes):
-        all_node_files = _node_files(data_dir)
+        all_node_files = _node_files(save_dir)
         if nodes == "all":
             nodes = all_node_files.keys()
 
         return {n: _node_file_path(n, all_node_files) for n in nodes}
 
     def edge_files_containing(nodes):
-        all_edge_files = _edge_files(data_dir)
+        all_edge_files = _edge_files(save_dir)
         if nodes == "all":
             edges = all_edge_files.keys()
         else:
@@ -770,13 +768,15 @@ def from_dir(
 
     assert isinstance(edges, (str, tuple)), 'Edges must be a tuple or "all".'
 
-    if graph_name is not None:
-        data_dir = os.path.join(data_dir, graph_name)
+    if data_dir:
+        save_dir = os.path.join(data_dir, graph_name)
+    else:
+        save_dir = default_data_dir(graph_name)
 
-    if not os.path.exists(data_dir):
+    if not os.path.exists(save_dir):
         raise FileNotFoundError(
             f'Graph "{graph_name}" not found. Available graphs are: \n\t%s'
-            % "\n\t".join(g for g in list_graphs())
+            % "\n\t".join(g for g in list_graphs(data_dir))
         )
 
     node_files = {}
@@ -789,19 +789,19 @@ def from_dir(
         node_files = node_files_containing(edge_nodes)
         for node_pair in edges:
             edge_files[edge_key(*node_pair)] = _edge_file_path(
-                *node_pair, data_dir
+                *node_pair, save_dir
             )
     elif edges == "all":
         for node in nodes:
-            node_files[node] = _node_file_path(node, data_dir)
+            node_files[node] = _node_file_path(node, save_dir)
         edge_files = edge_files_containing(nodes)
     else:
         for node in nodes:
-            node_files[node] = _node_file_path(node, data_dir)
+            node_files[node] = _node_file_path(node, save_dir)
 
         for node_pair in edges:
             edge_files[edge_key(*node_pair)] = _edge_file_path(
-                *node_pair, data_dir
+                *node_pair, save_dir
             )
 
     nodes = {}
