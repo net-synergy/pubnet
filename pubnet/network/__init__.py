@@ -176,12 +176,21 @@ class PubNet:
 
         self._edge_data[name] = data
 
+    def get_node(self, name) -> Node:
+        return self._node_data[name]
+
+    def get_edge(self, name, node_2=None) -> Edge:
+        if node_2 is not None:
+            name = edge_key(name, node_2)
+
+        return self._edge_data[name]
+
     def __getitem__(self, args):
         if isinstance(args, str):
             if args in self.nodes:
-                return self._node_data[args]
+                return self.get_node(args)
             elif args in self.edges:
-                return self._edge_data[args]
+                return self.get_edge(args)
             else:
                 raise KeyError(args)
 
@@ -189,7 +198,7 @@ class PubNet:
             args[0], str
         )
         if (is_string_array or isinstance(args, tuple)) and (len(args) == 2):
-            return self._edge_data[edge_key(*args)]
+            return self.get_edge(*args)
 
         if isinstance(args, np.ndarray | range):
             return self._slice(args)
@@ -212,7 +221,11 @@ class PubNet:
             return new_pubnet
 
         for key in self.edges:
-            self[key].set_data(self[key][self[key].isin(self.root, root_ids)])
+            self.get_edge(key).set_data(
+                self.get_edge(key)[
+                    self.get_edge(key).isin(self.root, root_ids)
+                ]
+            )
 
         for key in self.nodes:
             if len(self[key]) == 0:
@@ -222,7 +235,7 @@ class PubNet:
                 node_ids = root_ids
             else:
                 try:
-                    edge = self[key, self.root]
+                    edge = self.get_edge(key, self.root)
                 except KeyError:
                     continue
 
@@ -231,8 +244,10 @@ class PubNet:
 
                 node_ids = edge[key]
 
-            node_locs = self[key][self[key].id].isin(node_ids)
-            self[key].set(self[key][node_locs])
+            node_locs = self.get_node(key)[self.get_node(key).id].isin(
+                node_ids
+            )
+            self.get_node(key).set_data(self.get_node(key)[node_locs])
 
         return self
 
