@@ -60,8 +60,9 @@ class PubNet:
     `from_data`
     """
 
-    def __init__(self, nodes=None, edges=None, root="Publication"):
+    def __init__(self, nodes=None, edges=None, root="Publication", name=None):
         self.root = root
+        self.name = name
 
         if nodes is None:
             nodes = {}
@@ -570,7 +571,7 @@ class PubNet:
 
     def save_graph(
         self,
-        name,
+        name=None,
         nodes="all",
         edges="all",
         data_dir=None,
@@ -583,7 +584,7 @@ class PubNet:
         Parameters
         ----------
         name : str
-            What to name the graph.
+            What to name the graph. If not set, defaults to graph's name.
         nodes : tuple or "all", default "all"
             A list of nodes to save. If "all", see notes.
         edges : tuple or "all", default "all"
@@ -654,6 +655,15 @@ class PubNet:
         nodes = [n for n in nodes if self[n].shape[0] > 0]
         edges = [e for e in edges if len(self[e]) > 0]
 
+        if name is None:
+            name = self.name
+
+        if name is None:
+            raise ValueError(
+                "Name must be set but is None. Pass a name to the"
+                "function call or set the graphs name."
+            )
+
         save_dir = graph_path(name, data_dir)
 
         if overwrite:
@@ -684,7 +694,7 @@ class PubNet:
         Parameters
         ----------
         name : str
-        Name of the graph, stored in `default_data_dir`.
+        Name of the graph, stored in `default_data_dir` or `data_dir`.
         nodes : touple or "all", (default "all")
         A list of nodes to read in.
         edges : touple or "all", (default "all")
@@ -814,17 +824,24 @@ class PubNet:
         for name, file in edge_files.items():
             edges[name] = _edge.from_file(file, representation)
 
-        return PubNet(root=root, nodes=nodes, edges=edges)
+        return PubNet(root=root, nodes=nodes, edges=edges, name=name)
 
     @classmethod
     def from_data(
-        cls, nodes=None, edges=None, root="Publication", representation="numpy"
+        cls,
+        name=None,
+        nodes=None,
+        edges=None,
+        root="Publication",
+        representation="numpy",
     ):
         """
         Make PubNet object from given nodes and edges.
 
         Parameters
         ----------
+        name : str
+            What to name the graph. This is used for saving graphs.
         nodes : Dict, optional
             A dictionary of node data of the form {name: DataFrame}.
         edges : Dict, optional
@@ -852,7 +869,7 @@ class PubNet:
                 data, start_id, end_id, representation
             )
 
-        return PubNet(root=root, nodes=nodes, edges=edges)
+        return PubNet(root=root, nodes=nodes, edges=edges, name=name)
 
 
 def edge_key(node_1, node_2):
