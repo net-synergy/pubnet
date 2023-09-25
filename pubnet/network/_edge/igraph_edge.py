@@ -13,7 +13,7 @@ class IgraphEdge(Edge):
         super().__init__(*args)
         self.representation = "igraph"
 
-    def set(self, new_data) -> None:
+    def set_data(self, new_data) -> None:
         # Treating the graph as directed prevents igraph from flipping the
         # columns so source is always the data in column 1 and target
         # column 2.

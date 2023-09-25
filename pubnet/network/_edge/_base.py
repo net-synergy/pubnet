@@ -40,7 +40,7 @@ class Edge:
     """
 
     def __init__(self, data, start_id: str, end_id: str, dtype: type) -> None:
-        self.set(data)
+        self.set_data(data)
         self._n_iter = 0
         self.start_id = start_id
         self.end_id = end_id
@@ -50,7 +50,7 @@ class Edge:
         # Weighted not implemented yet
         self.isweighted = False
 
-    def set(self, new_data) -> None:
+    def set_data(self, new_data) -> None:
         """Replace the edge's data with a new array."""
         self._data = new_data
 

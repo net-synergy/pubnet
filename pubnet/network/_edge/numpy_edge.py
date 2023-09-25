@@ -36,7 +36,7 @@ class NumpyEdge(Edge):
 
         return self._data[row, col]
 
-    def set(self, new_data):
+    def set_data(self, new_data):
         if isinstance(new_data, np.ndarray):
             self._data = new_data
         else:

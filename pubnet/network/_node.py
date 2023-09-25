@@ -128,7 +128,7 @@ class Node:
     def __len__(self):
         return len(self._data)
 
-    def set(self, new_data):
+    def set_data(self, new_data):
         self._data = new_data
 
     @property

@@ -200,7 +200,7 @@ class PubNet:
             return new_pubnet
 
         for key in self.edges:
-            self[key].set(self[key][self[key].isin(self.root, root_ids)])
+            self[key].set_data(self[key][self[key].isin(self.root, root_ids)])
 
         for key in self.nodes:
             if len(self[key]) == 0:
