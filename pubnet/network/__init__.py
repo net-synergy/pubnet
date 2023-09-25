@@ -94,6 +94,18 @@ class PubNet:
 
         self.id_dtype = _edge.id_dtype
 
+    def select_root(self, new_root) -> None:
+        """Switch the graph's root node."""
+
+        if new_root in self.nodes:
+            self.root = new_root
+
+        available_nodes = "\n\t".join(self.nodes)
+        raise KeyError(
+            f"{new_root} not in graphs set of nodes.\nMust be one of"
+            f"\n\t{available_nodes}"
+        )
+
     def add_node(self, name, data):
         """
         Add a new node to the network.
