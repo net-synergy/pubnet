@@ -65,10 +65,8 @@ class Edge:
 
         def sep(src: int) -> str:
             return (
-                1
-                + ceil((len(self.start_id) + 0.01) / 8)
-                - ceil((log10(src) + 1.01) / 8)
-            ) * "\t"
+                1 + (8 * ceil(len(self.start_id) / 8)) - ceil((log10(src) + 1))
+            ) * " "
 
         if len(self) < 15:
             first_edges = len(self)
