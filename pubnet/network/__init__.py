@@ -14,7 +14,7 @@ from warnings import warn
 import numpy as np
 from pandas.core.dtypes.common import is_list_like
 
-from pubnet.network import _edge, _node
+from pubnet.network import _edge
 from pubnet.network._edge._base import Edge
 from pubnet.network._node import Node
 from pubnet.storage import delete_graph, graph_path, list_graphs
@@ -129,9 +129,9 @@ class PubNet:
 
         self.nodes.append(name)
         if isinstance(data, str):
-            data = _node.from_file(data)
-        elif data is None or not isinstance(data, _node.Node):
-            data = _node.from_data(data)
+            data = Node.from_file(data)
+        elif data is None or not isinstance(data, Node):
+            data = Node.from_data(data)
 
         self._node_data[name] = data
 
@@ -846,7 +846,7 @@ class PubNet:
         nodes = {}
         edges = {}
         for name, file in node_files.items():
-            nodes[name] = _node.from_file(file)
+            nodes[name] = Node.from_file(file)
 
         for name, file in edge_files.items():
             edges[name] = _edge.from_file(file, representation)
@@ -888,7 +888,7 @@ class PubNet:
         """
 
         for name, data in nodes:
-            nodes[name] = _node.from_data(data)
+            nodes[name] = Node.from_data(data)
 
         for name, data in edges:
             start_id, end_id = edge_parts(name)

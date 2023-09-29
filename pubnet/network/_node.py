@@ -6,9 +6,7 @@ import re
 import numpy as np
 import pandas as pd
 
-from pubnet.storage import default_data_dir
-
-__all__ = ["Node", "from_file", "from_data"]
+__all__ = ["Node"]
 
 
 class Node:
@@ -230,75 +228,75 @@ class Node:
             f"{self.id}:ID({node_name})", self.id, regex=False
         )
 
+    @classmethod
+    def from_file(cls, file_name, *args):
+        """
+        Read a `Node` in from a file
 
-def from_file(file_name, *args):
-    """
-    Read a `Node` in from a file
+        The node will be saved to a graph (a directory in the `data_dir` where
+        the graphs nodes and edges are stored).
 
-    The node will be saved to a graph (a directory in the `data_dir` where
-    the graphs nodes and edges are stored).
+        Parameters
+        ----------
+        node_name : str
+            Name of the `Node`.
+        graph_name : str
+            Name of the graph to store it under.
+        data_dir : str, optional
+            Where the graph is stored.
 
-    Parameters
-    ----------
-    node_name : str
-        Name of the `Node`.
-    graph_name : str
-        Name of the graph to store it under.
-    data_dir : str, optional
-        Where the graph is stored.
+        Returns
+        -------
+        node : Node
 
-    Returns
-    -------
-    node : Node
+        Other Parameters
+        ----------------
+        *args
+            All other args are passed forward to the `Node` class.
 
-    Other Parameters
-    ----------------
-    *args
-        All other args are passed forward to the `Node` class.
+        See Also
+        --------
+        `Node`
+        `Node.to_file`
+        `from_data`
+        `pubmed.storage.default_data_dir`
+        `pubmed.network.pubnet.save_graph`
+        `pubmed.network.pubnet.load_graph`
+        """
 
-    See Also
-    --------
-    `Node`
-    `Node.to_file`
-    `from_data`
-    `pubmed.storage.default_data_dir`
-    `pubmed.network.pubnet.save_graph`
-    `pubmed.network.pubnet.load_graph`
-    """
+        ext = file_name.split(".")[-1]
+        if ext == "feather":
+            data = pd.read_feather(file_name)
+        else:
+            data = pd.read_csv(
+                file_name,
+                delimiter="\t",
+            )
+        return cls.from_data(data, *args)
 
-    ext = file_name.split(".")[-1]
-    if ext == "feather":
-        data = pd.read_feather(file_name)
-    else:
-        data = pd.read_csv(
-            file_name,
-            delimiter="\t",
-        )
-    return from_data(data, *args)
+    @classmethod
+    def from_data(cls, data, *args):
+        """
+        Create a node from a DataFrame.
 
+        Paramaters
+        ----------
+        Data, DataFrame
 
-def from_data(data, *args):
-    """
-    Create a node from a DataFrame.
+        Returns
+        -------
+        node, Node
 
-    Paramaters
-    ----------
-    Data, DataFrame
+        Other Parameters
+        ----------------
+        *args
+            All other args are passed forward to the `Node` class.
 
-    Returns
-    -------
-    node, Node
+        See Also
+        --------
+        `Node`
+        `from_file` : read a `Node` from file.
+        `Node.to_file` : save a `Node` to file.
+        """
 
-    Other Parameters
-    ----------------
-    *args
-        All other args are passed forward to the `Node` class.
-
-    See Also
-    --------
-    `Node`
-    `from_file` : read a `Node` from file.
-    `Node.to_file` : save a `Node` to file.
-    """
-
-    return Node(data, *args)
+        return Node(data, *args)
