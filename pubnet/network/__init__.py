@@ -180,6 +180,12 @@ class PubNet:
         return self._node_data[name]
 
     def get_edge(self, name, node_2=None) -> Edge:
+        if isinstance(name, tuple):
+            if len(name) > 2 or node_2 is not None:
+                raise KeyError("Too many keys. Accepts at most two keys.")
+
+            name, node_2 = name
+
         if node_2 is not None:
             name = edge_key(name, node_2)
 
@@ -244,9 +250,7 @@ class PubNet:
 
                 node_ids = edge[key]
 
-            node_locs = self.get_node(key)[self.get_node(key).id].isin(
-                node_ids
-            )
+            node_locs = np.isin(self.get_node(key).index, node_ids)
             self.get_node(key).set_data(self.get_node(key)[node_locs])
 
         return self
@@ -292,10 +296,10 @@ class PubNet:
         `PubNet.ids_containing`
         """
 
-        nodes = self[node_type]
+        nodes = self.get_node(node_type)
         node_idx = func(nodes)
 
-        node_ids = nodes[nodes.id][node_idx]
+        node_ids = nodes.index[node_idx]
         root_idx = self[self.root, node_type].isin(node_type, node_ids)
 
         root_ids = self[self.root, node_type][self.root][root_idx]
@@ -345,16 +349,16 @@ class PubNet:
         ), f"Steps most be a positive integer, got {steps} instead."
 
         if is_list_like(value):
-            func = lambda x: x[node_feature].isin(value)
+            func = lambda x: np.isin(x.feature_vector(node_feature), value)
         else:
-            func = lambda x: x[node_feature] == value
+            func = lambda x: x.feature_vector(node_feature) == value
 
         root_ids = self.ids_where(node_type, func)
         while steps > 1:
             node_ids = self[self.root, node_type][node_type][
                 self[self.root, node_type].isin(self.root, root_ids)
             ]
-            func = lambda x: x[x.id].isin(node_ids)
+            func = lambda x: np.isin(x.index, node_ids)
             root_ids = self.ids_where(node_type, func)
             steps -= 1
 
@@ -697,10 +701,10 @@ class PubNet:
             delete_graph(name, data_dir)
 
         for n in nodes:
-            self[n].to_file(n, save_dir, format=format)
+            self.get_node(n).to_file(n, save_dir, format=format)
 
         for e in edges:
-            self[e].to_file(e, save_dir, format=format)
+            self.get_edge(e).to_file(e, save_dir, format=format)
 
     @classmethod
     def load_graph(

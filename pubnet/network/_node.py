@@ -43,30 +43,14 @@ class Node:
     shape
     """
 
-    def __init__(self, data, id="detect", features="all"):
+    def __init__(self, data, id=None, name=None, features="all"):
         self._data = data
+        self.id = id
+        self.name = name
         if data is None:
             self._data = pd.DataFrame()
             self.id = None
             return
-
-        if id == "detect":
-            id_regex = r"(\w+):ID\((\w+)\)"
-            id_column = list(
-                filter(
-                    lambda x: x is not None,
-                    [re.search(id_regex, name) for name in data.columns],
-                )
-            )[0]
-            self.id = id_column.groups()[0]
-            self._data.columns = self._data.columns.str.replace(
-                id_column.group(), self.id, regex=False
-            )
-        else:
-            assert (
-                id in data.columns
-            ), f"Id not in data.\n\tAvailable features: {data.columns}."
-            self.id = id
 
         if features != "all":
             assert isinstance(
@@ -88,15 +72,18 @@ class Node:
         return repr(self._data)
 
     def __getitem__(self, key):
+        def genNode(new_data):
+            return Node(pd.DataFrame(new_data), self.id, self.name)
+
         if key is None:
             # When node is empty, self.id == None.
-            return pd.Series(dtype=pd.Float64Dtype)
+            return genNode(pd.Series(dtype=pd.Float64Dtype))
 
         if isinstance(key, str):
-            return self._data[key]
+            return genNode(self._data[key])
 
         if isinstance(key, int):
-            return self._data[self._data.columns[key]]
+            return genNode(self._data[self._data.columns[key]])
 
         if isinstance(key, tuple):
             assert (
@@ -111,23 +98,35 @@ class Node:
             rows = key
             columns = slice(None)
 
+        if isinstance(columns, int):
+            new_data = self._data[self._data.columns[columns]]
+        else:
+            new_data = self._data
+
+        if isinstance(rows, int):
+            return genNode(new_data[rows : (rows + 1)])
+
         if not isinstance(rows, slice):
-            is_mask = len(rows) > 1
-            if is_mask and isinstance(rows, pd.Series):
+            if isinstance(rows, pd.Series):
                 is_mask = isinstance(rows.values[0], (bool, np.bool_))
             else:
-                is_mask = is_mask and isinstance(rows[0], (bool, np.bool_))
+                is_mask = isinstance(rows[0], (bool, np.bool_))
 
             if is_mask:
-                return self._data[columns].loc[rows]
+                return genNode(new_data.loc[rows])
 
-        return self._data[columns][rows]
+        return genNode(new_data[rows])
 
     def __len__(self):
         return len(self._data)
 
     def set_data(self, new_data):
-        self._data = new_data
+        if isinstance(new_data, Node):
+            self._data = new_data._data
+        elif isinstance(new_data, pd.DataFrame):
+            self._data = new_data
+        else:
+            raise ValueError("New data is not a dataframe")
 
     @property
     def features(self):
@@ -143,6 +142,13 @@ class Node:
     def shape(self):
         """A tuple with number of rows and number of features."""
         return self._data.shape
+
+    @property
+    def index(self):
+        return np.asarray(self._data.index)
+
+    def feature_vector(self, name):
+        return self._data[name].values
 
     def get_random(self, n=1, seed=None):
         """
@@ -172,7 +178,9 @@ class Node:
             return False
 
         for feature in self.features:
-            if not (self[feature].values == node_2[feature].values).all():
+            if not (
+                self.feature_vector(feature) == node_2.feature_vector(feature)
+            ).all():
                 return False
 
         return True
@@ -207,9 +215,7 @@ class Node:
         `pubmed.network.pubnet.load_graph`
         """
 
-        self._data.columns = self._data.columns.str.replace(
-            self.id, f"{self.id}:ID({node_name})", regex=False
-        )
+        # self._data.index.name = f"{self.id}:ID({node_name})"
 
         ext = {"binary": "feather", "gzip": "tsv.gz", "tsv": "tsv"}
         file_name = node_name + "_nodes." + ext[format]
@@ -219,14 +225,14 @@ class Node:
 
         file_path = os.path.join(data_dir, file_name)
         if format == "binary":
-            self._data.to_feather(file_path)
+            self._data.reset_index().to_feather(file_path)
         else:
             # `to_csv` will infer whether to use gzip based on extension.
-            self._data.to_csv(file_path, sep="\t", index=False)
+            self._data.to_csv(
+                file_path, sep="\t", index_label=f"{self.id}:ID({self.name})"
+            )
 
-        self._data.columns = self._data.columns.str.replace(
-            f"{self.id}:ID({node_name})", self.id, regex=False
-        )
+        # self._data.index.name = self.id
 
     @classmethod
     def from_file(cls, file_name, *args):
@@ -267,12 +273,19 @@ class Node:
         ext = file_name.split(".")[-1]
         if ext == "feather":
             data = pd.read_feather(file_name)
+            data.set_index(data.columns[0], inplace=True)
+            name_regex = r"(\w+)_(\w+).feather"
+            name = re.search(name_regex, file_name).groups()[0]
         else:
-            data = pd.read_csv(
-                file_name,
-                delimiter="\t",
-            )
-        return cls.from_data(data, *args)
+            data = pd.read_table(file_name, index_col=0, memory_map=True)
+            id_regex = r"(\w+):ID\((\w+)\)"
+            id_column = re.search(id_regex, data.index.name)
+            data.index.name = id_column.groups()[0]
+            name = id_column.groups()[1]
+
+        id = data.index.name
+
+        return cls.from_data(data, id, name, *args)
 
     @classmethod
     def from_data(cls, data, *args):
