@@ -8,6 +8,8 @@ from typing import Optional, Tuple
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from pubnet.network._utils import edge_gen_file_name, edge_gen_header, edge_key
+
 
 class Edge:
     """
@@ -39,8 +41,11 @@ class Edge:
     shape
     """
 
-    def __init__(self, data, start_id: str, end_id: str, dtype: type) -> None:
+    def __init__(
+        self, data, name: str, start_id: str, end_id: str, dtype: type
+    ) -> None:
         self.set_data(data)
+        self.name = name
         self._n_iter = 0
         self.start_id = start_id
         self.end_id = end_id
@@ -180,14 +185,18 @@ class Edge:
         raise AbstractMethodError(self)
 
     def to_file(
-        self, edge_name: str, data_dir: str, format: str = "tsv"
+        self,
+        data_dir: str,
+        edge_name: Optional[str | tuple[str, str]] = None,
+        format: str = "tsv",
     ) -> None:
         """Save the edge to disk.
 
         Arguments
         ---------
-        edge_name : str, the name of the edge.
         data_dir : str, where to store the graph.
+        edge_name : str, optional
+            the name of the edge. If None, use the edge's name.
         format : str {"tsv", "gzip", "binary"}, how to store the edge (default
             "tsv"). Binary uses numpy's npy format.
 
@@ -202,6 +211,9 @@ class Edge:
         `pubnet.network.load_graph`
         """
 
+        if edge_name is None:
+            edge_name = self.name
+
         ext = {"gzip": "tsv.gz", "tsv": "tsv"}
 
         if self.representation == "igraph":
@@ -213,13 +225,12 @@ class Edge:
             os.mkdir(data_dir)
 
         if isinstance(edge_name, tuple):
-            n1, n2 = edge_name[:2]
-        else:
-            n1, n2 = edge_name.split("-")
+            edge_name = edge_key(*edge_name)
 
-        file_name = os.path.join(data_dir, f"{n1}_{n2}_edges.{ext[format]}")
-        header_name = os.path.join(data_dir, f"{n1}_{n2}_edge_header.tsv")
-        header = f":START_ID({self.start_id})\t:END_ID({self.end_id})"
+        file_name, header_name = edge_gen_file_name(
+            edge_name, ext[format], data_dir
+        )
+        header = edge_gen_header(self.start_id, self.end_id)
 
         if format == "binary":
             self._to_binary(file_name, header_name, header)

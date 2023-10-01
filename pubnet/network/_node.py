@@ -1,10 +1,16 @@
 """Class for storing node data."""
 
 import os
-import re
 
 import numpy as np
 import pandas as pd
+
+from pubnet.network._utils import (
+    node_file_parts,
+    node_gen_file_name,
+    node_gen_id_label,
+    node_id_label_parts,
+)
 
 __all__ = ["Node"]
 
@@ -187,7 +193,6 @@ class Node:
 
     def to_file(
         self,
-        node_name,
         data_dir,
         format="tsv",
     ):
@@ -199,8 +204,6 @@ class Node:
 
         Parameters
         ----------
-        node_name : str
-            Name of the `Node`.
         data_dir : str
             Where the graph is stored.
         format : {"tsv", "gzip", "binary"}, default "tsv"
@@ -215,24 +218,21 @@ class Node:
         `pubmed.network.pubnet.load_graph`
         """
 
-        # self._data.index.name = f"{self.id}:ID({node_name})"
-
         ext = {"binary": "feather", "gzip": "tsv.gz", "tsv": "tsv"}
-        file_name = node_name + "_nodes." + ext[format]
+        file_path = node_gen_file_name(self.name, ext[format], data_dir)
 
         if not os.path.exists(data_dir):
             os.mkdir(data_dir)
 
-        file_path = os.path.join(data_dir, file_name)
         if format == "binary":
             self._data.reset_index().to_feather(file_path)
         else:
             # `to_csv` will infer whether to use gzip based on extension.
             self._data.to_csv(
-                file_path, sep="\t", index_label=f"{self.id}:ID({self.name})"
+                file_path,
+                sep="\t",
+                index_label=node_gen_id_label(self.id, self.name),
             )
-
-        # self._data.index.name = self.id
 
     @classmethod
     def from_file(cls, file_name, *args):
@@ -244,12 +244,8 @@ class Node:
 
         Parameters
         ----------
-        node_name : str
-            Name of the `Node`.
-        graph_name : str
-            Name of the graph to store it under.
-        data_dir : str, optional
-            Where the graph is stored.
+        file_name : str
+           Path to the file containing the node.
 
         Returns
         -------
@@ -270,18 +266,16 @@ class Node:
         `pubmed.network.pubnet.load_graph`
         """
 
-        ext = file_name.split(".")[-1]
+        name, ext = node_file_parts(file_name)
         if ext == "feather":
             data = pd.read_feather(file_name)
             data.set_index(data.columns[0], inplace=True)
-            name_regex = r"(\w+)_(\w+).feather"
-            name = re.search(name_regex, file_name).groups()[0]
         else:
             data = pd.read_table(file_name, index_col=0, memory_map=True)
-            id_regex = r"(\w+):ID\((\w+)\)"
-            id_column = re.search(id_regex, data.index.name)
-            data.index.name = id_column.groups()[0]
-            name = id_column.groups()[1]
+            # Prefer name in header to that in filename if available (but they
+            # *should* be the same).
+            id, name = node_id_label_parts(data.index.name)
+            data.index.name = id
 
         id = data.index.name
 

@@ -56,6 +56,7 @@ class IgraphEdge(Edge):
 
         return IgraphEdge(
             ((eid.source, eid.target) for eid in self._data.es[row].select()),
+            self.name,
             self.start_id,
             self.end_id,
             self.dtype,

@@ -31,7 +31,11 @@ class NumpyEdge(Edge):
                 return self._data[row, :]
             else:
                 return NumpyEdge(
-                    self._data[row, :], self.start_id, self.end_id, self.dtype
+                    self._data[row, :],
+                    self.name,
+                    self.start_id,
+                    self.end_id,
+                    self.dtype,
                 )
 
         return self._data[row, col]

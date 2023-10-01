@@ -24,10 +24,10 @@ class TestEdges:
         net = PubNet.load_graph(
             "simple_pubnet",
             ("Publication",),
-            (("Publication", "Flippedheaders"),),
+            (("Publication", "Flippedheader"),),
             data_dir="tests/data",
         )
-        edges = net["Publication", "Flippedheaders"]
+        edges = net["Publication", "Flippedheader"]
         assert edges[edges.start_id][0] == 2
         assert edges[edges.end_id][0] == 1
 
