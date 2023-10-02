@@ -93,11 +93,13 @@ def from_data(
     Parameters
     ----------
     data : numpy.ndarray, igraph.Graph, pandas.DataFrame
+    name : str
     representation : {"numpy", "igraph"}
     start_id, end_id : str, optional
        The name of the to and from node types. If `data` is a ndarray, must be
        provided. For DataFrames, the IDs can be detected based on the column
        names.
+    dtype : type
 
     Returns
     -------

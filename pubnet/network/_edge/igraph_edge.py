@@ -5,12 +5,14 @@ import igraph as ig
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from pubnet.network._utils import edge_key
+
 from ._base import Edge
 
 
 class IgraphEdge(Edge):
-    def __init__(self, *args):
-        super().__init__(*args)
+    def __init__(self, *args, **keys):
+        super().__init__(*args, **keys)
         self.representation = "igraph"
 
     def set_data(self, new_data) -> None:
@@ -26,10 +28,24 @@ class IgraphEdge(Edge):
     def __getitem__(self, key):
         row, col = self._parse_key(key)
 
+        if isinstance(col, slice):
+            start = col.start
+            stop = col.stop
+
+            if start is None:
+                start = 0
+            if stop is None:
+                stop = 2
+
+            if start == 0 and stop == 2:
+                col = None
+            else:
+                col = start
+
         if self._is_mask(row):
             row = np.arange(len(self))[row]
 
-        if (row is None) and (col is not None):
+        if (row is None) and isinstance(col, int):
             if col == 0:
                 res = (eid.source for eid in self._data.es.select())
             else:
@@ -125,21 +141,48 @@ class IgraphEdge(Edge):
     def as_igraph(self):
         return self._data.copy()
 
-    @property
-    def overlap(self):
-        overlaps = []
-        nodes = self._data.vs.select(NodeType_eq=self.start_id)
-        for i in range(len(nodes)):
-            for j in range(i + 1, len(nodes)):
-                first_node_neighbors = self._data.neighbors(nodes[i])
-                second_node_neighbors = self._data.neighbors(nodes[j])
+    def features(self):
+        """Return a list of the edge's features names."""
+        return list(self._data.es.attribute_names())
 
-                overlap = len(
-                    set(first_node_neighbors).intersection(
-                        second_node_neighbors
-                    )
+    def feature_vector(self, name):
+        self._assert_has_feature(name)
+        return self._data.es[name]
+
+    def add_feature(self, feature, name):
+        """Add a new feature to the edge."""
+        if name in self.features():
+            raise KeyError(f"{name} is already a feature.")
+
+        self._data.es[name] = feature
+
+    def overlap(self, id, weights=None):
+        es = []
+        ovr = []
+        nodes = list(set(self[:, id]))
+        if id == self.start_id:
+            mode = "out"
+        else:
+            mode = "in"
+
+        for i, ni in enumerate(nodes):
+            first_node_neighbors = set(self._data.neighbors(ni, mode=mode))
+            for nj in nodes[i + 1 :]:
+                second_node_neighbors = set(self._data.neighbors(nj))
+
+                n_common = len(
+                    first_node_neighbors.intersection(second_node_neighbors)
                 )
-                if overlap != 0:
-                    overlaps.append([nodes[i]["id"], nodes[j]["id"], overlap])
+                if n_common != 0:
+                    es.append((ni, nj))
+                    ovr.append(n_common)
 
-        return np.asarray(overlaps)
+        new_edge = ig.Graph(es, directed=False)
+        new_edge.es["overlap"] = ovr
+        return IgraphEdge(
+            new_edge,
+            edge_key(id, "Overlap"),
+            start_id=id,
+            end_id=id,
+            dtype=self.dtype,
+        )

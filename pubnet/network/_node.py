@@ -75,7 +75,7 @@ class Node:
         return str(self._data)
 
     def __repr__(self):
-        return repr(self._data)
+        return f"{self.name} nodes\n\n" + repr(self._data)
 
     def __getitem__(self, key):
         def genNode(new_data):

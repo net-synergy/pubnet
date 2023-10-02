@@ -6,6 +6,8 @@ from numpy.typing import ArrayLike, NDArray
 from scipy import sparse as sp
 from scipy.stats import rankdata
 
+from pubnet.network._utils import edge_key
+
 from ._base import Edge
 
 
@@ -15,9 +17,10 @@ class NumpyEdge(Edge):
     Uses arrays to list the non-zero edges in a sparse matrix form.
     """
 
-    def __init__(self, *args):
-        super().__init__(*args)
+    def __init__(self, *args, **keys):
+        super().__init__(*args, **keys)
 
+        self._features = None
         self.representation = "numpy"
 
     def __getitem__(self, key):
@@ -110,35 +113,64 @@ class NumpyEdge(Edge):
     def as_igraph(self):
         return ig.Graph(self._data)
 
-    def _calc_overlap(self):
+    def features(self):
+        """Return a list of the edge's features names."""
+        if self._features is None:
+            return []
+
+        return list(self._features.keys())
+
+    def feature_vector(self, name):
+        self._assert_has_feature(name)
+        return self._features[name]
+
+    def add_feature(self, feature, name):
+        """Add a new feature to the edge."""
+        if name in self.features():
+            raise KeyError(f"{name} is already a feature.")
+
+        if self._features is None:
+            self._features = {name: feature}
+        else:
+            self._features[name] = feature
+
+    def overlap(self, id, weights=None):
         """Calculate the neighbor overlap between nodes.
 
-        For all pairs of nodes in column 0, calculate the number of nodes
+        For all pairs of nodes in the id column, calculate the number of nodes
         both are connected to.
 
-        Attributes
+        Parameters
         ----------
-        self.isweighted : bool, whether self is weighted or
-            unweighted. If weighted, calculate with self._weights
-            otherwise set all weights to 1.
+        id : str
+            The id column to use. In an "Author--Publication" edge set, If id
+            is "Author", overlap will be the number of publications each author
+            has in common with every other author.
+        weights : str, optional
+            If left None, each edge will be counted equally. Otherwise weight
+            edges based on the edge's feature with the provided name. If the
+            edge doesn't have the passed feature, an error will be raised.
 
         Returns
         -------
-        overlap : a three column array with the node ids in the first two
-            columns and the overlap between them in the third, where
-            overlap is a count of the number of neighbors the two nodes
-            have in common.
+        overlap : Edge
+            A new edge set with the same representation as self. The edges will
+            have edges between all nodes with non-zero overlap and it will
+            contain a feature "overlap".
         """
 
         edges = self._data
         data_type = edges.dtype
-        if not self.isweighted:
-            weights = np.ones((edges.shape[0]), dtype=data_type)
+        if weights is None:
+            _weights = np.ones((edges.shape[0]), dtype=data_type)
         else:
-            weights = self._weights
+            self._assert_has_feature(weights)
+            _weights = self._features[weights]
 
+        primary, secondary = self._column_to_indices(id)
         adj = sp.coo_matrix(
-            (weights, (edges[:, 0], edges[:, 1])), dtype=data_type
+            (_weights, (edges[:, primary], edges[:, secondary])),
+            dtype=data_type,
         ).tocsr()
 
         res = adj @ adj.T
@@ -147,7 +179,17 @@ class NumpyEdge(Edge):
             res - sp.diags(res.diagonal(), dtype=data_type, format="csr"),
             format="csr",
         ).tocoo()
-        return np.stack((res.row, res.col, res.data), axis=1)
+
+        new_edge = NumpyEdge(
+            np.stack((res.row, res.col), axis=1),
+            edge_key(id, "Overlap"),
+            start_id=id,
+            end_id=id,
+            dtype=self.dtype,
+        )
+
+        new_edge.add_feature(res.data, "overlap")
+        return new_edge
 
     def _shortest_path(self, target_nodes):
         """Calculate shortest path using Dijkstra's Algorithm.

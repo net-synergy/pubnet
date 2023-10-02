@@ -35,7 +35,6 @@ class TestEdges:
         assert len(simple_pubnet["Author", "Publication"]) == 12
         assert len(simple_pubnet["Chemical", "Publication"]) == 10
 
-    @pytest.mark.skip("Modifying overlap, expect could fail for now.")
     def test_overlap(self, simple_pubnet):
         expected = np.array(
             [
@@ -52,9 +51,18 @@ class TestEdges:
                 [5, 6, 1],
             ]
         )
-        assert np.array_equal(
-            simple_pubnet["Author", "Publication"].overlap, expected
+        publication_overlap = simple_pubnet["Author", "Publication"].overlap(
+            "Publication"
         )
+        actual = np.stack(
+            (
+                publication_overlap.as_array()[:, 0],
+                publication_overlap.as_array()[:, 1],
+                publication_overlap.feature_vector("overlap"),
+            ),
+            axis=1,
+        )
+        assert np.array_equal(actual, expected)
 
 
 class TestNodes:
