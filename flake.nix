@@ -15,15 +15,8 @@
           projectDir = ./.;
           editablePackageSources = { pubnet = ./pubnet; };
           preferWheels = true;
-          extraPackages = (ps:
-            with ps; [
-              ipython
-              python-lsp-server
-              pyls-isort
-              python-lsp-black
-              pylsp-mypy
-            ]);
-          groups = [ "test" "benchmark" ];
+          groups = [ "test" "dev" "benchmark" ];
+          extraPackages = (ps: with ps; [ ipdb ]);
         };
         pubnet = pkgs.poetry2nix.mkPoetryPackages { projectDir = ./.; };
       in {
