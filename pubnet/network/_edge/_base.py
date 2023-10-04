@@ -2,7 +2,6 @@
 
 import os
 from locale import LC_ALL, setlocale
-from math import ceil, log10
 from typing import Any, Optional
 
 import numpy as np
@@ -21,6 +20,8 @@ class Edge:
     ----------
     data : numpy.ndarray, igraph.Graph
         The edges as a list of existing edges.
+    features : dict[str, numpy.ndarray]
+        A dictionary of edge features.
     name : str
         Name of the edge set.
     start_id : str
@@ -40,14 +41,24 @@ class Edge:
         The data type used.
     representation : {"numpy", "igraph"}
         Which representation the edges are stored as.
-    isweighted : bool
+    is_weighted : bool
         Whether the edges are weighted.
     """
 
     def __init__(
-        self, data, name: str, start_id: str, end_id: str, dtype: type
+        self,
+        data,
+        name: str,
+        start_id: str,
+        end_id: str,
+        dtype: type,
+        features: dict[str, NDArray[Any]] = {},
     ) -> None:
         self.set_data(data)
+
+        for feat_name, feat in features.items():
+            self.add_feature(feat, feat_name)
+
         self.name = name
         self._n_iter = 0
         self.start_id = start_id
@@ -62,17 +73,24 @@ class Edge:
     def __str__(self) -> str:
         setlocale(LC_ALL, "")
 
-        n_edges = f"Edge set with {len(self):n} edges\n"
-        columns = f"{self.start_id}\t{self.end_id}"
+        col_names = [
+            f"from: {self.start_id}",
+            f"to: {self.end_id}",
+        ] + self.features()
+        col_len = max(max(len(n) for n in col_names) + 2, 8)
+
+        def align_row(elements):
+            cells = (
+                str(el) + " " * (col_len - len(str(el))) for el in elements
+            )
+            return "".join(cells)
+
+        header = align_row(col_names)
 
         if len(self) == 0:
-            return "Empty edge set\n" + columns
+            return "Empty edge set\n" + header
 
-        def sep(src: int) -> str:
-            return (
-                1 + (8 * ceil(len(self.start_id) / 8)) - ceil((log10(src) + 1))
-            ) * " "
-
+        n_edges = f"Edge set with {len(self):n} edges\n"
         if len(self) < 15:
             first_edges = len(self)
             last_edges = 0
@@ -80,19 +98,18 @@ class Edge:
             first_edges = 5
             last_edges = 5
 
-        edges = "%s" % "\n".join(
-            f"{e[0]}{sep(e[0])}{e[1]}" for e in self[:first_edges].as_array()
+        edges = "\n".join(
+            align_row(line) for line in self[:first_edges].as_array()
         )
         if last_edges > 0:
-            # 101 is three digits so its repr is same length as "..."
-            edges += f"\n...{sep(101)}...\n"
-            edges += "%s" % "\n".join(
-                f"{e[0]}{sep(e[0])}{e[1]}"
-                for e in self[
+            edges += f"\n{align_row(['...'] * len(col_names))}\n"
+            edges += "\n".join(
+                align_row(line)
+                for line in self[
                     len(self) - 1 : len(self) - (last_edges + 1) : -1
                 ].as_array()
             )
-        return "\n".join((n_edges, columns, edges))
+        return "\n".join((n_edges, header, edges))
 
     def __repr__(self) -> str:
         return self.__str__()
@@ -246,7 +263,7 @@ class Edge:
         ext = {"gzip": "tsv.gz", "tsv": "tsv"}
 
         if self.representation == "igraph":
-            ext["binary"] = "ig"
+            ext["binary"] = "pickle"
         elif self.representation == "numpy":
             ext["binary"] = "npy"
 
@@ -259,7 +276,7 @@ class Edge:
         file_name, header_name = edge_gen_file_name(
             edge_name, ext[format], data_dir
         )
-        header = edge_gen_header(self.start_id, self.end_id)
+        header = edge_gen_header(self.start_id, self.end_id, self.features())
 
         if format == "binary":
             self._to_binary(file_name, header_name, header)
@@ -275,9 +292,18 @@ class Edge:
         """Save an edge to a tsv."""
         raise AbstractMethodError(self)
 
+    def get_edgelist(self):
+        raise AbstractMethodError(self)
+
     def as_array(self):
         """Return the edge list as a numpy array"""
-        raise AbstractMethodError(self)
+
+        edges = self.get_edgelist()
+        feats = tuple(
+            np.expand_dims(np.asarray(self.feature_vector(f)), axis=1)
+            for f in self.features()
+        )
+        return np.hstack((edges,) + feats)
 
     def as_igraph(self):
         """Return the edge as an igraph graph"""

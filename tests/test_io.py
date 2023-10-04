@@ -55,3 +55,26 @@ class TestIO:
         )
 
         assert simple_pubnet.isequal(new)
+
+    @pytest.mark.parametrize("format", ["tsv", "gzip", "binary"])
+    def test_graph_reads_writes_features(
+        self, simple_pubnet, tmp_path, format
+    ):
+        simple_pubnet.add_edge(
+            simple_pubnet["Author", "Publication"].overlap("Publication")
+        )
+        simple_pubnet.save_graph(
+            "graph",
+            edges=(("Publication", "Overlap"),),
+            data_dir=tmp_path,
+            format=format,
+        )
+
+        representation = simple_pubnet["Author", "Publication"].representation
+        new = PubNet.load_graph(
+            "graph", data_dir=tmp_path, representation=representation
+        )
+
+        assert simple_pubnet["Publication", "Overlap"].isequal(
+            new["Publication", "Overlap"]
+        )

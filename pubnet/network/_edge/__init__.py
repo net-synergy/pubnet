@@ -2,11 +2,11 @@
 
 import gzip
 import os
-import re
-from typing import Optional
+from typing import Any, Optional
 
 import igraph as ig
 import numpy as np
+from numpy.typing import NDArray
 
 from pubnet.network._utils import (
     edge_file_parts,
@@ -41,14 +41,14 @@ def from_file(file_name: str, representation: str) -> Edge:
 
     name, ext = edge_file_parts(file_name)
 
-    if ext in ("npy", "ig"):
+    if ext in ("npy", "pickle"):
         header_file = edge_gen_file_name(
             name, ext, os.path.split(file_name)[0]
         )[1]
     else:
         header_file = file_name
 
-    if ext in ("tsv", "npy", "ig"):
+    if ext in ("tsv", "npy", "pickle"):
         with open(header_file, "rt") as f:
             header_line = f.readline()
     elif ext == "tsv.gz":
@@ -57,34 +57,42 @@ def from_file(file_name: str, representation: str) -> Edge:
     else:
         raise ValueError(f"Extension {ext} not supported")
 
-    start_id, end_id, flip = edge_header_parts(header_line)
+    start_id, end_id, feature_ids, flip = edge_header_parts(header_line)
 
     if ext == "npy":
         data = np.load(file_name, allow_pickle=True)
-    elif ext == "ig":
+    elif ext == "pickle":
         data = ig.Graph.Read_Pickle(file_name)
     else:
         data = np.genfromtxt(
             file_name,
             # All edge values should be integer IDs.
-            dtype=id_dtype,
             skip_header=1,
         )
 
+    # FIXME: Does not handle if start and end ids are not the first two columns
     if flip:
         data = data[:, [1, 0]]
 
-    return from_data(
-        data, name, representation, start_id=start_id, end_id=end_id
-    )
+    if isinstance(data, np.ndarray) and data.shape[1] > 2:
+        features = {feat: data[:, col] for col, feat in enumerate(feature_ids)}
+        data = data[:, :2]
+    else:  # If data is an igraph.Graph, features are already in the graph
+        features = {}
+
+    if isinstance(data, np.ndarray):
+        data = data.astype(id_dtype)
+
+    return from_data(data, name, features, start_id, end_id, representation)
 
 
 def from_data(
     data,
     name: str,
-    representation: str,
+    features: dict[str, NDArray[Any]] = {},
     start_id: Optional[str] = None,
     end_id: Optional[str] = None,
+    representation: str = "numpy",
     dtype: type = id_dtype,
 ) -> Edge:
     """
@@ -109,7 +117,7 @@ def from_data(
     if start_id is None or end_id is None:
         try:
             columns = data.columns
-            start_id_i, end_id_i, _ = edge_header_parts("\t".join(columns))
+            start_id_i, end_id_i, _, _ = edge_header_parts("\t".join(columns))
         except AttributeError:
             raise ValueError(
                 'Either "start_id" or "end_id" was not provided and cannot be'
@@ -122,4 +130,6 @@ def from_data(
     if end_id is None:
         end_id = end_id_i
 
-    return _edge_class[representation](data, name, start_id, end_id, dtype)
+    return _edge_class[representation](
+        data, name, start_id, end_id, dtype, features=features
+    )

@@ -12,15 +12,15 @@ from ._base import Edge
 
 
 class NumpyEdge(Edge):
-    """An impelmentation of the Edge class that stores edges as numpy arrays.
+    """An implementation of the Edge class that stores edges as numpy arrays.
 
     Uses arrays to list the non-zero edges in a sparse matrix form.
     """
 
     def __init__(self, *args, **keys):
+        self._features = None
         super().__init__(*args, **keys)
 
-        self._features = None
         self.representation = "numpy"
 
     def __getitem__(self, key):
@@ -32,14 +32,16 @@ class NumpyEdge(Edge):
         if col is None:
             if isinstance(row, int):
                 return self._data[row, :]
-            else:
-                return NumpyEdge(
-                    self._data[row, :],
-                    self.name,
-                    self.start_id,
-                    self.end_id,
-                    self.dtype,
-                )
+
+            feats = {f: self.feature_vector(f)[row] for f in self.features()}
+            return NumpyEdge(
+                self._data[row, :],
+                self.name,
+                self.start_id,
+                self.end_id,
+                self.dtype,
+                features=feats,
+            )
 
         return self._data[row, col]
 
@@ -96,7 +98,7 @@ class NumpyEdge(Edge):
 
     def _to_tsv(self, file_name, header):
         # NOTE: IDs should be ints so select integer fmt string but this will
-        # need modification if we add weigthed edges as the weight column(s)
+        # need modification if we add weighted edges as the weight column(s)
         # are likely going to be floats.
         np.savetxt(
             file_name,
@@ -107,11 +109,15 @@ class NumpyEdge(Edge):
             comments="",
         )
 
-    def as_array(self):
+    def get_edgelist(self):
         return self._data.copy()
 
     def as_igraph(self):
-        return ig.Graph(self._data)
+        g = ig.Graph(self._data)
+        for feat in self.features():
+            g.es[feat] = self.feature_vector(feat)
+
+        return g
 
     def features(self):
         """Return a list of the edge's features names."""

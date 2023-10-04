@@ -70,12 +70,14 @@ class IgraphEdge(Edge):
         if isinstance(row, int):
             return (self._data.es[row].source, self._data.es[row].target)
 
+        feats = {f: self.feature_vector(f)[row] for f in self.features()}
         return IgraphEdge(
             ((eid.source, eid.target) for eid in self._data.es[row].select()),
             self.name,
             self.start_id,
             self.end_id,
             self.dtype,
+            features=feats,
         )
 
     def _is_mask(self, arr):
@@ -135,7 +137,7 @@ class IgraphEdge(Edge):
             comments="",
         )
 
-    def as_array(self):
+    def get_edgelist(self):
         return np.asarray(self._data.get_edgelist())
 
     def as_igraph(self):

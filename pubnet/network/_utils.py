@@ -22,14 +22,13 @@ __all__ = [
     "edge_header_parts",
 ]
 
-NODE_PATH_REGEX = r"(?P<node>\w+)_nodes.(?P<ext>[\w\.]+)"
-EDGE_PATH_REGEX = r"(?P<n1>\w+)_(?P<n2>\w+)_edges.(?P<ext>[\w\.]+)"
+NODE_PATH_REGEX = re.compile(r"(?P<node>\w+)_nodes.(?P<ext>[\w\.]+)")
+EDGE_PATH_REGEX = re.compile(r"(?P<n1>\w+)_(?P<n2>\w+)_edges.(?P<ext>[\w\.]+)")
 EDGE_KEY_DELIM = "-"
 
 
 def edge_key(node_1: str, node_2: str) -> str:
-    """
-    Generate a dictionary key for the given pair of nodes.
+    """Generate a dictionary key for the given pair of nodes.
 
     Known future issue:
         If we need directed edges, the order of nodes in the file name
@@ -43,17 +42,21 @@ def edge_key(node_1: str, node_2: str) -> str:
     --------
     `edge_parts` for going in the other direction.
     """
-
     return EDGE_KEY_DELIM.join(sorted((node_1, node_2)))
 
 
-def edge_parts(key: str) -> tuple[str, str]:
+def edge_parts(key: str | tuple[str, str]) -> tuple[str, str]:
     """Break an edge key into its nodes
 
     See also
     --------
     `edge_key` for going in the other direction.
     """
+
+    # Often gets called in places where an edge could be described as a tuple
+    # of nodes or a key, so if already in tuple form, harmlessly pass back.
+    if isinstance(key, tuple):
+        return key
 
     parts = key.split(EDGE_KEY_DELIM)
     if len(parts) != 2:
@@ -200,7 +203,7 @@ def edge_find_file(
     except KeyError:
         raise FileNotFoundError(f"No edge file found for nodes {n1}, {n2}.")
 
-    ext_preference = ["npy", "tsv", "tsv.gz", "ig"]
+    ext_preference = ["npy", "tsv", "tsv.gz", "pickle"]
     for ext in ext_preference:
         try:
             return available_files[ext]
@@ -279,11 +282,25 @@ def node_id_label_parts(label: str) -> tuple[str, str]:
     return (id, namespace)
 
 
-def edge_gen_header(start_id: str, end_id: str) -> str:
-    return f":START_ID({start_id})\t:END_ID({end_id})"
+def edge_gen_header(start_id: str, end_id: str, features: list[str]) -> str:
+    feat_header = "\t" + "\t".join(features) if features else ""
+
+    return f":START_ID({start_id})\t:END_ID({end_id}){feat_header}"
 
 
-def edge_header_parts(header: str) -> tuple[str, str, bool]:
+def edge_header_parts(header: str) -> tuple[str, str, list[str], bool]:
+    """Parse the header for column names.
+
+    Returns
+    -------
+    start_id, end_id : str
+        The node namespace for the start and end of the edges.
+    features : list[str]
+        A (possibly empty) list of feature names.
+    reverse : bool
+        Whether the start and end ids have been reversed. That is if the first
+        column is end and the second column is start.
+    """
     ids = re.findall(r":((?:START)|(?:END))_ID\((\w+)\)", header)
     for id, node in ids:
         if id == "START":
@@ -293,4 +310,9 @@ def edge_header_parts(header: str) -> tuple[str, str, bool]:
 
     reverse = ids[0][0] == "END"
 
-    return (start_id, end_id, reverse)
+    features = [
+        feat
+        for feat in re.findall(r"([\w:()]+)", header)
+        if not (feat.startswith(":START") or feat.startswith(":END"))
+    ]
+    return (start_id, end_id, features, reverse)
