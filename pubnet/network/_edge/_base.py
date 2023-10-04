@@ -1,11 +1,14 @@
 """Abstract base class for storing edges."""
 
+import os
 from locale import LC_ALL, setlocale
 from math import ceil, log10
-from typing import Iterable, Optional, Sequence, Tuple
+from typing import Any, Optional
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
+
+from pubnet.network._utils import edge_gen_file_name, edge_gen_header, edge_key
 
 
 class Edge:
@@ -18,10 +21,14 @@ class Edge:
     ----------
     data : numpy.ndarray, igraph.Graph
         The edges as a list of existing edges.
+    name : str
+        Name of the edge set.
     start_id : str
         Name of edge start node type.
     end_id : str
         Name of edge end node type.
+    dtype : type
+        The type for storing the edge ids.
 
     Attributes
     ----------
@@ -35,21 +42,20 @@ class Edge:
         Which representation the edges are stored as.
     isweighted : bool
         Whether the edges are weighted.
-    shape
     """
 
-    def __init__(self, data, start_id: str, end_id: str, dtype: type) -> None:
-        self.set(data)
+    def __init__(
+        self, data, name: str, start_id: str, end_id: str, dtype: type
+    ) -> None:
+        self.set_data(data)
+        self.name = name
         self._n_iter = 0
         self.start_id = start_id
         self.end_id = end_id
         self.dtype = dtype
         self.representation = "Generic"
 
-        # Weighted not implemented yet
-        self.isweighted = False
-
-    def set(self, new_data) -> None:
+    def set_data(self, new_data) -> None:
         """Replace the edge's data with a new array."""
         self._data = new_data
 
@@ -64,10 +70,8 @@ class Edge:
 
         def sep(src: int) -> str:
             return (
-                1
-                + ceil((len(self.start_id) + 0.01) / 8)
-                - ceil((log10(src) + 1.01) / 8)
-            ) * "\t"
+                1 + (8 * ceil(len(self.start_id) / 8)) - ceil((log10(src) + 1))
+            ) * " "
 
         if len(self) < 15:
             first_edges = len(self)
@@ -80,7 +84,8 @@ class Edge:
             f"{e[0]}{sep(e[0])}{e[1]}" for e in self[:first_edges].as_array()
         )
         if last_edges > 0:
-            edges += "\n.\n.\n.\n"
+            # 101 is three digits so its repr is same length as "..."
+            edges += f"\n...{sep(101)}...\n"
             edges += "%s" % "\n".join(
                 f"{e[0]}{sep(e[0])}{e[1]}"
                 for e in self[
@@ -92,31 +97,38 @@ class Edge:
     def __repr__(self) -> str:
         return self.__str__()
 
-    def _column_to_int(self, key: Optional[str | int]) -> Optional[int]:
-        if key is None:
-            return key
+    def _column_to_indices(self, key: str | int) -> tuple[int, int]:
+        """Return the index for the provided key and the other key."""
 
         if isinstance(key, int):
-            if key not in (0, 1):
+            if key == 0:
+                primary = 0
+                secondary = 1
+            elif key == 1:
+                primary = 1
+                secondary = 0
+            else:
                 raise IndexError(
                     "Index out of range. Column index must be 0 or 1."
                 )
-            return key
-
-        if isinstance(key, str):
+        elif isinstance(key, str):
             if key == self.start_id:
-                return 0
+                primary = 0
+                secondary = 1
             elif key == self.end_id:
-                return 1
+                primary = 1
+                secondary = 0
             else:
                 raise KeyError(
                     f'Key "{key}" not one of "{self.start_id}" or'
                     f' "{self.end_id}".'
                 )
+        else:
+            raise TypeError("Id must be a string or integer.")
 
-        return key
+        return (primary, secondary)
 
-    def _parse_key(self, key) -> Tuple[Optional[int], Optional[int]]:
+    def _parse_key(self, key) -> tuple[Any, Any]:
         """Parse the key used in __getitem__ to determine the correct row and
         column indices."""
 
@@ -138,7 +150,8 @@ class Edge:
         else:
             row_index = key
 
-        col_index = self._column_to_int(col_index)
+        if col_index is not None and not isinstance(col_index, slice):
+            col_index = self._column_to_indices(col_index)[0]
 
         return (row_index, col_index)
 
@@ -171,17 +184,95 @@ class Edge:
         """
         raise AbstractMethodError(self)
 
+    @property
+    def is_weighted(self):
+        """Test if graph is weighted."""
+        return len(self.features) > 0
+
+    def features(self):
+        raise AbstractMethodError(self)
+
+    def feature_vector(self, name):
+        raise AbstractMethodError(self)
+
+    def add_feature(self, feature, name):
+        raise AbstractMethodError(self)
+
+    def _assert_has_feature(self, name: str):
+        if name not in self.features():
+            raise KeyError(
+                f"{name} not in features. Available features:\n\t"
+                + "\t".join(self.features())
+            )
+
     def isequal(self, other):
         """Determine if two edges are equivalent."""
         raise AbstractMethodError(self)
 
     def distribution(self, column):
         """Return the distribution of the nodes in column."""
-
         raise AbstractMethodError(self)
 
-    def to_file(self, edge_name, graph_name, data_dir, format):
-        """Save the edge to disc."""
+    def to_file(
+        self,
+        data_dir: str,
+        edge_name: Optional[str | tuple[str, str]] = None,
+        format: str = "tsv",
+    ) -> None:
+        """Save the edge to disk.
+
+        Arguments
+        ---------
+        data_dir : str, where to store the graph.
+        edge_name : str, optional
+            the name of the edge. If None, use the edge's name.
+        format : str {"tsv", "gzip", "binary"}, how to store the edge (default
+            "tsv"). Binary uses numpy's npy format.
+
+        Returns
+        -------
+        None
+
+        See also
+        --------
+        `pubnet.storage.default_data_dir`
+        `pubnet.network.PubNet.save_graph`
+        `pubnet.network.load_graph`
+        """
+
+        if edge_name is None:
+            edge_name = self.name
+
+        ext = {"gzip": "tsv.gz", "tsv": "tsv"}
+
+        if self.representation == "igraph":
+            ext["binary"] = "ig"
+        elif self.representation == "numpy":
+            ext["binary"] = "npy"
+
+        if not os.path.exists(data_dir):
+            os.mkdir(data_dir)
+
+        if isinstance(edge_name, tuple):
+            edge_name = edge_key(*edge_name)
+
+        file_name, header_name = edge_gen_file_name(
+            edge_name, ext[format], data_dir
+        )
+        header = edge_gen_header(self.start_id, self.end_id)
+
+        if format == "binary":
+            self._to_binary(file_name, header_name, header)
+        else:
+            # `np.savetxt` handles "gz" extensions so nothing extra to do.
+            self._to_tsv(file_name, header)
+
+    def _to_binary(self, file_name, header_name, header):
+        """Save an edge to a binary file type."""
+        raise AbstractMethodError(self)
+
+    def _to_tsv(self, file_name, header):
+        """Save an edge to a tsv."""
         raise AbstractMethodError(self)
 
     def as_array(self):
@@ -192,13 +283,9 @@ class Edge:
         """Return the edge as an igraph graph"""
         raise AbstractMethodError(self)
 
-    @property
-    def overlap(self):
+    def overlap(self, id: str, weights: Optional[str]):
         """Pairwise number of neighbors nodes have in common."""
-        if not hasattr(self, "_overlap"):
-            setattr(self, "_overlap", self._calc_overlap())
-
-        return self._overlap
+        raise AbstractMethodError(self)
 
     def _calc_overlap(self):
         raise AbstractMethodError(self)

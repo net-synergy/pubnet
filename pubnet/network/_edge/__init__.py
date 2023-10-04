@@ -1,10 +1,18 @@
 """Provides classes for storing graph edges as different representations. """
 
 import gzip
+import os
 import re
+from typing import Optional
 
 import igraph as ig
 import numpy as np
+
+from pubnet.network._utils import (
+    edge_file_parts,
+    edge_gen_file_name,
+    edge_header_parts,
+)
 
 from ._base import Edge
 from .igraph_edge import IgraphEdge
@@ -31,30 +39,25 @@ def from_file(file_name: str, representation: str) -> Edge:
     that node's ID column.
     """
 
-    ext = file_name.split(".")[-1]
+    name, ext = edge_file_parts(file_name)
 
     if ext in ("npy", "ig"):
-        header_file = re.sub(
-            r"(?:edges)\.(?:\w+)", "edge_header.tsv", file_name
-        )
+        header_file = edge_gen_file_name(
+            name, ext, os.path.split(file_name)[0]
+        )[1]
     else:
         header_file = file_name
 
     if ext in ("tsv", "npy", "ig"):
         with open(header_file, "rt") as f:
             header_line = f.readline()
-    elif ext == "gz":
+    elif ext == "tsv.gz":
         with gzip.open(header_file, "rt") as f:
             header_line = f.readline()
     else:
         raise ValueError(f"Extension {ext} not supported")
 
-    ids = re.findall(r":((?:START)|(?:END))_ID\((\w+)\)", header_line)
-    for id, node in ids:
-        if id == "START":
-            start_id = node
-        elif id == "END":
-            end_id = node
+    start_id, end_id, flip = edge_header_parts(header_line)
 
     if ext == "npy":
         data = np.load(file_name, allow_pickle=True)
@@ -68,17 +71,20 @@ def from_file(file_name: str, representation: str) -> Edge:
             skip_header=1,
         )
 
-    if ids[0][0] == "END":
+    if flip:
         data = data[:, [1, 0]]
 
-    return from_data(data, representation, start_id=start_id, end_id=end_id)
+    return from_data(
+        data, name, representation, start_id=start_id, end_id=end_id
+    )
 
 
 def from_data(
     data,
+    name: str,
     representation: str,
-    start_id: str | None = None,
-    end_id: str | None = None,
+    start_id: Optional[str] = None,
+    end_id: Optional[str] = None,
     dtype: type = id_dtype,
 ) -> Edge:
     """
@@ -87,46 +93,33 @@ def from_data(
     Parameters
     ----------
     data : numpy.ndarray, igraph.Graph, pandas.DataFrame
+    name : str
     representation : {"numpy", "igraph"}
     start_id, end_id : str, optional
        The name of the to and from node types. If `data` is a ndarray, must be
        provided. For DataFrames, the IDs can be detected based on the column
        names.
+    dtype : type
 
     Returns
     -------
     Edge
     """
+
     if start_id is None or end_id is None:
         try:
             columns = data.columns
+            start_id_i, end_id_i, _ = edge_header_parts("\t".join(columns))
         except AttributeError:
-            columns = None
-
-    if (start_id is None) and (columns is not None):
-        start_id_i = list(
-            filter(
-                lambda x: x is not None,
-                [re.search(r":START_ID\((\w+)\)", name) for name in columns],
-            )
-        )[0]
-
-        if start_id_i is not None:
-            start_id = start_id_i.groups()[0]
-
-    if (end_id is None) and (columns is not None):
-        end_id_i = list(
-            filter(
-                lambda x: x is not None,
-                [re.search(r":END_ID\((\w+)\)", name) for name in columns],
-            )
-        )[0]
-        if end_id_i is not None:
-            end_id = end_id_i.groups()[0]
-
-        if start_id is None or end_id is None:
-            raise TypeError(
-                "Missing required keyword argument: 'start_id' or 'end_id'"
+            raise ValueError(
+                'Either "start_id" or "end_id" was not provided and cannot be'
+                " inferred by column names."
             )
 
-    return _edge_class[representation](data, start_id, end_id, dtype)
+    if start_id is None:
+        start_id = start_id_i
+
+    if end_id is None:
+        end_id = end_id_i
+
+    return _edge_class[representation](data, name, start_id, end_id, dtype)

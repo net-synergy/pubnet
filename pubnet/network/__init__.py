@@ -7,24 +7,26 @@ A graph is made up of a list of node and a list of edges.
 
 import copy
 import os
-import re
-from functools import reduce
+from typing import Optional
 from warnings import warn
 
-import matplotlib.pyplot as plt
 import numpy as np
 from pandas.core.dtypes.common import is_list_like
 
-from pubnet import data
-from pubnet.data import default_data_dir
-from pubnet.data import list as list_graphs
-from pubnet.network import _edge, _node
+from pubnet.network import _edge
 from pubnet.network._edge._base import Edge
 from pubnet.network._node import Node
+from pubnet.network._utils import (
+    edge_files_containing,
+    edge_find_file,
+    edge_key,
+    edge_list_files,
+    edge_parts,
+    node_files_containing,
+)
+from pubnet.storage import delete_graph, graph_path, list_graphs
 
-__all__ = ["from_dir", "from_data", "edge_key", "PubNet", "Edge", "Node"]
-
-EDGE_KEY_DELIM = "-"
+__all__ = ["edge_key", "PubNet", "Edge", "Node"]
 
 
 class PubNet:
@@ -54,41 +56,41 @@ class PubNet:
 
     Notes
     -----
-    Use `from_dir` to construct a PubNet object instead of initializing
+    Use `load_graph` to construct a PubNet object instead of initializing
     directly.
 
     See also
     --------
-    `from_dir`
+    `load_graph`
     `from_data`
     """
 
-    def __init__(self, nodes=None, edges=None, root="Publication"):
+    def __init__(self, nodes=None, edges=None, root="Publication", name=None):
         self.root = root
+        self.name = name
 
         if nodes is None:
-            nodes = {}
+            nodes = []
         if edges is None:
-            edges = {}
+            edges = []
 
         self._node_data = {}
         self._edge_data = {}
         self.nodes = []
         self.edges = []
 
-        for name, data in nodes.items():
-            self.add_node(name, data)
+        for node in nodes:
+            self.add_node(node)
 
-        for name, data in edges.items():
-            self.add_edge(name, data)
+        for edge in edges:
+            self.add_edge(edge)
 
-        edge_nodes = reduce(lambda a, n: a + edge_parts(n), self.edges, [])
-        missing_nodes = filter(lambda n: n not in self.nodes, edge_nodes)
+        edge_nodes = {n for e in self.edges for n in edge_parts(e)}
 
-        for name in missing_nodes:
-            self.add_node(name, None)
+        for name in edge_nodes - set(self.nodes):
+            self.add_node(None, name)
 
-        if self.root not in nodes:
+        if self.root not in self.nodes:
             warn(
                 f"Constructing PubNet object without {self.root} nodes. "
                 "This will limit the functionality of the data type."
@@ -96,17 +98,30 @@ class PubNet:
 
         self.id_dtype = _edge.id_dtype
 
-    def add_node(self, name, data):
+    def select_root(self, new_root) -> None:
+        """Switch the graph's root node."""
+
+        if new_root in self.nodes:
+            self.root = new_root
+
+        available_nodes = "\n\t".join(self.nodes)
+        raise KeyError(
+            f"{new_root} not in graphs set of nodes.\nMust be one of"
+            f"\n\t{available_nodes}"
+        )
+
+    def add_node(self, data, name=None):
         """
         Add a new node to the network.
 
         Parameters
         ----------
-        name : str
-            Name of the node.
         data : str
             Node, or pandas.DataFrame, the data this can be in the form of a
             file path, a DataFrame or an already constructed Node.
+        name : str, optional
+            Name of the node. If None, use the data's name if available,
+            otherwise raises an error.
 
         See also
         --------
@@ -114,29 +129,42 @@ class PubNet:
         `PubNet.drop`
         """
 
+        if isinstance(data, str):
+            data = Node.from_file(data)
+        elif data is None or not isinstance(data, Node):
+            data = Node.from_data(data)
+
+        if name is None:
+            try:
+                name = data.name
+            except AttributeError:
+                raise ValueError(
+                    "Data does not provide a name. Name must be supplied."
+                )
+
         if name in self.nodes:
             raise ValueError(f"The node type {name} is already in network.")
 
         self.nodes.append(name)
-        if isinstance(data, str):
-            data = _node.from_file(data)
-        elif data is None or not isinstance(data, _node.Node):
-            data = _node.from_data(data)
-
         self._node_data[name] = data
 
-    def add_edge(self, name, data, representation="numpy", **keys):
+    def add_edge(
+        self,
+        data,
+        name=None,
+        representation="numpy",
+        **keys,
+    ) -> None:
         """
         Add a new edge set to the network.
 
         Parameters
         ----------
-        name : str, tuple
-            Name of the node pair (see `edge_key` for generating
-            the name). If tuple, should be a pair of node types.
         data : str, Edge, np.ndarray
             The data in the form of a file path, an array or an already
             constructed edge.
+        name : str, optional
+            Name of the node pair. If none, uses the data's name.
         representation : {"numpy", "igraph"}, default "numpy"
             The backend representation used for storing the edge.
         start_id : str, optional
@@ -152,26 +180,48 @@ class PubNet:
         `PubNet.drop`
         """
 
-        if isinstance(name, tuple):
+        if isinstance(data, str):
+            data = _edge.from_file(data, representation)
+        elif not isinstance(data, _edge.Edge):
+            data = _edge.from_data(data, **keys, representation=representation)
+
+        if name is None:
+            try:
+                name = data.name
+            except AttributeError:
+                raise ValueError(
+                    "Name not supplied by data. Need to supply a name."
+                )
+        elif isinstance(name, tuple):
             name = edge_key(*name)
 
         if name in self.edges:
             raise ValueError(f"The edge {name} is already in the network.")
 
         self.edges.append(name)
-        if isinstance(data, str):
-            data = _edge.from_file(data, representation)
-        elif not isinstance(data, _edge.Edge):
-            data = _edge.from_data(data, **keys, representation=representation)
-
         self._edge_data[name] = data
+
+    def get_node(self, name) -> Node:
+        return self._node_data[name]
+
+    def get_edge(self, name, node_2=None) -> Edge:
+        if isinstance(name, tuple):
+            if len(name) > 2 or node_2 is not None:
+                raise KeyError("Too many keys. Accepts at most two keys.")
+
+            name, node_2 = name
+
+        if node_2 is not None:
+            name = edge_key(name, node_2)
+
+        return self._edge_data[name]
 
     def __getitem__(self, args):
         if isinstance(args, str):
             if args in self.nodes:
-                return self._node_data[args]
+                return self.get_node(args)
             elif args in self.edges:
-                return self._edge_data[args]
+                return self.get_edge(args)
             else:
                 raise KeyError(args)
 
@@ -179,7 +229,7 @@ class PubNet:
             args[0], str
         )
         if (is_string_array or isinstance(args, tuple)) and (len(args) == 2):
-            return self._edge_data[edge_key(*args)]
+            return self.get_edge(*args)
 
         if isinstance(args, np.ndarray | range):
             return self._slice(args)
@@ -202,7 +252,11 @@ class PubNet:
             return new_pubnet
 
         for key in self.edges:
-            self[key].set(self[key][self[key].isin(self.root, root_ids)])
+            self.get_edge(key).set_data(
+                self.get_edge(key)[
+                    self.get_edge(key).isin(self.root, root_ids)
+                ]
+            )
 
         for key in self.nodes:
             if len(self[key]) == 0:
@@ -212,7 +266,7 @@ class PubNet:
                 node_ids = root_ids
             else:
                 try:
-                    edge = self[key, self.root]
+                    edge = self.get_edge(key, self.root)
                 except KeyError:
                     continue
 
@@ -221,8 +275,8 @@ class PubNet:
 
                 node_ids = edge[key]
 
-            node_locs = self[key][self[key].id].isin(node_ids)
-            self[key].set(self[key][node_locs])
+            node_locs = np.isin(self.get_node(key).index, node_ids)
+            self.get_node(key).set_data(self.get_node(key)[node_locs])
 
         return self
 
@@ -256,7 +310,7 @@ class PubNet:
 
         Examples
         --------
-        >>> net = from_dir(graph_name="author_net", root="Publication")
+        >>> net = PubNet.load_graph(name="author_net", root="Publication")
         >>> publication_ids = net.ids_where(
         ...     "Author",
         ...     lambda x: x["LastName" == "Smith"]
@@ -267,10 +321,10 @@ class PubNet:
         `PubNet.ids_containing`
         """
 
-        nodes = self[node_type]
+        nodes = self.get_node(node_type)
         node_idx = func(nodes)
 
-        node_ids = nodes[nodes.id][node_idx]
+        node_ids = nodes.index[node_idx]
         root_idx = self[self.root, node_type].isin(node_type, node_ids)
 
         root_ids = self[self.root, node_type][self.root][root_idx]
@@ -320,16 +374,16 @@ class PubNet:
         ), f"Steps most be a positive integer, got {steps} instead."
 
         if is_list_like(value):
-            func = lambda x: x[node_feature].isin(value)
+            func = lambda x: np.isin(x.feature_vector(node_feature), value)
         else:
-            func = lambda x: x[node_feature] == value
+            func = lambda x: x.feature_vector(node_feature) == value
 
         root_ids = self.ids_where(node_type, func)
         while steps > 1:
             node_ids = self[self.root, node_type][node_type][
                 self[self.root, node_type].isin(self.root, root_ids)
             ]
-            func = lambda x: x[x.id].isin(node_ids)
+            func = lambda x: np.isin(x.index, node_ids)
             root_ids = self.ids_where(node_type, func)
             steps -= 1
 
@@ -388,6 +442,8 @@ class PubNet:
         fname : str, optional
             The name of the figure.
         """
+
+        import matplotlib.pyplot as plt
 
         distribution = self[self.root, node_type].distribution(node_type)
         names = self[node_type][node_feature].to_numpy()
@@ -569,12 +625,12 @@ class PubNet:
 
         return list(filter(lambda key: key not in self.nodes, nodes))
 
-    def to_dir(
+    def save_graph(
         self,
-        graph_name,
+        name=None,
         nodes="all",
         edges="all",
-        data_dir=default_data_dir(),
+        data_dir=None,
         format="tsv",
         overwrite=False,
     ):
@@ -583,15 +639,14 @@ class PubNet:
 
         Parameters
         ----------
-        graph_name : str
-            What to name the graph (the directory under `data_dir` to store
-            files.).
+        name : str
+            What to name the graph. If not set, defaults to graph's name.
         nodes : tuple or "all", default "all"
             A list of nodes to save. If "all", see notes.
         edges : tuple or "all", default "all"
             A list of edges to save. If "all", see notes.
-        data_dir : str, default `default_data_dir`
-            Location to save the graph.
+        data_dir : str, optional
+            Where to save the graph, defaults to the default data directory.
         format : {"tsv", "gzip", "binary"}, default "tsv"
             How to store the files.
         overwrite : bool, default False
@@ -602,7 +657,8 @@ class PubNet:
             to perform the deletion as late as possible to prevent errors from
             erasing data without replacing it, but it may be safer to save the
             data to a new location then delete the graph (with
-            `pubnet.data.delete`) after confirming the save worked correctly.
+            `pubnet.storage.delete_graph`) after confirming the save worked
+            correctly.
 
         Notes
         -----
@@ -613,8 +669,8 @@ class PubNet:
 
         See also
         --------
-        `pubnet.data.default_data_dir`
-        `from_dir`
+        `pubnet.storage.default_data_dir`
+        `load_graph`
         """
 
         def all_edges_containing(nodes):
@@ -655,320 +711,188 @@ class PubNet:
         nodes = [n for n in nodes if self[n].shape[0] > 0]
         edges = [e for e in edges if len(self[e]) > 0]
 
+        if name is None:
+            name = self.name
+
+        if name is None:
+            raise ValueError(
+                "Name must be set but is None. Pass a name to the"
+                "function call or set the graphs name."
+            )
+
+        save_dir = graph_path(name, data_dir)
+
         if overwrite:
-            data.delete(graph_name, data_dir)
+            delete_graph(name, data_dir)
 
         for n in nodes:
-            self[n].to_file(n, graph_name, data_dir=data_dir, format=format)
+            self.get_node(n).to_file(save_dir, format=format)
 
         for e in edges:
-            self[e].to_file(e, graph_name, data_dir=data_dir, format=format)
+            self.get_edge(e).to_file(save_dir, format=format)
 
+    @classmethod
+    def load_graph(
+        cls,
+        name: str,
+        nodes: Optional[str | tuple[str, ...]] = "all",
+        edges: Optional[str | tuple[tuple[str, str], ...]] = "all",
+        root: str = "Publication",
+        data_dir: Optional[str] = None,
+        representation: str = "numpy",
+    ):
+        """
+        Collect all node and edge files in data_dir and use them to make a
+        PubNet object.
 
-def from_dir(
-    graph_name=None,
-    nodes="all",
-    edges="all",
-    root="Publication",
-    data_dir=default_data_dir(),
-    representation="numpy",
-):
-    """
-    Collect all node and edge files in data_dir and use them to make a
-    PubNet object.
+        See `PubNet` for more information about parameters.
 
-    See `PubNet` for more information about parameters.
+        Parameters
+        ----------
+        name : str
+        Name of the graph, stored in `default_data_dir` or `data_dir`.
+        nodes : tuple or "all", (default "all")
+        A list of nodes to read in.
+        edges : tuple or "all", (default "all")
+        A list of pairs of nodes to read in.
+        root : str, default "Publication
+        The root node.
+        data_dir : str, optional
+        Where the graph is saved, defaults to default data directory.
+        representation : {"numpy", "igraph"}, default "numpy"
+        Which edge backend representation to use.
 
-    Parameters
-    ----------
-    graph_name : str, optional
-       Name of the graph. If not provided, assume files are directly under
-       `data_dir`.
-    nodes : touple or "all", (default "all")
-       A list of nodes to read in.
-    edges : touple or "all", (default "all")
-       A list of pairs of nodes to read in.
-    root : str, default "Publication
-       The root node.
-    data_dir : str,  default `default_data_dir`
-       Location of the files.
-    representation : {"numpy", "igraph"}, default "numpy"
-       Which edge backend representation to use.
+        Returns
+        -------
+        A PubNet object.
 
-    Returns
-    -------
-    A PubNet object.
+        Notes
+        -----
+        Node files are expected to be in the form f"{node_name}_nodes.tsv" and
+        edge files should be of the form
+        f"{node_1_name}_{node_2_name}_edges.tsv". The order nodes are supplied
+        for edges does not matter, it will look for files in both orders.
 
-    Notes
-    -----
-    Node files are exepected to be in the form f"{node_name}_nodes.tsv" and
-    edge files should be of the form f"{node_1_name}_{node_2_name}_edges.tsv".
-    The order nodes are supplied for edges does not matter, it will look for
-    files in both orders.
+        If nodes or edges is "all" it will look for all files in the directory
+        that match the above file patterns. When one is "all" but the other is
+        a list, it will only look for files containing the provided nodes. For
+        example, if nodes = ("Author", "Publication", "Chemical") and edges =
+        "all", it will only look for edges between those nodes and would ignore
+        files such as "Publication_Descriptor_edges.tsv".
 
-    If nodes or edges is "all" it will look for all files in the directory that
-    match the above file patterns. When one is "all" but the other is a list,
-    it will only look for files containing the provided nodes. For example, if
-    nodes = ("Author", "Publication", "Chemical") and edges = "all", it will
-    only look for edges between those nodes and would ignore files such as
-    "Publication_Desrciptor_edges.tsv".
+        Graph name is the name of the directory the graph specific files are
+        found in. It is added to the end of the `data_dir`, so it is equivalent
+        to passing `os.path.join(data_dir, name)` for `data_dir`, the reason to
+        separate them is to easily store multiple separate graphs in the
+        `default_data_dir` by only passing a `name` and leaving `data_dir` as
+        default.
 
-    Graph name is the name of the directory the graph specific files are found
-    in. It is added to the end of the `data_dir`, so it is equivalent to
-    passing `os.path.join(data_dir, graph_name)` for `data_dir`, the reason to
-    seperate them is to easily store multiple seperate graphs in the
-    `defalut_data_dir` by only passing a `graph_name` and leaving `data_dir` as
-    default.
+        Examples
+        --------
+        >>> net = pubnet.load_graph(
+        ...     "author_net"
+        ...     ("Author", "Publication"),
+        ...     (("Author", "Publication"), ("Publication", "Chemical")),
+        ... )
 
-    Examples
-    --------
-    >>> net = pubnet.from_dir(
-    ...     "author_net"
-    ...     ("Author", "Publication"),
-    ...     (("Author", "Publication"), ("Publication", "Chemical")),
-    ... )
+        See also
+        --------
+        `pubnet.network.PubNet`
+        `pubnet.storage.default_data_dir`
+        `from_data`
+        """
 
-    See also
-    --------
-    `pubnet.network.PubNet`
-    `pubnet.data.default_data_dir`
-    `from_data`
-    """
+        if nodes is None:
+            nodes = ()
 
-    def node_files_containing(nodes):
-        all_node_files = _node_files(data_dir)
-        if nodes == "all":
-            nodes = all_node_files.keys()
+        if edges is None:
+            edges = ()
 
-        return {n: _node_file_path(n, all_node_files) for n in nodes}
+        assert isinstance(
+            nodes, (str, tuple)
+        ), "Nodes must be a string or a tuple."
 
-    def edge_files_containing(nodes):
-        all_edge_files = _edge_files(data_dir)
-        if nodes == "all":
-            edges = all_edge_files.keys()
+        assert isinstance(
+            edges, (str, tuple)
+        ), 'Edges must be a tuple or "all".'
+
+        if isinstance(nodes, str) and nodes != "all":
+            raise TypeError('Nodes must be a tuple or "all"')
+        if isinstance(edges, str) and edges != "all":
+            raise TypeError('Edges must be a tuple of tuples or "all"')
+
+        save_dir = graph_path(name, data_dir)
+        if not os.path.exists(save_dir):
+            raise FileNotFoundError(
+                f'Graph "{name}" not found. Available graphs are: \n\t%s'
+                % "\n\t".join(g for g in list_graphs(data_dir))
+            )
+
+        if (nodes == "all") and (edges != "all"):
+            nodes = tuple({n for e in edges for n in e})
+
+        if edges != "all":
+            all_edge_files = edge_list_files(save_dir)
+            edge_files = {
+                edge_key(e[0], e[1]): edge_find_file(
+                    e[0], e[1], all_edge_files
+                )
+                for e in edges
+            }
         else:
-            edges = (
-                edge_key(n1, n2)
-                for i, n1 in enumerate(nodes)
-                for n2 in nodes[i:]
-                if edge_key(n1, n2) in all_edge_files.keys()
+            edge_files = edge_files_containing(nodes, save_dir)
+
+        node_files = node_files_containing(nodes, save_dir)
+
+        net_nodes = [Node.from_file(file) for file in node_files.values()]
+        net_edges = [
+            _edge.from_file(file, representation)
+            for file in edge_files.values()
+        ]
+
+        return PubNet(root=root, nodes=net_nodes, edges=net_edges, name=name)
+
+    @classmethod
+    def from_data(
+        cls,
+        name=None,
+        nodes=None,
+        edges=None,
+        root="Publication",
+        representation="numpy",
+    ):
+        """
+        Make PubNet object from given nodes and edges.
+
+        Parameters
+        ----------
+        name : str
+            What to name the graph. This is used for saving graphs.
+        nodes : Dict, optional
+            A dictionary of node data of the form {name: DataFrame}.
+        edges : Dict, optional
+            A dictionary of edge data of the form {name: Array}.
+        root : str, default "Publication"
+            Root node.
+        representation : {"numpy", "igraph"}, default "numpy"
+        The edge representation.
+
+        Returns
+        -------
+        A PubNet object
+
+        See Also
+        --------
+        `load_graph`
+        """
+
+        for name, data in nodes:
+            nodes[name] = Node.from_data(data)
+
+        for name, data in edges:
+            start_id, end_id = edge_parts(name)
+            edges[name] = _edge.from_data(
+                data, start_id, end_id, representation
             )
 
-        return {
-            e: _edge_file_path(*edge_parts(e), all_edge_files) for e in edges
-        }
-
-    if nodes is None:
-        nodes = ()
-
-    if edges is None:
-        edges = ()
-
-    assert isinstance(
-        nodes, (str, tuple)
-    ), "Nodes must be a string or a tuple."
-
-    assert isinstance(edges, (str, tuple)), 'Edges must be a tuple or "all".'
-
-    if graph_name is not None:
-        data_dir = os.path.join(data_dir, graph_name)
-
-    if not os.path.exists(data_dir):
-        raise FileNotFoundError(
-            f'Graph "{graph_name}" not found. Available graphs are: \n\t%s'
-            % "\n\t".join(g for g in list_graphs())
-        )
-
-    node_files = {}
-    edge_files = {}
-    if (nodes == "all") and (edges == "all"):
-        node_files = node_files_containing("all")
-        edge_files = edge_files_containing("all")
-    elif nodes == "all":
-        edge_nodes = set(reduce(lambda a, b: a + b, edges, ()))
-        node_files = node_files_containing(edge_nodes)
-        for node_pair in edges:
-            edge_files[edge_key(*node_pair)] = _edge_file_path(
-                *node_pair, data_dir
-            )
-    elif edges == "all":
-        for node in nodes:
-            node_files[node] = _node_file_path(node, data_dir)
-        edge_files = edge_files_containing(nodes)
-    else:
-        for node in nodes:
-            node_files[node] = _node_file_path(node, data_dir)
-
-        for node_pair in edges:
-            edge_files[edge_key(*node_pair)] = _edge_file_path(
-                *node_pair, data_dir
-            )
-
-    nodes = {}
-    edges = {}
-    for name, file in node_files.items():
-        nodes[name] = _node.from_file(file)
-
-    for name, file in edge_files.items():
-        edges[name] = _edge.from_file(file, representation)
-
-    return PubNet(root=root, nodes=nodes, edges=edges)
-
-
-def from_data(
-    nodes=None, edges=None, root="Publication", representation="numpy"
-):
-    """
-    Make PubNet object from given nodes and edges.
-
-    Parameters
-    ----------
-    nodes : Dict, optional
-        A dictionary of node data of the form {name: DataFrame}.
-    edges : Dict, optional
-        A dictionary of edge data of the form {name: Array}.
-    root : str, default "Publication"
-        Root node.
-    representation : {"numpy", "igraph"}, default "numpy"
-       The edge representation.
-
-    Returns
-    -------
-    A PubNet object
-
-    See Also
-    --------
-    `from_dir`
-    """
-
-    for name, data in nodes:
-        nodes[name] = _node.from_data(data)
-
-    for name, data in edges:
-        start_id, end_id = edge_parts(name)
-        edges[name] = _edge.from_data(data, start_id, end_id, representation)
-
-    return PubNet(root=root, nodes=nodes, edges=edges)
-
-
-def edge_key(node_1, node_2):
-    """
-    Generate a dictionary key for the given pair of nodes.
-
-    Known future issue:
-        If we need directed edges, the order of nodes in the file name
-        may be important. Add in a weighted keyword argument, if true
-        look for files only with the nodes in the order they were
-        provided otherwise look for both. Another option is to not
-        only check the file name but check the header for the START_ID
-        and END_ID node types.
-    """
-
-    return EDGE_KEY_DELIM.join(sorted((node_1, node_2)))
-
-
-def edge_parts(key):
-    """Break an edge key into its nodes"""
-    return key.split(EDGE_KEY_DELIM)
-
-
-def _node_files(data_dir):
-    """Return all node files in the data_dir"""
-
-    files = os.listdir(data_dir)
-    path_regex = r"(?P<node>\w+)_nodes.(?P<ext>[\w\.]+)"
-    out = {}
-    for f in files:
-        m = re.match(path_regex, f)
-        try:
-            out[m.groups()[0]][m.groups()[1]] = os.path.join(
-                data_dir, m.group()
-            )
-        except KeyError:
-            out[m.groups()[0]] = {
-                m.groups()[1]: os.path.join(data_dir, m.group())
-            }
-        except AttributeError:  # File didn't match regex
-            continue
-    return out
-
-
-def _node_file_path(name, data_dir):
-    """Return the file path for a node."""
-
-    if isinstance(data_dir, dict):
-        node_files = data_dir
-    elif isinstance(data_dir, str) and os.path.isdir(data_dir):
-        node_files = _node_files(data_dir)
-    else:
-        raise TypeError(
-            "Second argument must be a dictionary of files or directory."
-        )
-
-    try:
-        available_files = node_files[name]
-    except KeyError:
-        raise FileNotFoundError(f"No file found for node {name}.")
-
-    ext_preference = ["feather", "tsv", "tsv.gz"]
-    for ext in ext_preference:
-        try:
-            return available_files[ext]
-        except KeyError:
-            continue
-
-    raise FileNotFoundError(
-        f"No file found for node {name} with a supported file extension."
-    )
-
-
-def _edge_files(data_dir):
-    """Return all edge files in the data_dir"""
-
-    files = os.listdir(data_dir)
-    path_regex = r"(?P<n1>\w+)_(?P<n2>\w+)_edges.(?P<ext>[\w\.]+)"
-    out = {}
-    for f in files:
-        m = re.match(path_regex, f)
-        try:
-            out[edge_key(*m.groups()[:2])][m.groups()[2]] = os.path.join(
-                data_dir, m.group()
-            )
-        except KeyError:
-            out[edge_key(*m.groups()[:2])] = {
-                m.groups()[2]: os.path.join(data_dir, m.group())
-            }
-        except AttributeError:  # File didn't match regex
-            continue
-    return out
-
-
-def _edge_file_path(node_1, node_2, data_dir):
-    """Find the edge file in data_dir for the provided node types."""
-
-    if isinstance(data_dir, dict):
-        edge_files = data_dir
-    elif isinstance(data_dir, str) and os.path.isdir(data_dir):
-        edge_files = _edge_files(data_dir)
-    else:
-        raise TypeError(
-            "Second argument must be a dictionary of files or directory."
-        )
-
-    name = edge_key(node_1, node_2)
-    try:
-        available_files = edge_files[name]
-    except KeyError:
-        raise FileNotFoundError(f"No file found for nodes {node_1}, {node_2}.")
-
-    ext_preference = ["npy", "tsv", "tsv.gz", "ig"]
-    for ext in ext_preference:
-        try:
-            return available_files[ext]
-        except KeyError:
-            continue
-
-    raise FileNotFoundError(
-        f"No file found for nodes {node_1}, {node_2} with a supported file"
-        " extension."
-    )
+        return PubNet(root=root, nodes=nodes, edges=edges, name=name)

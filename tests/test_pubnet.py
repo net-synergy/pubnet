@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 
 import pubnet
+from pubnet import PubNet
 
 from ._test_fixtures import author_node, other_pubnet, simple_pubnet
 
@@ -20,13 +21,13 @@ class TestEdges:
             assert simple_pubnet[e].end_id in expected
 
     def test_handles_swapped_start_and_close_id(self):
-        net = pubnet.from_dir(
+        net = PubNet.load_graph(
             "simple_pubnet",
             ("Publication",),
-            (("Publication", "Flippedheaders"),),
+            (("Publication", "Flippedheader"),),
             data_dir="tests/data",
         )
-        edges = net["Publication", "Flippedheaders"]
+        edges = net["Publication", "Flippedheader"]
         assert edges[edges.start_id][0] == 2
         assert edges[edges.end_id][0] == 1
 
@@ -34,7 +35,6 @@ class TestEdges:
         assert len(simple_pubnet["Author", "Publication"]) == 12
         assert len(simple_pubnet["Chemical", "Publication"]) == 10
 
-    @pytest.mark.skip("Modifying overlap, expect could fail for now.")
     def test_overlap(self, simple_pubnet):
         expected = np.array(
             [
@@ -51,9 +51,18 @@ class TestEdges:
                 [5, 6, 1],
             ]
         )
-        assert np.array_equal(
-            simple_pubnet["Author", "Publication"].overlap, expected
+        publication_overlap = simple_pubnet["Author", "Publication"].overlap(
+            "Publication"
         )
+        actual = np.stack(
+            (
+                publication_overlap.as_array()[:, 0],
+                publication_overlap.as_array()[:, 1],
+                publication_overlap.feature_vector("overlap"),
+            ),
+            axis=1,
+        )
+        assert np.array_equal(actual, expected)
 
 
 class TestNodes:
@@ -61,18 +70,18 @@ class TestNodes:
         assert author_node.id == "AuthorId"
 
     def test_shape(self, author_node):
-        assert author_node.shape == (4, 3)
+        assert author_node.shape == (4, 2)
 
     def test_slice_column(self, author_node):
-        assert author_node["LastName"][0] == "Smith"
+        assert author_node.feature_vector("LastName")[0] == "Smith"
 
     def test_slice_columns(self, author_node):
         features = ["LastName", "ForeName"]
         assert (author_node[features].columns.values == features).all()
 
     def test_slice_column_by_index(self, author_node):
-        assert author_node[0] is author_node[author_node.features[0]]
-        assert author_node[1] is author_node[author_node.features[1]]
+        assert author_node[0].isequal(author_node[author_node.features[0]])
+        assert author_node[1].isequal(author_node[author_node.features[1]])
 
     def test_slice_rows_by_index(self, author_node):
         expected = pd.DataFrame(
@@ -85,10 +94,12 @@ class TestNodes:
         actual = author_node[0:2]
 
         for feature in author_node.features:
-            assert (actual[feature].values == expected[feature].values).all()
+            assert (
+                actual.feature_vector(feature) == expected[feature].values
+            ).all()
 
     def test_slice_rows_by_mask(self, author_node):
-        actual = author_node[author_node["LastName"] == "Smith"]
+        actual = author_node[author_node.feature_vector("LastName") == "Smith"]
         expected = pd.DataFrame(
             {
                 "AuthorId": [1, 3],
@@ -98,14 +109,16 @@ class TestNodes:
         )
 
         for feature in author_node.features:
-            assert (actual[feature].values == expected[feature].values).all()
+            assert (
+                actual.feature_vector(feature) == expected[feature].values
+            ).all()
 
     def test_slice_rows_and_columns(self, author_node):
         actual = {
             "Slices": author_node[0:2, 0:2],
             "Slice + List": author_node[0:2, ["AuthorId", "LastName"]],
             "Mask + Slice": author_node[
-                author_node["ForeName"] == "John", 0:2
+                author_node.feature_vector("ForeName") == "John", 0:2
             ],
         }
         expected = pd.DataFrame(
@@ -113,8 +126,10 @@ class TestNodes:
         )
 
         for node in actual.values():
-            for feature in expected.columns:
-                assert (node[feature].values == expected[feature].values).all()
+            assert (
+                node.feature_vector("LastName") == expected["LastName"].values
+            ).all()
+            assert (node.index == expected["AuthorId"].values).all()
 
 
 class TestNetwork:
@@ -122,7 +137,7 @@ class TestNetwork:
         "ignore:Constructing PubNet object without Publication nodes."
     )
     def test_handles_no_nodes(self):
-        net = pubnet.from_dir(
+        net = PubNet.load_graph(
             "simple_pubnet",
             None,
             (("Publication", "Author"),),
@@ -135,7 +150,7 @@ class TestNetwork:
         assert len(simple_pubnet["Chemical"]) == 0
 
     def test_handles_no_edges(self):
-        net = pubnet.from_dir(
+        net = PubNet.load_graph(
             "simple_pubnet",
             ("Publication",),
             None,
@@ -152,10 +167,10 @@ class TestNetwork:
         assert len(subnet["Author", "Publication"]) == 3
         assert len(subnet["Chemical", "Publication"]) == 2
         assert np.array_equal(
-            np.unique(subnet["Author"][subnet["Author"].id]), expected_authors
+            np.unique(subnet.get_node("Author").index), expected_authors
         )
         assert np.array_equal(
-            np.unique(subnet["Publication"][subnet["Publication"].id]),
+            np.unique(subnet.get_node("Publication").index),
             np.asarray([publication_id]),
         )
 
@@ -168,10 +183,10 @@ class TestNetwork:
         assert len(subnet["Author", "Publication"]) == 5
         assert len(subnet["Chemical", "Publication"]) == 4
         assert np.array_equal(
-            np.unique(subnet["Author"][subnet["Author"].id]), expected_authors
+            np.unique(subnet.get_node("Author").index), expected_authors
         )
         assert np.array_equal(
-            np.unique(subnet["Publication"][subnet["Publication"].id]),
+            np.unique(subnet.get_node("Publication").index),
             publication_ids,
         )
 
@@ -207,7 +222,7 @@ class TestNetwork:
         )
 
         assert np.array_equal(
-            np.unique(subnet["Publication"][subnet["Publication"].id]),
+            np.unique(subnet.get_node("Publication").index),
             expected_publication_ids,
         )
 

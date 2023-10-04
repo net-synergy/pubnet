@@ -1,14 +1,18 @@
 """Class for storing node data."""
 
 import os
-import re
 
 import numpy as np
 import pandas as pd
 
-from pubnet.data import default_data_dir
+from pubnet.network._utils import (
+    node_file_parts,
+    node_gen_file_name,
+    node_gen_id_label,
+    node_id_label_parts,
+)
 
-__all__ = ["Node", "from_file", "from_data"]
+__all__ = ["Node"]
 
 
 class Node:
@@ -45,30 +49,14 @@ class Node:
     shape
     """
 
-    def __init__(self, data, id="detect", features="all"):
+    def __init__(self, data, id=None, name=None, features="all"):
         self._data = data
+        self.id = id
+        self.name = name
         if data is None:
             self._data = pd.DataFrame()
             self.id = None
             return
-
-        if id == "detect":
-            id_regex = r"(\w+):ID\((\w+)\)"
-            id_column = list(
-                filter(
-                    lambda x: x is not None,
-                    [re.search(id_regex, name) for name in data.columns],
-                )
-            )[0]
-            self.id = id_column.groups()[0]
-            self._data.columns = self._data.columns.str.replace(
-                id_column.group(), self.id, regex=False
-            )
-        else:
-            assert (
-                id in data.columns
-            ), f"Id not in data.\n\tAvailable features: {data.columns}."
-            self.id = id
 
         if features != "all":
             assert isinstance(
@@ -87,18 +75,21 @@ class Node:
         return str(self._data)
 
     def __repr__(self):
-        return repr(self._data)
+        return f"{self.name} nodes\n\n" + repr(self._data)
 
     def __getitem__(self, key):
+        def genNode(new_data):
+            return Node(pd.DataFrame(new_data), self.id, self.name)
+
         if key is None:
             # When node is empty, self.id == None.
-            return pd.Series(dtype=pd.Float64Dtype)
+            return genNode(pd.Series(dtype=pd.Float64Dtype))
 
         if isinstance(key, str):
-            return self._data[key]
+            return genNode(self._data[key])
 
         if isinstance(key, int):
-            return self._data[self._data.columns[key]]
+            return genNode(self._data[self._data.columns[key]])
 
         if isinstance(key, tuple):
             assert (
@@ -113,23 +104,35 @@ class Node:
             rows = key
             columns = slice(None)
 
+        if isinstance(columns, int):
+            new_data = self._data[self._data.columns[columns]]
+        else:
+            new_data = self._data
+
+        if isinstance(rows, int):
+            return genNode(new_data[rows : (rows + 1)])
+
         if not isinstance(rows, slice):
-            is_mask = len(rows) > 1
-            if is_mask and isinstance(rows, pd.Series):
+            if isinstance(rows, pd.Series):
                 is_mask = isinstance(rows.values[0], (bool, np.bool_))
             else:
-                is_mask = is_mask and isinstance(rows[0], (bool, np.bool_))
+                is_mask = isinstance(rows[0], (bool, np.bool_))
 
             if is_mask:
-                return self._data[columns].loc[rows]
+                return genNode(new_data.loc[rows])
 
-        return self._data[columns][rows]
+        return genNode(new_data[rows])
 
     def __len__(self):
         return len(self._data)
 
-    def set(self, new_data):
-        self._data = new_data
+    def set_data(self, new_data):
+        if isinstance(new_data, Node):
+            self._data = new_data._data
+        elif isinstance(new_data, pd.DataFrame):
+            self._data = new_data
+        else:
+            raise ValueError("New data is not a dataframe")
 
     @property
     def features(self):
@@ -145,6 +148,13 @@ class Node:
     def shape(self):
         """A tuple with number of rows and number of features."""
         return self._data.shape
+
+    @property
+    def index(self):
+        return np.asarray(self._data.index)
+
+    def feature_vector(self, name):
+        return self._data[name].values
 
     def get_random(self, n=1, seed=None):
         """
@@ -174,16 +184,16 @@ class Node:
             return False
 
         for feature in self.features:
-            if not (self[feature].values == node_2[feature].values).all():
+            if not (
+                self.feature_vector(feature) == node_2.feature_vector(feature)
+            ).all():
                 return False
 
         return True
 
     def to_file(
         self,
-        node_name,
-        graph_name,
-        data_dir=default_data_dir(),
+        data_dir,
         format="tsv",
     ):
         """
@@ -194,12 +204,8 @@ class Node:
 
         Parameters
         ----------
-        node_name : str
-            Name of the `Node`.
-        graph_name : str
-            Name of the graph to store it under.
-        data_dir : str, optional
-            Where the graph is stored. If empty, uses `default_data_dir`.
+        data_dir : str
+            Where the graph is stored.
         format : {"tsv", "gzip", "binary"}, default "tsv"
             the format to save the file as. The binary format uses apache
             feather.
@@ -207,102 +213,97 @@ class Node:
         See also
         --------
         `from_file`
-        `pubmed.data.default_data_dir`
-        `pubmed.network.pubnet.to_dir`
-        `pubmed.network.pubnet.from_dir`
+        `pubmed.storage.default_data_dir`
+        `pubmed.network.pubnet.save_graph`
+        `pubmed.network.pubnet.load_graph`
         """
 
-        self._data.columns = self._data.columns.str.replace(
-            self.id, f"{self.id}:ID({node_name})", regex=False
-        )
-
         ext = {"binary": "feather", "gzip": "tsv.gz", "tsv": "tsv"}
-        file_name = node_name + "_nodes." + ext[format]
-        data_dir = os.path.join(data_dir, graph_name)
+        file_path = node_gen_file_name(self.name, ext[format], data_dir)
 
         if not os.path.exists(data_dir):
             os.mkdir(data_dir)
 
-        file_path = os.path.join(data_dir, file_name)
         if format == "binary":
-            self._data.to_feather(file_path)
+            self._data.reset_index().to_feather(file_path)
         else:
             # `to_csv` will infer whether to use gzip based on extension.
-            self._data.to_csv(file_path, sep="\t", index=False)
+            self._data.to_csv(
+                file_path,
+                sep="\t",
+                index_label=node_gen_id_label(self.id, self.name),
+            )
 
-        self._data.columns = self._data.columns.str.replace(
-            f"{self.id}:ID({node_name})", self.id, regex=False
-        )
+    @classmethod
+    def from_file(cls, file_name, *args):
+        """
+        Read a `Node` in from a file
 
+        The node will be saved to a graph (a directory in the `data_dir` where
+        the graphs nodes and edges are stored).
 
-def from_file(file_name, *args):
-    """
-    Read a `Node` in from a file
+        Parameters
+        ----------
+        file_name : str
+           Path to the file containing the node.
 
-    The node will be saved to a graph (a directory in the `data_dir` where
-    the graphs nodes and edges are stored).
+        Returns
+        -------
+        node : Node
 
-    Parameters
-    ----------
-    node_name : str
-        Name of the `Node`.
-    graph_name : str
-        Name of the graph to store it under.
-    data_dir : str, optional
-        Where the graph is stored.
+        Other Parameters
+        ----------------
+        *args
+            All other args are passed forward to the `Node` class.
 
-    Returns
-    -------
-    node : Node
+        See Also
+        --------
+        `Node`
+        `Node.to_file`
+        `from_data`
+        `pubmed.storage.default_data_dir`
+        `pubmed.network.pubnet.save_graph`
+        `pubmed.network.pubnet.load_graph`
+        """
 
-    Other Parameters
-    ----------------
-    *args
-        All other args are passed forward to the `Node` class.
+        name, ext = node_file_parts(file_name)
+        if ext == "feather":
+            data = pd.read_feather(file_name)
+            data.set_index(data.columns[0], inplace=True)
+        else:
+            data = pd.read_table(file_name, index_col=0, memory_map=True)
+            # Prefer name in header to that in filename if available (but they
+            # *should* be the same).
+            id, name = node_id_label_parts(data.index.name)
+            data.index.name = id
 
-    See Also
-    --------
-    `Node`
-    `Node.to_file`
-    `from_data`
-    `pubmed.data.default_data_dir`
-    `pubmed.network.pubnet.to_dir`
-    `pubmed.network.pubnet.from_dir`
-    """
+        id = data.index.name
 
-    ext = file_name.split(".")[-1]
-    if ext == "feather":
-        data = pd.read_feather(file_name)
-    else:
-        data = pd.read_csv(
-            file_name,
-            delimiter="\t",
-        )
-    return from_data(data, *args)
+        return cls.from_data(data, id, name, *args)
 
+    @classmethod
+    def from_data(cls, data, *args):
+        """
+        Create a node from a DataFrame.
 
-def from_data(data, *args):
-    """
-    Create a node from a DataFrame.
+        Paramaters
+        ----------
+        Data, DataFrame
 
-    Paramaters
-    ----------
-    Data, DataFrame
+        Returns
+        -------
+        node, Node
 
-    Returns
-    -------
-    node, Node
+        Other Parameters
+        ----------------
+        *args
+            All other args are passed forward to the `Node` class.
 
-    Other Parameters
-    ----------------
-    *args
-        All other args are passed forward to the `Node` class.
+        See Also
+        --------
+        `Node`
+        `from_file` : read a `Node` from file.
+        `Node.to_file` : save a `Node` to file.
+        """
 
-    See Also
-    --------
-    `Node`
-    `from_file` : read a `Node` from file.
-    `Node.to_file` : save a `Node` to file.
-    """
-
-    return Node(data, *args)
+        return Node(data, *args)
