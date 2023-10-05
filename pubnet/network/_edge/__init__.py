@@ -18,7 +18,7 @@ from ._base import Edge
 from .igraph_edge import IgraphEdge
 from .numpy_edge import NumpyEdge
 
-__all__ = ["from_file", "from_data", "Edge", "id_dtype"]
+__all__ = ["from_file", "from_data", "from_edge", "Edge", "id_dtype"]
 
 _edge_class = {"numpy": NumpyEdge, "igraph": IgraphEdge}
 id_dtype = np.int64
@@ -75,6 +75,8 @@ def from_file(file_name: str, representation: str) -> Edge:
     if isinstance(data, np.ndarray) and data.shape[1] > 2:
         features = {feat: data[:, col] for col, feat in enumerate(feature_ids)}
         data = data[:, :2]
+    elif isinstance(data, ig.Graph) and representation == "numpy":
+        features = {feat: data.es[feat] for feat in feature_ids}
     else:  # If data is an igraph.Graph, features are already in the graph
         features = {}
 
@@ -136,4 +138,24 @@ def from_data(
 
     return _edge_class[representation](
         data, name, start_id, end_id, dtype, features=features
+    )
+
+
+def from_edge(edge: Edge, representation: str) -> Edge:
+    """Construct a new edge from a preexisting edge.
+
+    If the template edge is already of the new representation type, return the
+    edge unmodified.
+    """
+    if edge.representation == representation:
+        return edge
+
+    feature_dict = {f: edge.feature_vector(f) for f in edge.features()}
+    return _edge_class[representation](
+        edge.get_edgelist(),
+        edge.name,
+        edge.start_id,
+        edge.end_id,
+        edge.dtype,
+        features=feature_dict,
     )

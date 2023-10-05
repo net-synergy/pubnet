@@ -48,6 +48,8 @@ class NumpyEdge(Edge):
     def set_data(self, new_data):
         if isinstance(new_data, np.ndarray):
             self._data = new_data
+        elif isinstance(new_data, ig.Graph):
+            self._data = new_data.get_edgelist()
         else:
             self._data = np.asarray(new_data, self.dtype)
 

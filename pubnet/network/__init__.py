@@ -548,6 +548,20 @@ class PubNet:
 
         return all(self[e].isequal(other[e]) for e in self.edges)
 
+    def edges_to_igraph(self):
+        """Convert all edge sets to the igraph backend."""
+        for e in self.edges:
+            self._edge_data[e] = _edge.from_edge(
+                self.get_edge(e), representation="igraph"
+            )
+
+    def edges_to_numpy(self):
+        """Convert all edge sets to the numpy backend."""
+        for e in self.edges:
+            self._edge_data[e] = _edge.from_edge(
+                self.get_edge(e), representation="numpy"
+            )
+
     def _as_keys(self, edges):
         """Convert a list of edges to their keys."""
         try:
