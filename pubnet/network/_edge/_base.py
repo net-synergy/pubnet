@@ -11,8 +11,7 @@ from pubnet.network._utils import edge_gen_file_name, edge_gen_header, edge_key
 
 
 class Edge:
-    """
-    Provides a class for storing edges for `PubNet`.
+    """Provides a class for storing edges for `PubNet`.
 
     In the future it may support weighted edges and directed columns.
 
@@ -116,7 +115,6 @@ class Edge:
 
     def _column_to_indices(self, key: str | int) -> tuple[int, int]:
         """Return the index for the provided key and the other key."""
-
         if isinstance(key, int):
             if key == 0:
                 primary = 0
@@ -146,9 +144,7 @@ class Edge:
         return (primary, secondary)
 
     def _parse_key(self, key) -> tuple[Any, Any]:
-        """Parse the key used in __getitem__ to determine the correct row and
-        column indices."""
-
+        """Parse a key to get the correct row and column indices."""
         row_index = None
         col_index = None
 
@@ -197,8 +193,7 @@ class Edge:
     def isin(
         self, column: str | int, test_elements: ArrayLike
     ) -> NDArray[np.bool_]:
-        """Find which elements from column are in the set of `test_elements`.
-        """
+        """Find the elements of column that are in `test_elements`."""
         raise AbstractMethodError(self)
 
     @property
@@ -209,7 +204,7 @@ class Edge:
     def features(self):
         raise AbstractMethodError(self)
 
-    def feature_vector(self, name):
+    def feature_vector(self, name: str):
         raise AbstractMethodError(self)
 
     def add_feature(self, feature, name):
@@ -234,29 +229,31 @@ class Edge:
         self,
         data_dir: str,
         edge_name: Optional[str | tuple[str, str]] = None,
-        format: str = "tsv",
+        file_format: str = "tsv",
     ) -> None:
         """Save the edge to disk.
 
-        Arguments
-        ---------
-        data_dir : str, where to store the graph.
+        Parameters
+        ----------
+        data_dir : str
+            Where to store the graph.
         edge_name : str, optional
-            the name of the edge. If None, use the edge's name.
-        format : str {"tsv", "gzip", "binary"}, how to store the edge (default
-            "tsv"). Binary uses numpy's npy format.
+            The name of the edge. If None, use the edge's name.
+        file_format : str {"tsv", "gzip", "binary"}
+            How to store the edge (default "tsv"). The gzip method uses
+            compresses the tsv. Binary uses numpy's npy file format or pickle
+            depending on the edge backend.
 
         Returns
         -------
         None
 
-        See also
+        See Also
         --------
         `pubnet.storage.default_data_dir`
         `pubnet.network.PubNet.save_graph`
         `pubnet.network.load_graph`
         """
-
         if edge_name is None:
             edge_name = self.name
 
@@ -274,11 +271,11 @@ class Edge:
             edge_name = edge_key(*edge_name)
 
         file_name, header_name = edge_gen_file_name(
-            edge_name, ext[format], data_dir
+            edge_name, ext[file_format], data_dir
         )
         header = edge_gen_header(self.start_id, self.end_id, self.features())
 
-        if format == "binary":
+        if file_format == "binary":
             self._to_binary(file_name, header_name, header)
         else:
             # `np.savetxt` handles "gz" extensions so nothing extra to do.
@@ -293,11 +290,16 @@ class Edge:
         raise AbstractMethodError(self)
 
     def get_edgelist(self):
+        """Return a list of edges.
+
+        See Also
+        --------
+        `as_array` to return any features in the edge set along with the edges.
+        """
         raise AbstractMethodError(self)
 
     def as_array(self):
-        """Return the edge list as a numpy array"""
-
+        """Return the edge list as a numpy array."""
         edges = self.get_edgelist()
         feats = tuple(
             np.expand_dims(np.asarray(self.feature_vector(f)), axis=1)
@@ -306,23 +308,31 @@ class Edge:
         return np.hstack((edges,) + feats)
 
     def as_igraph(self):
-        """Return the edge as an igraph graph"""
+        """Return the edge as an igraph graph."""
         raise AbstractMethodError(self)
 
-    def overlap(self, id: str, weights: Optional[str]):
-        """Pairwise number of neighbors nodes have in common."""
-        raise AbstractMethodError(self)
+    def overlap(self, node_type: str, weights: Optional[str]):
+        """Pairwise number of neighbors nodes have in common.
 
-    def _calc_overlap(self):
-        raise AbstractMethodError(self)
-
-    def similarity(self, target_publications, method="shortest_path"):
-        """
-        Calculate similarity between publications based on edge's overlap.
+        For every pair of nodes of the given node type, calculate the number of
+        neighbors they have in common.
 
         Parameters
         ----------
-        target_publication : ndarray
+        node_type : str
+            The name of one of the columns in the edge set.
+        weights : str, optional
+            If not none, used to weigh neighbors. Weights should be the name of
+            a feature in the edge set.
+        """
+        raise AbstractMethodError(self)
+
+    def similarity(self, target_publications, method="shortest_path"):
+        """Calculate similarity between publications based on edge's overlap.
+
+        Parameters
+        ----------
+        target_publications : ndarray
             An array of publications to return similarity between which must be
             a subset of all edges in `self.overlap`.
         method : {"shortest_path"}, default "shortest_path"
@@ -335,7 +345,6 @@ class Edge:
             publications (1st--2nd column) in target_publications. Only
             non-zero similarities are listed.
         """
-
         all_methods = {
             "shortest_path": self._shortest_path,
             "pagerank": self._pagerank,

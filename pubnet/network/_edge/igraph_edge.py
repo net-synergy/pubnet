@@ -37,10 +37,7 @@ class IgraphEdge(Edge):
             if stop is None:
                 stop = 2
 
-            if start == 0 and stop == 2:
-                col = None
-            else:
-                col = start
+            col = None if start == 0 and stop == 2 else start
 
         if self._is_mask(row):
             row = np.arange(len(self))[row]
@@ -56,8 +53,8 @@ class IgraphEdge(Edge):
         if isinstance(row, int) and (col is not None):
             if col == 0:
                 return self._data.es[row].source
-            else:
-                return self._data.es[row].target
+
+            return self._data.es[row].target
 
         if col is not None:
             if col == 0:
@@ -109,14 +106,12 @@ class IgraphEdge(Edge):
         self, column: str | int, test_elements: ArrayLike
     ) -> NDArray[np.bool_]:
         """Find which elements from column are in the set of test_elements."""
-
         return np.isin(
             np.fromiter(self[:, column], dtype=self.dtype), test_elements
         )
 
     def isequal(self, other: Edge):
         """Determine if two edge sets are equivalent."""
-
         return self._data.get_edgelist() == other._data.get_edgelist()
 
     def _to_binary(self, file_name, header_name, header):
@@ -125,13 +120,9 @@ class IgraphEdge(Edge):
             header_file.write(header)
 
     def _to_tsv(self, file_name, header):
-        # NOTE: IDs should be ints so select integer fmt string but this will
-        # need modification if we add weigthed edges as the weight column(s)
-        # are likely going to be floats.
         np.savetxt(
             file_name,
             self.as_array(),
-            fmt="%d",
             delimiter="\t",
             header=header,
             comments="",
@@ -158,14 +149,11 @@ class IgraphEdge(Edge):
 
         self._data.es[name] = feature
 
-    def overlap(self, id, weights=None):
+    def overlap(self, node_type, weights=None):
         es = []
         ovr = []
-        nodes = list(set(self[:, id]))
-        if id == self.start_id:
-            mode = "out"
-        else:
-            mode = "in"
+        nodes = list(set(self[:, node_type]))
+        mode = "out" if node_type == self.start_id else "in"
 
         for i, ni in enumerate(nodes):
             first_node_neighbors = set(self._data.neighbors(ni, mode=mode))
@@ -183,8 +171,8 @@ class IgraphEdge(Edge):
         new_edge.es["overlap"] = ovr
         return IgraphEdge(
             new_edge,
-            edge_key(id, "Overlap"),
-            start_id=id,
-            end_id=id,
+            edge_key(node_type, "Overlap"),
+            start_id=node_type,
+            end_id=node_type,
             dtype=self.dtype,
         )

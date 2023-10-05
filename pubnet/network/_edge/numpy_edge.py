@@ -62,18 +62,19 @@ class NumpyEdge(Edge):
     ) -> NDArray[np.bool_]:
         """Check which elements of column are members of test_elements.
 
-        Arguments
-        ---------
-        column : the column to test, can be anything accepted by `__getitem__`.
-        test_elements : array, the elemnts to test against.
+        Parameters
+        ----------
+        column : str, int
+            The column to test, can be anything accepted by `__getitem__`.
+        test_elements : np.ndarray
+            The elemnts to test against.
 
         Returns
         -------
-        isin : array, a boolean array of the same size as
-        self[column], such that all elements of self[column][isin] are
-        in the set test_elements.
+        isin : np.ndarray
+            a boolean array of the same size as self[column], such that all
+            elements of self[column][isin] are in the set test_elements.
         """
-
         return np.isin(self[column], test_elements)
 
     def isequal(self, other):
@@ -140,18 +141,18 @@ class NumpyEdge(Edge):
         else:
             self._features[name] = feature
 
-    def overlap(self, id, weights=None):
+    def overlap(self, node_type, weights=None):
         """Calculate the neighbor overlap between nodes.
 
-        For all pairs of nodes in the id column, calculate the number of nodes
-        both are connected to.
+        For all pairs of nodes in the node_type column, calculate the number of
+        nodes both are connected to.
 
         Parameters
         ----------
-        id : str
-            The id column to use. In an "Author--Publication" edge set, If id
-            is "Author", overlap will be the number of publications each author
-            has in common with every other author.
+        node_type : str
+            The node_type column to use. In an "Author--Publication" edge set,
+            If node_type is "Author", overlap will be the number of
+            publications each author has in common with every other author.
         weights : str, optional
             If left None, each edge will be counted equally. Otherwise weight
             edges based on the edge's feature with the provided name. If the
@@ -164,7 +165,6 @@ class NumpyEdge(Edge):
             have edges between all nodes with non-zero overlap and it will
             contain a feature "overlap".
         """
-
         edges = self._data
         data_type = edges.dtype
         if weights is None:
@@ -173,7 +173,7 @@ class NumpyEdge(Edge):
             self._assert_has_feature(weights)
             _weights = self._features[weights]
 
-        primary, secondary = self._column_to_indices(id)
+        primary, secondary = self._column_to_indices(node_type)
         adj = sp.coo_matrix(
             (_weights, (edges[:, primary], edges[:, secondary])),
             dtype=data_type,
@@ -188,9 +188,9 @@ class NumpyEdge(Edge):
 
         new_edge = NumpyEdge(
             np.stack((res.row, res.col), axis=1),
-            edge_key(id, "Overlap"),
-            start_id=id,
-            end_id=id,
+            edge_key(node_type, "Overlap"),
+            start_id=node_type,
+            end_id=node_type,
             dtype=self.dtype,
         )
 
@@ -210,9 +210,10 @@ class NumpyEdge(Edge):
 
         def renumber(edges, target_nodes):
             """Renumber nodes to have values between 0 and all_nodes.shape[0].
-            The target_nodes are brought to the front such that the first
-            target_nodes.shape[0] nodes are the target_nodes."""
 
+            The target_nodes are brought to the front such that the first
+            target_nodes.shape[0] nodes are the target_nodes.
+            """
             edge_nodes = edges[:, 0:2].T.flatten()
             target_locs = np.isin(edge_nodes, target_nodes)
             target_nodes = np.unique(edge_nodes[target_locs])

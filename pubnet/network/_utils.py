@@ -38,7 +38,7 @@ def edge_key(node_1: str, node_2: str) -> str:
         only check the file name but check the header for the START_ID
         and END_ID node types.
 
-    See also
+    See Also
     --------
     `edge_parts` for going in the other direction.
     """
@@ -46,13 +46,12 @@ def edge_key(node_1: str, node_2: str) -> str:
 
 
 def edge_parts(key: str | tuple[str, str]) -> tuple[str, str]:
-    """Break an edge key into its nodes
+    """Break an edge key into its nodes.
 
-    See also
+    See Also
     --------
     `edge_key` for going in the other direction.
     """
-
     # Often gets called in places where an edge could be described as a tuple
     # of nodes or a key, so if already in tuple form, harmlessly pass back.
     if isinstance(key, tuple):
@@ -69,16 +68,15 @@ def edge_parts(key: str | tuple[str, str]) -> tuple[str, str]:
 
 
 def edge_file_parts(file_name: str) -> tuple[str, str]:
-    """Return the edge name and its file extension.
+    r"""Return the edge name and its file extension.
 
-    Assumes the convention f\"{node}_{node_or_type}_edges.{ext}\".
+    Assumes the convention f"{node}_{node_or_type}_edges.{ext}".
 
     Parameters
     ----------
     file_name : str
         The name of the file.
     """
-
     name_matches = re.search(EDGE_PATH_REGEX, file_name)
 
     if name_matches is None:
@@ -90,16 +88,15 @@ def edge_file_parts(file_name: str) -> tuple[str, str]:
 
 
 def node_file_parts(file_name: str):
-    """Return the edge name and its file extension.
+    r"""Return the edge name and its file extension.
 
-    Assumes the convention f\"{node}_nodes.{ext}\".
+    Assumes the convention f"{node}_nodes.{ext}".
 
     Parameters
     ----------
     file_name : str
         The name of the file.
     """
-
     name_parts = re.search(NODE_PATH_REGEX, file_name)
 
     if name_parts is None:
@@ -115,7 +112,6 @@ def node_gen_file_name(node: str, ext: str, data_dir: str) -> str:
 
 def edge_gen_file_name(edge: str, ext: str, data_dir: str) -> tuple[str, str]:
     """Create the path to a file the given edge can be saved to."""
-
     n1, n2 = edge_parts(edge)
     data_path = os.path.join(data_dir, f"{n1}_{n2}_edges.{ext}")
     header_path = os.path.join(data_dir, f"{n1}_{n2}_edge_header.tsv")
@@ -123,14 +119,13 @@ def edge_gen_file_name(edge: str, ext: str, data_dir: str) -> tuple[str, str]:
 
 
 def node_list_files(data_dir: str) -> dict[str, dict[str, str]]:
-    """Return all node files in the data_dir
+    """Return all node files in the data_dir.
 
     Returns a dictionary with nodes as keys and a dictionary with extension as
     keys and file paths as values as values.
 
     example: path_dict['Author']['tsv'] = file_path
     """
-
     files = os.listdir(data_dir)
     node_files = [
         (m.groupdict(), os.path.join(data_dir, m.group()))
@@ -147,7 +142,6 @@ def node_list_files(data_dir: str) -> dict[str, dict[str, str]]:
 
 def node_find_file(node: str, path_dict: dict[str, dict[str, str]]) -> str:
     """Return the file path for a node."""
-
     try:
         available_files = path_dict[node]
     except KeyError:
@@ -173,7 +167,6 @@ def edge_list_files(data_dir: str) -> dict[str, dict[str, str]]:
 
     Example: path_dict['Author-Publication']['tsv'] = file_path
     """
-
     files = os.listdir(data_dir)
     edge_files = [
         (m.groupdict(), os.path.join(data_dir, m.group()))
@@ -196,7 +189,6 @@ def edge_find_file(
     n1: str, n2: str, path_dict: dict[str, dict[str, str]]
 ) -> str:
     """Find the edge file in data_dir for the provided node types."""
-
     edge = edge_key(n1, n2)
     try:
         available_files = path_dict[edge]
@@ -218,9 +210,9 @@ def edge_find_file(
 def node_files_containing(
     nodes: str | tuple[str, ...], data_dir: str
 ) -> dict[str, str]:
-    """Find the preferred node file for the provided nodes in data_dir
+    r"""Find the preferred node file for the provided nodes in data_dir.
 
-    If nodes is \"all\" find a file for all nodes in the data_dir, otherwise
+    If nodes is "all" find a file for all nodes in the data_dir, otherwise
     only find files for nodes in the requested list.
 
     If a node is requested but no file is found, an error will be raised.
@@ -228,7 +220,6 @@ def node_files_containing(
     Preferred file is based on the extension. Extension preference can be seen
     in `node_find_file`.
     """
-
     all_node_files = node_list_files(data_dir)
     if nodes == "all":
         nodes = tuple(all_node_files.keys())
@@ -239,9 +230,9 @@ def node_files_containing(
 def edge_files_containing(
     nodes: str | tuple[str, ...], data_dir: str
 ) -> dict[str, str]:
-    """Find the preferred edge file for the provided nodes in data_dir
+    r"""Find the preferred edge file for the provided nodes in data_dir.
 
-    If nodes is \"all\" find a file for all nodes in the data_dir, otherwise
+    If nodes is "all" find a file for all nodes in the data_dir, otherwise
     only find files for nodes in the requested list. This means all edge files
     linking pairs of node types, where both node types are in the supplied
     list.
@@ -249,7 +240,6 @@ def edge_files_containing(
     Preferred file is based on the extension. Extension preference can be seen
     in `edge_find_file`.
     """
-
     all_edge_files = edge_list_files(data_dir)
     if isinstance(nodes, str):
         assert nodes == "all", ValueError(nodes)
@@ -259,27 +249,27 @@ def edge_files_containing(
             edge_key(n1, n2)
             for i, n1 in enumerate(nodes)
             for n2 in nodes[i:]
-            if edge_key(cast(str, n1), cast(str, n2)) in all_edge_files.keys()
+            if edge_key(n1, n2) in all_edge_files
         )
 
     return {e: edge_find_file(*edge_parts(e), all_edge_files) for e in edges}
 
 
-def node_gen_id_label(id: str, namespace: str) -> str:
-    return f"{id}:ID({namespace})"
+def node_gen_id_label(name: str, namespace: str) -> str:
+    return f"{name}:ID({namespace})"
 
 
 def node_id_label_parts(label: str) -> tuple[str, str]:
-    pattern = r"(?P<id>\w+):ID\((?P<namespace>\w+)\)"
+    pattern = r"(?P<name>\w+):ID\((?P<namespace>\w+)\)"
     match = re.search(pattern, label)
 
     if match is None:
         raise ValueError(f"{label} does not match label naming convention.")
 
-    id = match.groupdict()["id"]
+    name = match.groupdict()["name"]
     namespace = match.groupdict()["namespace"]
 
-    return (id, namespace)
+    return (name, namespace)
 
 
 def edge_gen_header(start_id: str, end_id: str, features: list[str]) -> str:
@@ -302,10 +292,10 @@ def edge_header_parts(header: str) -> tuple[str, str, list[str], bool]:
         column is end and the second column is start.
     """
     ids = re.findall(r":((?:START)|(?:END))_ID\((\w+)\)", header)
-    for id, node in ids:
-        if id == "START":
+    for position, node in ids:
+        if position == "START":
             start_id = node
-        elif id == "END":
+        elif position == "END":
             end_id = node
 
     reverse = ids[0][0] == "END"

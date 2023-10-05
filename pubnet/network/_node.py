@@ -16,8 +16,7 @@ __all__ = ["Node"]
 
 
 class Node:
-    """
-    Class for storing node data for PubNet class.
+    """Class for storing node data for PubNet class.
 
     Provides a wrapper around a panda dataframe adding in information
     about the ID column, which is identified by the special syntax
@@ -49,9 +48,9 @@ class Node:
     shape
     """
 
-    def __init__(self, data, id=None, name=None, features="all"):
+    def __init__(self, data, node_id=None, name=None, features="all"):
         self._data = data
-        self.id = id
+        self.id = node_id
         self.name = name
         if data is None:
             self._data = pd.DataFrame()
@@ -78,18 +77,18 @@ class Node:
         return f"{self.name} nodes\n\n" + repr(self._data)
 
     def __getitem__(self, key):
-        def genNode(new_data):
+        def gen_node(new_data):
             return Node(pd.DataFrame(new_data), self.id, self.name)
 
         if key is None:
             # When node is empty, self.id == None.
-            return genNode(pd.Series(dtype=pd.Float64Dtype))
+            return gen_node(pd.Series(dtype=pd.Float64Dtype))
 
         if isinstance(key, str):
-            return genNode(self._data[key])
+            return gen_node(self._data[key])
 
         if isinstance(key, int):
-            return genNode(self._data[self._data.columns[key]])
+            return gen_node(self._data[self._data.columns[key]])
 
         if isinstance(key, tuple):
             assert (
@@ -110,7 +109,7 @@ class Node:
             new_data = self._data
 
         if isinstance(rows, int):
-            return genNode(new_data[rows : (rows + 1)])
+            return gen_node(new_data[rows : (rows + 1)])
 
         if not isinstance(rows, slice):
             if isinstance(rows, pd.Series):
@@ -119,9 +118,9 @@ class Node:
                 is_mask = isinstance(rows[0], (bool, np.bool_))
 
             if is_mask:
-                return genNode(new_data.loc[rows])
+                return gen_node(new_data.loc[rows])
 
-        return genNode(new_data[rows])
+        return gen_node(new_data[rows])
 
     def __len__(self):
         return len(self._data)
@@ -157,8 +156,7 @@ class Node:
         return self._data[name].values
 
     def get_random(self, n=1, seed=None):
-        """
-        Sample rows in `Node`.
+        """Sample rows in `Node`.
 
         Parameters
         ----------
@@ -173,13 +171,11 @@ class Node:
         nodes : dataframe
             Subset of nodes.
         """
-
         rng = np.random.default_rng(seed=seed)
         return self._data.loc[rng.integers(0, self._data.shape[0], size=(n,))]
 
     def isequal(self, node_2):
         """Test if two `Node`s have the same values in all their columns."""
-
         if not (self.features == node_2.features).all():
             return False
 
@@ -194,10 +190,9 @@ class Node:
     def to_file(
         self,
         data_dir,
-        format="tsv",
+        file_format="tsv",
     ):
-        """
-        Save the `Node` to file.
+        """Save the `Node` to file.
 
         The node will be saved to a graph (a directory in the `data_dir` where
         the graphs nodes and edges are stored).
@@ -206,25 +201,24 @@ class Node:
         ----------
         data_dir : str
             Where the graph is stored.
-        format : {"tsv", "gzip", "binary"}, default "tsv"
-            the format to save the file as. The binary format uses apache
-            feather.
+        file_format : {"tsv", "gzip", "binary"}, default "tsv"
+            the file_format to save the file as. The binary file_format uses
+            apache feather.
 
-        See also
+        See Also
         --------
         `from_file`
         `pubmed.storage.default_data_dir`
         `pubmed.network.pubnet.save_graph`
         `pubmed.network.pubnet.load_graph`
         """
-
         ext = {"binary": "feather", "gzip": "tsv.gz", "tsv": "tsv"}
-        file_path = node_gen_file_name(self.name, ext[format], data_dir)
+        file_path = node_gen_file_name(self.name, ext[file_format], data_dir)
 
         if not os.path.exists(data_dir):
             os.mkdir(data_dir)
 
-        if format == "binary":
+        if file_format == "binary":
             self._data.reset_index().to_feather(file_path)
         else:
             # `to_csv` will infer whether to use gzip based on extension.
@@ -236,8 +230,7 @@ class Node:
 
     @classmethod
     def from_file(cls, file_name, *args):
-        """
-        Read a `Node` in from a file
+        """Read a `Node` in from a file.
 
         The node will be saved to a graph (a directory in the `data_dir` where
         the graphs nodes and edges are stored).
@@ -246,15 +239,12 @@ class Node:
         ----------
         file_name : str
            Path to the file containing the node.
+        *args : Any
+            All other args are forwarded to the `Node` class.
 
         Returns
         -------
         node : Node
-
-        Other Parameters
-        ----------------
-        *args
-            All other args are passed forward to the `Node` class.
 
         See Also
         --------
@@ -265,7 +255,6 @@ class Node:
         `pubmed.network.pubnet.save_graph`
         `pubmed.network.pubnet.load_graph`
         """
-
         name, ext = node_file_parts(file_name)
         if ext == "feather":
             data = pd.read_feather(file_name)
@@ -274,17 +263,16 @@ class Node:
             data = pd.read_table(file_name, index_col=0, memory_map=True)
             # Prefer name in header to that in filename if available (but they
             # *should* be the same).
-            id, name = node_id_label_parts(data.index.name)
-            data.index.name = id
+            node_id, name = node_id_label_parts(data.index.name)
+            data.index.name = node_id
 
-        id = data.index.name
+        node_id = data.index.name
 
-        return cls.from_data(data, id, name, *args)
+        return cls.from_data(data, node_id, name, *args)
 
     @classmethod
     def from_data(cls, data, *args):
-        """
-        Create a node from a DataFrame.
+        """Create a node from a DataFrame.
 
         Paramaters
         ----------
@@ -305,5 +293,4 @@ class Node:
         `from_file` : read a `Node` from file.
         `Node.to_file` : save a `Node` to file.
         """
-
         return Node(data, *args)

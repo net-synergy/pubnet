@@ -75,10 +75,8 @@ dmypy = true
 
 [tool.ruff]
 line-length = 79
-ignore = ["E203", "D400"]
-select = ["A", "C",
-  # "D",
-  "E", "F", "N", "RET", "SIM"]
+ignore = ["E203", "D400", "E731"]
+select = ["A", "C", "D", "E", "F", "N", "RET", "SIM"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

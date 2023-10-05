@@ -1,5 +1,4 @@
-"""
-Methods for storing and generating publication networks.
+"""Methods for storing and generating publication networks.
 
 Graphs are stored as directories with files for each node and edge. By default,
 graphs are stored in the `default_data_dir`. Files can be saved in multiple
@@ -38,8 +37,8 @@ _data_dir = ""
 def graph_path(name: str, data_dir: Optional[str] = None) -> str:
     """Return the path to a graph with the given name.
 
-    Arguments
-    ---------
+    Parameters
+    ----------
     name : str
         The name of the graph
     data_dir : str, optional
@@ -50,11 +49,10 @@ def graph_path(name: str, data_dir: Optional[str] = None) -> str:
     path : str
         The absolute path to the requested graph.
 
-    See also
+    See Also
     --------
     `default_data_dir`
     """
-
     if data_dir is None:
         return default_data_dir(name)
 
@@ -64,17 +62,16 @@ def graph_path(name: str, data_dir: Optional[str] = None) -> str:
 def set_default_cache_dir(new_path: str = "") -> None:
     """Change the location of the default cache directory.
 
-    Arguments
-    ---------
+    Parameters
+    ----------
     new_path : str
         The path to the default cache directory.
 
-    See also
+    See Also
     --------
     `default_cache_dir`
     `set_default_data_dir`
     """
-
     global _cache_dir
     _cache_dir = new_path
 
@@ -82,17 +79,16 @@ def set_default_cache_dir(new_path: str = "") -> None:
 def set_default_data_dir(new_path: str = "") -> None:
     """Change the location of the default data directory.
 
-    Arguments
-    ---------
+    Parameters
+    ----------
     new_path : str
         The path to the default cache directory.
 
-    See also
+    See Also
     --------
     `default_data_dir`
     `set_default_cache_dir`
     """
-
     global _data_dir
     _data_dir = new_path
 
@@ -108,8 +104,8 @@ def default_cache_dir(path: str = "") -> str:
     Cache files are specifically files that can be easily reproduced,
     i.e. those that can be downloaded from the internet.
 
-    Arguments
-    ---------
+    Parameters
+    ----------
     path : str, optional
         If empty return the parent cache directory, otherwise return the
         directory `path` under the parent cache directory. If the path does not
@@ -120,11 +116,10 @@ def default_cache_dir(path: str = "") -> str:
     cache_dir : str
         The path to the directory to store data.
 
-    See also
+    See Also
     --------
     `set_cache_dir`, `default_data_dir`
     """
-
     if _cache_dir:
         cache_dir = _cache_dir
     else:
@@ -149,8 +144,8 @@ def default_data_dir(path: str = "") -> str:
     reproduced by rerunning the script that produced them but there is
     no gurentee they can be perfectly reproduced.
 
-    Arguments
-    ---------
+    Parameters
+    ----------
     path : str, optional
         If empty return the parent cache directory, otherwise return the
         directory `path` under the parent cache directory. If the path does not
@@ -161,11 +156,10 @@ def default_data_dir(path: str = "") -> str:
     cache_dir : str
         The path to the directory to store data.
 
-    See also
+    See Also
     --------
     `set_cache_dir`, `default_data_dir`
     """
-
     if _data_dir:
         data_dir = _data_dir
     else:
@@ -179,9 +173,11 @@ def default_data_dir(path: str = "") -> str:
 
 
 def _dir_exists(path: str) -> bool:
-    """default directory commands create a directory so test if the directory
-    both exists and is not empty. If empty delete and return non-existent."""
+    """Test if provided path exists and is not empty.
 
+    default directory commands create a directory so they directory may exist
+    even if it's unused (empty). If empty delete and return non-existent.
+    """
     try:
         os.rmdir(path)
     except OSError:
@@ -205,7 +201,7 @@ def _clear_dir(path: str) -> None:
 
 
 def clear_cache(path: str = "") -> None:
-    """Clear a cache directory
+    """Clear a cache directory.
 
     By default clears all data cached by this package.
 
@@ -215,12 +211,11 @@ def clear_cache(path: str = "") -> None:
         If not an empty string (default), clear only the directory PATH
         relative to the default cache.
     """
-
     _clear_dir(default_cache_dir(path))
 
 
 def clear_data(path: str = "") -> None:
-    """Clear a data directory
+    """Clear a data directory.
 
     By default clears all data saved by this package.
 
@@ -230,13 +225,11 @@ def clear_data(path: str = "") -> None:
         If not an empty string (default), clear only the directory PATH
         relative to the default data directory.
     """
-
     _clear_dir(default_data_dir(path))
 
 
 def list_graphs(data_dir: Optional[str] = None) -> List[str]:
-    """List all graphs saved in `data_dir`"""
-
+    """List all graphs saved in `data_dir`."""
     if not data_dir:
         data_dir = default_data_dir()
 
@@ -244,7 +237,7 @@ def list_graphs(data_dir: Optional[str] = None) -> List[str]:
 
 
 def delete_graph(name: str, data_dir: Optional[str] = None) -> None:
-    """Delete the graph from `data_dir`"""
+    """Delete the graph from `data_dir`."""
 
     def delete_directory(path):
         for f in os.listdir(path):

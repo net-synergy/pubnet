@@ -1,4 +1,4 @@
-"""Provides classes for storing graph edges as different representations. """
+"""Provides classes for storing graph edges as different representations."""
 
 import gzip
 import os
@@ -25,8 +25,7 @@ id_dtype = np.int64
 
 
 def from_file(file_name: str, representation: str) -> Edge:
-    """
-    Read edge in from file
+    """Read edge in from file.
 
     Reads the data in from a file. The file should be in the form
     f"{edge[0]}_{edge[1]}_edges.tsv, where the order the node types
@@ -38,7 +37,6 @@ def from_file(file_name: str, representation: str) -> Edge:
     `namespace` value provides the name of the node and will link to
     that node's ID column.
     """
-
     name, ext = edge_file_parts(file_name)
 
     if ext in ("npy", "pickle"):
@@ -95,25 +93,31 @@ def from_data(
     representation: str = "numpy",
     dtype: type = id_dtype,
 ) -> Edge:
-    """
-    Make an edge from data.
+    """Make an edge from data.
 
     Parameters
     ----------
     data : numpy.ndarray, igraph.Graph, pandas.DataFrame
+        Data to convert to an Edge.
     name : str
+        Name of the Edge.
+    features : dict
+        A dictionary of features to add to the edge set. Defaults to no
+        features.
     representation : {"numpy", "igraph"}
+        Whether to use the "numpy" or "igraph" Edge backend.
     start_id, end_id : str, optional
        The name of the to and from node types. If `data` is a ndarray, must be
        provided. For DataFrames, the IDs can be detected based on the column
        names.
     dtype : type
+       Edge list data type passed to numpy array. Only applicable if using the
+       "numpy" backend.
 
     Returns
     -------
     Edge
     """
-
     if start_id is None or end_id is None:
         try:
             columns = data.columns
