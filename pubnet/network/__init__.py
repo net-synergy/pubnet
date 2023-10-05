@@ -65,19 +65,17 @@ class PubNet:
     `from_data`
     """
 
-    def __init__(self, nodes=None, edges=None, root="Publication", name=None):
+    def __init__(
+        self, nodes=set(), edges=set(), root="Publication", name=None
+    ):
         self.root = root
         self.name = name
 
-        if nodes is None:
-            nodes = []
-        if edges is None:
-            edges = []
+        if isinstance(nodes, str):
+            nodes = {nodes}
 
         self._node_data = {}
         self._edge_data = {}
-        self.nodes = []
-        self.edges = []
 
         for node in nodes:
             self.add_node(node)
@@ -87,7 +85,7 @@ class PubNet:
 
         edge_nodes = {n for e in self.edges for n in edge_parts(e)}
 
-        for name in edge_nodes - set(self.nodes):
+        for name in edge_nodes - self.nodes:
             self.add_node(None, name)
 
         if self.root not in self.nodes:
@@ -97,6 +95,16 @@ class PubNet:
             )
 
         self.id_dtype = _edge.id_dtype
+
+    @property
+    def nodes(self):
+        """The set of all nodes in the PubNet object."""
+        return set(self._node_data.keys())
+
+    @property
+    def edges(self):
+        """The set of all edges in the PubNet object."""
+        return set(self._edge_data.keys())
 
     def select_root(self, new_root) -> None:
         """Switch the graph's root node."""
@@ -142,7 +150,6 @@ class PubNet:
         if name in self.nodes:
             raise ValueError(f"The node type {name} is already in network.")
 
-        self.nodes.append(name)
         self._node_data[name] = data
 
     def add_edge(
@@ -196,7 +203,6 @@ class PubNet:
         if name in self.edges:
             raise ValueError(f"The edge {name} is already in the network.")
 
-        self.edges.append(name)
         self._edge_data[name] = data
 
     def get_node(self, name) -> Node:
@@ -467,7 +473,7 @@ class PubNet:
         else:
             plt.show()
 
-    def drop(self, nodes=None, edges=None):
+    def drop(self, nodes=set(), edges=set()):
         """Drop given nodes and edges from the network.
 
         Parameters
@@ -482,6 +488,11 @@ class PubNet:
         `PubNet.add_node`
         `PubNet.add_edge`
         """
+        if isinstance(nodes, str):
+            nodes = {nodes}
+        if isinstance(edges, str):
+            edges = {edges}
+
         assert len(self._missing_nodes(nodes)) == 0, (
             f"Node(s) {self._missing_nodes(nodes)} is not in network",
             "\n\nNetwork's nodes are {self.nodes}.",
@@ -492,22 +503,13 @@ class PubNet:
             "\n\nNetwork's edges are {self.edges}.",
         )
 
-        if nodes is None:
-            nodes = []
-        elif isinstance(nodes, str):
-            nodes = [nodes]
-
         for node in nodes:
             self._node_data.pop(node)
 
-        self.nodes = [n for n in self.nodes if n not in nodes]
-
-        edges = self._as_keys(edges) if edges is not None else []
+        edges = self._as_keys(edges)
 
         for edge in edges:
             self._edge_data.pop(edge)
-
-        self.edges = [e for e in self.edges if e not in edges]
 
     def update(self, other):
         """Add the data from other to the current network.
@@ -519,20 +521,6 @@ class PubNet:
         """
         self._node_data.update(other._node_data)
         self._edge_data.update(other._edge_data)
-        self.nodes = list(set(self.nodes + other.nodes))
-        self.edges += list(set(self.edges + other.edges))
-
-    def merge(self, other, mutate=True):
-        # Should handle different publication IDs somehow. Probably
-        # have known IDs (PMID, DOI, etc) and use a lookup table for
-        # joining. Potentially create a universal ID that is prefered
-        # in this data type.
-        # Probably for the best if different PubNet objects don't
-        # share nodes / edges (other than Publication).
-        # Intend on using this to ease generation of a PubNet that
-        # combines data from multiple sources (pubmed, crossref).
-
-        raise NotImplementedError
 
     def isequal(self, other):
         """Compare if two PubNet objects are equivalent."""
@@ -564,13 +552,16 @@ class PubNet:
 
     def _as_keys(self, edges):
         """Convert a list of edges to their keys."""
-        try:
-            if isinstance(edges[0], str):
-                edges = [edges]
-        except IndexError:
-            return None
+        # A tuple of 2 strings is likely two edge parts that need to be
+        # converted to an edge key, but it could also be two edge keys that
+        # should not be converted.
+        if len(edges) == 2 and isinstance(edges[0], str):
+            try:
+                _, _ = edge_parts(edges[0])
+            except ValueError:
+                edges = {edges}
 
-        return [edge_key(*e) for e in edges]
+        return {edge_key(*e) for e in edges}
 
     def _missing_edges(self, edges):
         """Find all edges not in self.
@@ -585,13 +576,7 @@ class PubNet:
         missing_edges : list
             Edges not in self.
         """
-        if edges is None:
-            return []
-
-        if isinstance(edges[0], str):
-            edges = [edges]
-
-        return [key for key in self._as_keys(edges) if key not in self.edges]
+        return self._as_keys(edges) - self.edges
 
     def _missing_nodes(self, nodes):
         """Find all node names in a list not in self.nodes.
@@ -606,13 +591,7 @@ class PubNet:
         missing_nodes : list
             Nodes not in self.
         """
-        if nodes is None:
-            return []
-
-        if isinstance(nodes, str):
-            nodes = [nodes]
-
-        return [n for n in nodes if n not in self.nodes]
+        return set(nodes) - self.nodes
 
     def save_graph(
         self,
