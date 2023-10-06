@@ -64,6 +64,9 @@ class Edge:
         self.start_id = start_id
         self.end_id = end_id
         self.representation = "Generic"
+        # Just assume it's directed if the two ids are the same. May not be a
+        # great decision, but useful for now.
+        self.isdirected = start_id == end_id
 
     def set_data(self, new_data) -> None:
         """Replace the edge's data with a new array."""
@@ -115,6 +118,12 @@ class Edge:
 
     def other_node(self, node_type: str) -> str:
         """Given a node type return the type on the other side of the edge."""
+        if node_type == "to":
+            return "from"
+
+        if node_type == "from":
+            return "to"
+
         types = {self.start_id, self.end_id}
         if node_type not in types:
             raise KeyError(node_type)
@@ -138,10 +147,10 @@ class Edge:
                     "Index out of range. Column index must be 0 or 1."
                 )
         elif isinstance(key, str):
-            if key == self.start_id:
+            if key == self.start_id or key == "from":
                 primary = 0
                 secondary = 1
-            elif key == self.end_id:
+            elif key == self.end_id or key == "to":
                 primary = 1
                 secondary = 0
             else:
@@ -208,7 +217,7 @@ class Edge:
         raise AbstractMethodError(self)
 
     @property
-    def is_weighted(self):
+    def isweighted(self):
         """Test if graph is weighted."""
         return len(self.features) > 0
 
@@ -326,7 +335,7 @@ class Edge:
         """Create a sparse matrix from edge list and a feature."""
         raise AbstractMethodError(self)
 
-    def _compose_with(self, other, conts: str):
+    def _compose_with(self, other, conts: str, mode: str):
         """Use other to create a new edge set that transverses both edges.
 
         Bipartite edge sets can be treated as a mapping between two node types.

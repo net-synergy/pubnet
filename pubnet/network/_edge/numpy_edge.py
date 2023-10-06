@@ -192,7 +192,7 @@ class NumpyEdge(Edge):
             shape=shape,
         ).tocsr()
 
-    def _compose_with(self, other, counts: str):
+    def _compose_with(self, other, counts: str, mode: str):
         shared_keys = {self.start_id, self.end_id}.intersection(
             {other.start_id, other.end_id}
         )
@@ -212,7 +212,12 @@ class NumpyEdge(Edge):
         ):
             raise ValueError(counts)
 
-        key = shared_keys.pop()
+        if other.isdirected:
+            if mode not in ("in", "out"):
+                raise KeyError(f'mode {mode} not one of "in" or "out".')
+            key = "to" if mode == "in" else "from"
+        else:
+            key = shared_keys.pop()
 
         n_key = max(self[:, key].max(), other[:, key].max()) + 1
         res = self.to_sparse_matrix(
@@ -234,9 +239,13 @@ class NumpyEdge(Edge):
 
         res = res.tocoo()
 
+        name = edge_key(self.other_node(key), other.other_node(key))
+        if other.isdirected:
+            name += mode.title()
+
         new_edge = NumpyEdge(
             np.stack((res.row, res.col), axis=1),
-            edge_key(self.other_node(key), other.other_node(key)),
+            name,
             start_id=self.other_node(key),
             end_id=other.other_node(key),
             dtype=self.dtype,

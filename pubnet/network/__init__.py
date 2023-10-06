@@ -428,7 +428,11 @@ class PubNet:
         return self[root_ids]
 
     def re_root(
-        self, new_root: str, drop_unused: bool = True, counts: str = "drop"
+        self,
+        new_root: str,
+        drop_unused: bool = True,
+        counts: str = "drop",
+        mode: str = "all",
     ) -> None:
         r"""Change the networks root, creating new edges.
 
@@ -457,6 +461,12 @@ class PubNet:
             raw counts, if "normalize" relative to the number of edges for each
             node in the new root. So if the above author also had an edge with
             1 other chemical, that authors counts would be 3/4 and 1/4.
+        mode : str in {"all", "out", "in"}
+            What direction to calculate the overlap in if the edge is directed.
+            "all" creates a in and an out edge set. For example, references
+            are directed, being referenced is different than referencing. So
+            "all" produces an edge for root -- references out (referenced by
+            the root) and root -- references in (root was referenced).
 
         See Also
         --------
@@ -487,9 +497,18 @@ class PubNet:
         if counts == "normalize":
             counts = "normalize_other"
 
+        mode_i = "in" if mode == "in" else "out"
+
         map_edge = self.get_edge(self.root, new_root)
         for e in self.edges - {map_edge.name}:
-            self.add_edge(self.get_edge(e)._compose_with(map_edge, counts))
+            self.add_edge(
+                self.get_edge(e)._compose_with(map_edge, counts, mode_i)
+            )
+            if self.get_edge(e).isdirected and mode == "both":
+                self.add_edge(
+                    self.get_edge(e)._compose_with(map_edge, counts, "in")
+                )
+
             self.drop(edges=e)
 
         self.select_root(new_root)
