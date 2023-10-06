@@ -82,8 +82,18 @@ class Edge:
         col_len = max(max(len(n) for n in col_names) + 2, 8)
 
         def align_row(elements):
+            def to_str(el):
+                if isinstance(el, str):
+                    return el
+
+                if el == int(el):
+                    return str(int(el))
+
+                return f"{el:g}"
+
             cells = (
-                str(el) + " " * (col_len - len(str(el))) for el in elements
+                to_str(el) + " " * (col_len - len(to_str(el)))
+                for el in elements
             )
             return "".join(cells)
 
