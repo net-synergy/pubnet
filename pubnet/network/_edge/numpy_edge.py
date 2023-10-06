@@ -94,10 +94,7 @@ class NumpyEdge(Edge):
         return (self._data == other._data).all()
 
     def distribution(self, column):
-        dist = np.bincount(self[column])
-        # Because id's start at 1 but the 0th value in the distribution is
-        # reserved for id == 0.
-        return dist[1:]
+        return np.unique(self[column], return_counts=True)
 
     def _to_binary(self, file_name, header_name, header):
         np.save(file_name, self._data)

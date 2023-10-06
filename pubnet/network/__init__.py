@@ -612,30 +612,36 @@ class PubNet:
             Minimum number of occurrences for a value to be included. In case
             there are a lot of possible values, threshold reduces the which
             values will be plotted to only the common values.
+        max_n : int, optional
+            The maximum number of bars to plot. If none, plot all.
         fname : str, optional
             The name of the figure.
         """
         import matplotlib.pyplot as plt
 
-        distribution = self[self.root, node_type].distribution(node_type)
-        names = self[node_type][node_feature].to_numpy()
-
+        node_ids, distribution = self[self.root, node_type].distribution(
+            node_type
+        )
         retain = distribution >= threshold
         distribution = distribution[retain]
-        names = names[retain]
+        node_ids = node_ids[retain]
 
-        indices = np.argsort(distribution)
-        indices = indices[-1::-1]
+        node = self.get_node(node_type)
+        names = node[np.isin(node.index, node_ids)].feature_vector(
+            node_feature
+        )
+
+        indices = np.argsort(distribution)[-1::-1]
+        names = np.take_along_axis(names, indices, axis=0)
+        distribution = np.take_along_axis(distribution, indices, axis=0)
+
+        if max_n is not None:
+            names = names[:max_n]
+            distribution = distribution[:max_n]
 
         fig, ax = plt.subplots()
-        ax.bar(
-            np.take_along_axis(
-                names,
-                indices,
-                axis=0,
-            ),
-            np.take_along_axis(distribution, indices, axis=0),
-        )
+        ax.bar(names, distribution)
+
         for tick in ax.get_xticklabels():
             tick.set_rotation(90)
 
