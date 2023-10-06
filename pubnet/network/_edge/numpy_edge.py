@@ -234,24 +234,19 @@ class NumpyEdge(Edge):
             weights[weights == 0] = 1
             res = res.multiply(1 / weights)
 
-        res = res.tocoo()
-
         name = edge_key(self.other_node(key), other.other_node(key))
         if other.isdirected:
             name += mode.title()
 
-        new_edge = NumpyEdge(
-            np.stack((res.row, res.col), axis=1),
+        feature_name = "counts" if counts != "drop" else None
+
+        return self.from_sparse_matrix(
+            res,
             name,
             start_id=self.other_node(key),
             end_id=other.other_node(key),
-            dtype=self.dtype,
+            feature_name=feature_name,
         )
-
-        if counts != "drop":
-            new_edge.add_feature(res.data, "counts")
-
-        return new_edge
 
     def overlap(
         self, node_type: str, weights: Optional[str | NDArray[Any]] = None
@@ -283,23 +278,20 @@ class NumpyEdge(Edge):
         data_type = self._data.dtype
 
         adj = self.to_sparse_matrix(row=node_type, weights=weights)
-        res = adj @ adj.T
 
+        res = adj @ adj.T
         res = sp.triu(
             res - sp.diags(res.diagonal(), dtype=data_type, format="csr"),
             format="csr",
         ).tocoo()
 
-        new_edge = NumpyEdge(
-            np.stack((res.row, res.col), axis=1),
-            edge_key(node_type, "Overlap"),
+        return self.from_sparse_matrix(
+            res,
+            edge_key(node_type, f"{self.other_node(node_type)}Overlap"),
             start_id=node_type,
             end_id=node_type,
-            dtype=self.dtype,
+            feature_name="overlap",
         )
-
-        new_edge.add_feature(res.data, "overlap")
-        return new_edge
 
     def _shortest_path(self, target_nodes):
         """Calculate shortest path using Dijkstra's Algorithm.

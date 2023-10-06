@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
+from scipy import sparse as sp
 
 from pubnet.network._utils import edge_gen_file_name, edge_gen_header, edge_key
 
@@ -341,9 +342,34 @@ class Edge:
         """Return the edge as an igraph graph."""
         raise AbstractMethodError(self)
 
-    def to_sparse_matrix(self, row, column, weights, shape):
+    def to_sparse_matrix(
+        self, row=None, column=None, weights=None, shape=None
+    ) -> sp.spmatrix:
         """Create a sparse matrix from edge list and a feature."""
         raise AbstractMethodError(self)
+
+    def from_sparse_matrix(
+        self,
+        mat: sp.spmatrix,
+        name: str,
+        start_id: str,
+        end_id: str,
+        feature_name: Optional[str],
+    ):
+        """Create a new edge based on the sparse matrix."""
+        mat = mat.tocoo()
+        new_edge = self.__class__(
+            np.stack((mat.row, mat.col), axis=1),
+            name,
+            start_id=start_id,
+            end_id=end_id,
+            dtype=self.dtype,
+        )
+
+        if feature_name is not None:
+            new_edge.add_feature(mat.data, feature_name)
+
+        return new_edge
 
     def _compose_with(self, other, conts: str, mode: str):
         """Use other to create a new edge set that transverses both edges.

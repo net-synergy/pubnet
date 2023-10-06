@@ -171,7 +171,7 @@ class IgraphEdge(Edge):
         new_edge.es["overlap"] = ovr
         return IgraphEdge(
             new_edge,
-            edge_key(node_type, "Overlap"),
+            edge_key(node_type, f"{self.other_node(node_type)}Overlap"),
             start_id=node_type,
             end_id=node_type,
             dtype=self.dtype,

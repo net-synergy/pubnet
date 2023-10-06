@@ -42,6 +42,10 @@ last_names = list(
     publications_np["Author"].get_random(n=4, seed=1)["LastName"]
 )
 subnet = publications_np.containing("Author", "LastName", last_names, steps=2)
+subnet.re_root("Author", counts="normalize")
+ovr = subnet.overlap({"Chemical", "Publication"}, mutate=False)
+ovr.reduce_edges(lambda x, acc: x + acc, "overlap", normalize=True).as_igraph()
+
 author_ovr_np = subnet["Author", "Publication"].overlap("Author")
 
 subnet = publications_ig.containing("Author", "LastName", last_names, steps=2)

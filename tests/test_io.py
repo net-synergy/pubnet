@@ -67,7 +67,7 @@ class TestIO:
         )
         simple_pubnet.save_graph(
             "graph",
-            edges=(("Publication", "Overlap"),),
+            edges=(("Publication", "AuthorOverlap"),),
             data_dir=tmp_path,
             file_format=file_format,
         )
@@ -77,6 +77,6 @@ class TestIO:
             "graph", data_dir=tmp_path, representation=representation
         )
 
-        assert simple_pubnet["Publication", "Overlap"].isequal(
-            new["Publication", "Overlap"]
+        assert simple_pubnet["Publication", "AuthorOverlap"].isequal(
+            new["Publication", "AuthorOverlap"]
         )

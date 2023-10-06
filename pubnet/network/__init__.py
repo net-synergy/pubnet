@@ -13,6 +13,7 @@ from warnings import warn
 
 import numpy as np
 from pandas.core.dtypes.common import is_list_like
+from scipy.sparse import spmatrix
 
 from pubnet.network import _edge
 from pubnet.network._edge._base import Edge
@@ -588,14 +589,86 @@ class PubNet:
         for e in root_edges:
             new_pubnet.add_edge(
                 self.get_edge(e).overlap(self.root, weights),
-                name=edge_key(self.root, f"{not_root(e)}Overlap"),
-                representation=self.get_edge(e).representation,
             )
 
         if not mutate:
             return new_pubnet
 
         return None
+
+    def reduce_edges(
+        self,
+        func,
+        edge_feature: str,
+        normalize: bool = False,
+    ) -> Edge:
+        """Reduce network edges on a feature.
+
+        Reduce a group of edge sets by accumulating with a function. All edges
+        to be reduced must have the provided edge feature. Each edge feature
+        should have the same start and end node type otherwise results can not
+        be interpreted.
+
+        The method will try to be smart about selecting edges for which this
+        operation make sense, but it is best to start with a PubNet with only
+        edges that can be meaningfully combined.
+
+        Parameters
+        ----------
+        func : callable
+            A function that accepts to sparse matrices and returns one sparse
+            matrix. The returned result should be some kind of combination of
+            the inputs. Example: `lambda x acc: x + acc`
+        edge_feature : str
+            The name of a feature common to all edges that will be reduced.
+            This feature will act as the data of the sparse matrices
+        normalize : bool, optional
+            Default False. If True, divide the results by the number of edges
+            reduced.
+
+        Returns
+        -------
+        new_edge : Edge
+            An edge whose list of edges is equal to the union of all edge sets
+            list of edges. The edge has a single feature with the same name as
+            `edge_feature` with the resulting reduced data.
+        """
+        featured_edges = {
+            e
+            for e in self.edges
+            if edge_feature in self.get_edge(e).features()
+        }
+
+        n_edges = len(featured_edges)
+        if n_edges == 0:
+            raise ValueError("No edge sets meet the requirements.")
+
+        shape = (
+            max(self.get_edge(e)[:, 0].max() for e in featured_edges) + 1,
+            max(self.get_edge(e)[:, 1].max() for e in featured_edges) + 1,
+        )
+
+        def to_sparse(edge):
+            return edge.to_sparse_matrix(
+                row="from", weights=edge_feature, shape=shape
+            )
+
+        base_edge = self.get_edge(featured_edges.pop())
+        acc = to_sparse(base_edge)
+        for e in featured_edges:
+            acc = func(to_sparse(self.get_edge(e)), acc)
+            self.drop(edges=e)
+
+        if normalize:
+            acc = acc / n_edges
+
+        return base_edge.from_sparse_matrix(
+            acc,
+            "Composite-" + edge_feature.title(),
+            start_id=base_edge.start_id,
+            end_id=base_edge.end_id,
+            feature_name=edge_feature,
+        )
 
     def plot_distribution(
         self, node_type, node_feature, threshold=0, max_n=20, fname=None
@@ -675,12 +748,12 @@ class PubNet:
 
         assert len(self._missing_nodes(nodes)) == 0, (
             f"Node(s) {self._missing_nodes(nodes)} is not in network",
-            "\n\nNetwork's nodes are {self.nodes}.",
+            f"\n\nNetwork's nodes are {self.nodes}.",
         )
 
         assert len(self._missing_edges(edges)) == 0, (
             f"Edge(s) {self._missing_edges(edges)} is not in network",
-            "\n\nNetwork's edges are {self.edges}.",
+            f"\n\nNetwork's edges are {self.edges}.",
         )
 
         for node in nodes:
