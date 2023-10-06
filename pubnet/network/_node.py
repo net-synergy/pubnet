@@ -152,6 +152,9 @@ class Node:
     def index(self):
         return np.asarray(self._data.index)
 
+    def iloc(self, indices):
+        return self[np.isin(self.index, indices), :]
+
     def feature_vector(self, name):
         return self._data[name].values
 

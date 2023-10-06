@@ -1,5 +1,7 @@
 """Implementation of the Edge class storing edges as numpy arrays."""
 
+from typing import Any, Optional
+
 import igraph as ig
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -52,6 +54,9 @@ class NumpyEdge(Edge):
             self._data = new_data.get_edgelist()
         else:
             self._data = np.asarray(new_data, self.dtype)
+
+        if self._data.dtype != self.dtype:
+            self._data = self._data.astype(self.dtype)
 
     def __len__(self) -> int:
         return self._data.shape[0]
@@ -143,7 +148,108 @@ class NumpyEdge(Edge):
         else:
             self._features[name] = feature
 
-    def overlap(self, node_type, weights=None):
+    def to_sparse_matrix(
+        self,
+        row: Optional[str] = None,
+        column: Optional[str] = None,
+        weights: Optional[str | NDArray[Any]] = None,
+        shape: Optional[tuple[int, int]] = None,
+    ) -> sp.spmatrix:
+        """Create a csr sparse matrix from the edge data.
+
+        Exactly one of row or column must be specified. If left blank, weights
+        will be one for all non-zero elements.
+        """
+        edges = self._data
+        data_type = edges.dtype
+        if weights is None:
+            _weights = np.ones((edges.shape[0]), dtype=data_type)
+        elif isinstance(weights, np.ndarray):
+            if weights.shape[0] != edges.shape[0]:
+                raise ValueError(
+                    "Weights must have the same number of rows as edges."
+                )
+            _weights = weights
+        else:
+            self._assert_has_feature(weights)
+            _weights = self._features[weights]
+
+        if row and column and row != self.other_node(column):
+            raise KeyError(
+                "Over-specified matrix. Provide one of row or column."
+            )
+
+        if row:
+            primary, secondary = self._column_to_indices(row)
+        elif column:
+            secondary, primary = self._column_to_indices(column)
+        else:
+            raise KeyError("One of row or column must be specified")
+
+        return sp.coo_matrix(
+            (_weights, (edges[:, primary], edges[:, secondary])),
+            dtype=data_type,
+            shape=shape,
+        ).tocsr()
+
+    def _compose_with(self, other, counts: str):
+        shared_keys = {self.start_id, self.end_id}.intersection(
+            {other.start_id, other.end_id}
+        )
+        if not shared_keys:
+            raise AssertionError("No key edge between the two edge sets")
+
+        if len(shared_keys) > 1:
+            raise AssertionError(
+                "The node types of both edges already match, can't compose."
+            )
+
+        if counts not in (
+            "drop",
+            "absolute",
+            "normalize_self",
+            "normalize_other",
+        ):
+            raise ValueError(counts)
+
+        key = shared_keys.pop()
+
+        n_key = max(self[:, key].max(), other[:, key].max()) + 1
+        res = self.to_sparse_matrix(
+            column=key,
+            shape=(self[:, self.other_node(key)].max() + 1, n_key),
+        ) @ other.to_sparse_matrix(
+            row=key,
+            shape=(n_key, other[:, other.other_node(key)].max() + 1),
+        )
+
+        if counts == "normalize_self":
+            weights = res.sum(axis=1)
+            weights[weights == 0] = 1
+            res = res.multiply(1 / weights)
+        elif counts == "normalize_other":
+            weights = res.sum(axis=0)
+            weights[weights == 0] = 1
+            res = res.multiply(1 / weights)
+
+        res = res.tocoo()
+
+        new_edge = NumpyEdge(
+            np.stack((res.row, res.col), axis=1),
+            edge_key(self.other_node(key), other.other_node(key)),
+            start_id=self.other_node(key),
+            end_id=other.other_node(key),
+            dtype=self.dtype,
+        )
+
+        if counts != "drop":
+            new_edge.add_feature(res.data, "counts")
+
+        return new_edge
+
+    def overlap(
+        self, node_type: str, weights: Optional[str | NDArray[Any]] = None
+    ) -> Edge:
         """Calculate the neighbor overlap between nodes.
 
         For all pairs of nodes in the node_type column, calculate the number of
@@ -155,10 +261,11 @@ class NumpyEdge(Edge):
             The node_type column to use. In an "Author--Publication" edge set,
             If node_type is "Author", overlap will be the number of
             publications each author has in common with every other author.
-        weights : str, optional
+        weights : str, np.ndarray, optional
             If left None, each edge will be counted equally. Otherwise weight
-            edges based on the edge's feature with the provided name. If the
-            edge doesn't have the passed feature, an error will be raised.
+            edges based on the edge's feature with the provided name or the
+            array of weights. If the edge doesn't have the passed feature, an
+            error will be raised.
 
         Returns
         -------
@@ -167,20 +274,9 @@ class NumpyEdge(Edge):
             have edges between all nodes with non-zero overlap and it will
             contain a feature "overlap".
         """
-        edges = self._data
-        data_type = edges.dtype
-        if weights is None:
-            _weights = np.ones((edges.shape[0]), dtype=data_type)
-        else:
-            self._assert_has_feature(weights)
-            _weights = self._features[weights]
+        data_type = self._data.dtype
 
-        primary, secondary = self._column_to_indices(node_type)
-        adj = sp.coo_matrix(
-            (_weights, (edges[:, primary], edges[:, secondary])),
-            dtype=data_type,
-        ).tocsr()
-
+        adj = self.to_sparse_matrix(row=node_type, weights=weights)
         res = adj @ adj.T
 
         res = sp.triu(

@@ -53,6 +53,7 @@ class Edge:
         dtype: type,
         features: dict[str, NDArray[Any]] = {},
     ) -> None:
+        self.dtype = dtype
         self.set_data(data)
 
         for feat_name, feat in features.items():
@@ -62,7 +63,6 @@ class Edge:
         self._n_iter = 0
         self.start_id = start_id
         self.end_id = end_id
-        self.dtype = dtype
         self.representation = "Generic"
 
     def set_data(self, new_data) -> None:
@@ -112,6 +112,17 @@ class Edge:
 
     def __repr__(self) -> str:
         return self.__str__()
+
+    def other_node(self, node_type: str) -> str:
+        """Given a node type return the type on the other side of the edge."""
+        types = {self.start_id, self.end_id}
+        if node_type not in types:
+            raise KeyError(node_type)
+
+        if len(types) == 1:
+            return self.start_id
+
+        return (types.difference({node_type})).pop()
 
     def _column_to_indices(self, key: str | int) -> tuple[int, int]:
         """Return the index for the provided key and the other key."""
@@ -309,6 +320,23 @@ class Edge:
 
     def as_igraph(self):
         """Return the edge as an igraph graph."""
+        raise AbstractMethodError(self)
+
+    def to_sparse_matrix(self, row, column, weights, shape):
+        """Create a sparse matrix from edge list and a feature."""
+        raise AbstractMethodError(self)
+
+    def _compose_with(self, other, conts: str):
+        """Use other to create a new edge set that transverses both edges.
+
+        Bipartite edge sets can be treated as a mapping between two node types.
+        If the edge set A--B maps a node of type a to a node of type b, then
+        the composition of edge sets A--B and B--C should be a new map between
+        node type a and node type c, A--C.
+
+        Edges must contain one and only one node type in common, this node type
+        is used as the key.
+        """
         raise AbstractMethodError(self)
 
     def overlap(self, node_type: str, weights: Optional[str]):

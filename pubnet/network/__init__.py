@@ -97,19 +97,23 @@ class PubNet:
         self.id_dtype = _edge.id_dtype
 
     @property
-    def nodes(self):
+    def nodes(self) -> set:
         """The set of all nodes in the PubNet object."""
         return set(self._node_data.keys())
 
     @property
-    def edges(self):
+    def edges(self) -> set:
         """The set of all edges in the PubNet object."""
         return set(self._edge_data.keys())
 
     def select_root(self, new_root) -> None:
-        """Switch the graph's root node."""
+        """Switch the graph's root node.
+
+        See `re_root` for modifying edges to reflect the new root.
+        """
         if new_root in self.nodes:
             self.root = new_root
+            return
 
         available_nodes = "\n\t".join(self.nodes)
         raise KeyError(
@@ -289,7 +293,7 @@ class PubNet:
     def __repr__(self):
         setlocale(LC_ALL, "")
 
-        res = f"{self.name} Publication Network"
+        res = f"{self.name} Publication Network\nroot: {self.root}"
         res += "\n\nNode types:"
         for n in self.nodes:
             res += f"\n\t{n}\t({len(self._node_data[n]):n})"
@@ -423,8 +427,159 @@ class PubNet:
         root_ids = self.ids_containing(node_type, node_feature, value, steps)
         return self[root_ids]
 
+    def re_root(
+        self, new_root: str, drop_unused: bool = True, counts: str = "drop"
+    ) -> None:
+        r"""Change the networks root, creating new edges.
+
+        The root of the network should be the primary node type, which, at
+        least most, edges contain. Re-rooting uses the edge between the current
+        and new root as a key to map the new root to the other nodes in the
+        network. For example, if the original root is "Publication" and there
+        are edges between publications and authors, chemicals, and keywords,
+        after re-rooting the network the edges will be between authors and
+        publications, chemicals, and keywords.
+
+        Parameters
+        ----------
+        new_root : str
+            The node type in the network to base edges off.
+        drop_unused : bool
+            Whether to drop all edges that are not related to the new root.
+        counts : str, {"drop", "absolute", "normalize"}
+            Counts are the number of edges between root and the other edge
+            type. For example if an author has three publications each of which
+            are on a common chemical, the count between that author and
+            chemical would be 3.
+
+            When "drop" (default), the counts are not stored. Otherwise counts
+            are stored as an edge feature "counts". If "absolute", store the
+            raw counts, if "normalize" relative to the number of edges for each
+            node in the new root. So if the above author also had an edge with
+            1 other chemical, that authors counts would be 3/4 and 1/4.
+
+        See Also
+        --------
+        `PubNet.select_root` to change the root without modifying edges.
+        """
+        root_edges = [
+            e
+            for e in self.edges
+            if self.root
+            in (self.get_edge(e).start_id or self.get_edge(e).end_id)
+        ]
+
+        if drop_unused:
+            self.drop(edges=self.edges.difference(root_edges))
+
+        if new_root == self.root:
+            return
+
+        if edge_key(self.root, new_root) not in self.edges:
+            raise AssertionError(
+                "No edge set found linking the old root to the new root."
+                " Cannot reroot."
+            )
+
+        if counts not in ("drop", "absolute", "normalize"):
+            raise ValueError(counts)
+
+        if counts == "normalize":
+            counts = "normalize_other"
+
+        map_edge = self.get_edge(self.root, new_root)
+        for e in self.edges - {map_edge.name}:
+            self.add_edge(self.get_edge(e)._compose_with(map_edge, counts))
+            self.drop(edges=e)
+
+        self.select_root(new_root)
+
+    def overlap(
+        self,
+        node_type: str | set[str] = "all",
+        weights: Optional[str] = None,
+        mutate: bool = True,
+    ):
+        r"""Calculate the overlap in neighbors between nodes.
+
+        Creates new overlap edges with an overlap feature that contains the
+        number of neighbors of `node_type` the nodes of the networks root
+        have in common.
+
+        Parameters
+        ----------
+        node_type : str or sequence of strings
+            If "all", default, create overlap edges for all available edge
+            sets. Available edge sets are those where one side is the root and,
+            if a weight is provided (see below), has the required feature.
+        weights : str, optional
+            The name of a feature in the edge set to weight the overlap by. If
+            None, the default, implicitly use 1 as the weight for all elements.
+            If a string, only edges that contain that feature are considered.
+        mutate : bool, optional
+            If True (default) mutate the PubNet in place, The PubNet will
+            contain all it's old edges plus the overlap edges. If False, return
+            a new PubNet with only the overlap edges and root node.
+
+        Example
+        -------
+        Calculate the number of chemicals each root node has in common with
+        each other root node.
+
+        >>> pubs.overlap("Chemical")
+        >>> pubs[pubs.root, "ChemicalOverlap"].feature_vector("overlap")
+
+        See Also
+        --------
+        `PubNet.select_root` for changing the network's root node type.
+        `PubNet.re_root` for translating the current root edges to a new root.
+        """
+
+        def not_root(edge_key):
+            n1, n2 = edge_parts(edge_key)
+            if n1 == self.root:
+                return n2
+            return n1
+
+        root_edges = {e for e in self.edges if self.root in edge_parts(e)}
+
+        if isinstance(node_type, str):
+            node_type = {node_type}
+
+        if "all" not in node_type:
+            root_edges = {e for e in root_edges if not_root(e) in node_type}
+
+        if weights is not None:
+            root_edges = {
+                e for e in root_edges if weights in self.get_edge(e).features()
+            }
+
+        if not root_edges:
+            raise ValueError(
+                "Could not find any edge sets that fit the requirements."
+            )
+
+        if mutate:
+            new_pubnet = self
+        else:
+            new_pubnet = PubNet(
+                nodes={self[self.root]}, root=self.root, name="overlap"
+            )
+
+        for e in root_edges:
+            new_pubnet.add_edge(
+                self.get_edge(e).overlap(self.root, weights),
+                name=edge_key(self.root, f"{not_root(e)}Overlap"),
+                representation=self.get_edge(e).representation,
+            )
+
+        if not mutate:
+            return new_pubnet
+
+        return None
+
     def plot_distribution(
-        self, node_type, node_feature, threshold=1, fname=None
+        self, node_type, node_feature, threshold=0, max_n=20, fname=None
     ):
         """Plot the distribution of the values of a node's feature.
 
@@ -555,13 +710,17 @@ class PubNet:
         # A tuple of 2 strings is likely two edge parts that need to be
         # converted to an edge key, but it could also be two edge keys that
         # should not be converted.
-        if len(edges) == 2 and isinstance(edges[0], str):
+        if (
+            len(edges) == 2
+            and not isinstance(edges, set)
+            and isinstance(edges[0], str)
+        ):
             try:
                 _, _ = edge_parts(edges[0])
             except ValueError:
                 edges = {edges}
 
-        return {edge_key(*e) for e in edges}
+        return {edge_key(*e) if len(e) == 2 else e for e in edges}
 
     def _missing_edges(self, edges):
         """Find all edges not in self.
