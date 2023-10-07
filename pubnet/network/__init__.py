@@ -237,19 +237,15 @@ class PubNet:
 
             raise KeyError(args)
 
-        is_string_array = isinstance(args, np.ndarray) and isinstance(
-            args[0], str
-        )
-        if (is_string_array or isinstance(args, tuple)) and (len(args) == 2):
-            return self.get_edge(*args)
-
-        if isinstance(args, np.ndarray | range):
-            return self._slice(args)
-
-        if isinstance(args, (self.id_dtype, int)):
+        try:
+            element = args[0]
+        except TypeError:
             return self._slice(np.asarray([args]))
 
-        raise KeyError(*args)
+        if isinstance(element, str):
+            return self.get_edge(*args)
+
+        return self._slice(np.asarray(args))
 
     def _slice(self, root_ids, mutate=False):
         """Filter the PubNet object's edges to those connected to root_ids.
@@ -304,7 +300,7 @@ class PubNet:
 
         return res
 
-    def ids_where(self, node_type, func):
+    def ids_where(self, node_type: str, func):
         """Get a list of the root node's IDs that match a condition.
 
         Parameters
@@ -336,9 +332,11 @@ class PubNet:
         node_idx = func(nodes)
 
         node_ids = nodes.index[node_idx]
-        root_idx = self[self.root, node_type].isin(node_type, node_ids)
-
-        root_ids = self[self.root, node_type][self.root][root_idx]
+        if node_type == self.root:
+            root_ids = node_ids
+        else:
+            root_idx = self[self.root, node_type].isin(node_type, node_ids)
+            root_ids = self[self.root, node_type][self.root][root_idx]
 
         return np.asarray(root_ids, dtype=np.int64)
 

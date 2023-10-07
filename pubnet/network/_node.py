@@ -156,6 +156,9 @@ class Node:
         return self[np.isin(self.index, indices), :]
 
     def feature_vector(self, name):
+        if name == self.id:
+            return self.index
+
         return self._data[name].values
 
     def get_random(self, n=1, seed=None):
