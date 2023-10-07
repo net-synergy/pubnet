@@ -8,7 +8,7 @@ A graph is made up of a list of node and a list of edges.
 import copy
 import os
 from locale import LC_ALL, setlocale
-from typing import Optional
+from typing import Callable, Optional
 from warnings import warn
 
 import numpy as np
@@ -598,7 +598,7 @@ class PubNet:
 
     def reduce_edges(
         self,
-        func,
+        func: Callable[[spmatrix, spmatrix], spmatrix],
         edge_feature: str,
         normalize: bool = False,
     ) -> Edge:
