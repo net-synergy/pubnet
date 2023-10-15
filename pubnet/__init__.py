@@ -12,6 +12,11 @@ and edge types), selecting a node or edge from a graph, and running graph
 algorithms on selected edges or nodes.
 """
 
+
+import importlib.metadata
+
+from pubnet import __package__
 from pubnet.network import PubNet
 
 __all__ = ["PubNet"]
+__version__ = importlib.metadata.version(__package__)
