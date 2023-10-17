@@ -259,6 +259,9 @@ class PubNet:
             return new_pubnet
 
         for key in self.edges:
+            if self.root not in edge_parts(key):
+                continue
+
             self.get_edge(key).set_data(
                 self.get_edge(key)[
                     self.get_edge(key).isin(self.root, root_ids)

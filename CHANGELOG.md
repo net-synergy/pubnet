@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- From pubnet method.
+
+### Fixed
+
+- When slicing a network, only slice edges that are connected to the network's root.
+
 ## [0.8.1] - 2023-10-06
 
 ### Added
