@@ -18,14 +18,7 @@ from scipy.sparse import spmatrix
 from pubnet.network import _edge
 from pubnet.network._edge._base import Edge
 from pubnet.network._node import Node
-from pubnet.network._utils import (
-    edge_files_containing,
-    edge_find_file,
-    edge_key,
-    edge_list_files,
-    edge_parts,
-    node_files_containing,
-)
+from pubnet.network._utils import edge_key, edge_parts, select_graph_components
 from pubnet.storage import delete_graph, graph_path, list_graphs
 
 __all__ = ["edge_key", "PubNet", "Edge", "Node"]
@@ -151,6 +144,9 @@ class PubNet:
                 raise ValueError(
                     "Data does not provide a name. Name must be supplied."
                 )
+
+        if data.name is None:
+            data.name = name
 
         if name in self.nodes:
             raise ValueError(f"The node type {name} is already in network.")
@@ -966,8 +962,8 @@ class PubNet:
     def load_graph(
         cls,
         name: str,
-        nodes: Optional[str | tuple[str, ...]] = "all",
-        edges: Optional[str | tuple[tuple[str, str], ...]] = "all",
+        nodes: str | tuple[str, ...] = "all",
+        edges: str | tuple[tuple[str, str], ...] = "all",
         root: str = "Publication",
         data_dir: Optional[str] = None,
         representation: str = "numpy",
@@ -1030,49 +1026,21 @@ class PubNet:
         `pubnet.storage.default_data_dir`
         `from_data`
         """
-        if nodes is None:
-            nodes = ()
-
-        if edges is None:
-            edges = ()
-
-        assert isinstance(
-            nodes, (str, tuple)
-        ), "Nodes must be a string or a tuple."
-
-        assert isinstance(
-            edges, (str, tuple)
-        ), 'Edges must be a tuple or "all".'
-
-        if isinstance(nodes, str) and nodes != "all":
-            raise TypeError('Nodes must be a tuple or "all"')
-        if isinstance(edges, str) and edges != "all":
-            raise TypeError('Edges must be a tuple of tuples or "all"')
-
-        save_dir = graph_path(name, data_dir)
-        if not os.path.exists(save_dir):
+        graph_dir = graph_path(name, data_dir)
+        if not os.path.exists(graph_dir):
             raise FileNotFoundError(
                 f'Graph "{name}" not found. Available graphs are: \n\t%s'
                 % "\n\t".join(g for g in list_graphs(data_dir))
             )
 
-        if (nodes == "all") and (edges != "all"):
-            nodes = tuple({n for e in edges for n in e})
-
-        if edges != "all":
-            all_edge_files = edge_list_files(save_dir)
-            edge_files = {
-                edge_key(e[0], e[1]): edge_find_file(
-                    e[0], e[1], all_edge_files
-                )
-                for e in edges
-            }
-        else:
-            edge_files = edge_files_containing(nodes, save_dir)
-
-        node_files = node_files_containing(nodes, save_dir)
-
-        net_nodes = [Node.from_file(file) for file in node_files.values()]
+        node_files, edge_files = select_graph_components(
+            nodes, edges, graph_dir
+        )
+        net_nodes = [
+            Node.from_file(file)
+            for file in node_files.values()
+            if file is not None
+        ]
         net_edges = [
             _edge.from_file(file, representation)
             for file in edge_files.values()

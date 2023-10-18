@@ -20,6 +20,7 @@ __all__ = [
     "edge_files_containing",
     "edge_gen_header",
     "edge_header_parts",
+    "select_graph_components",
 ]
 
 NODE_PATH_REGEX = re.compile(r"(?P<node>\w+)_nodes.(?P<ext>[\w\.]+)")
@@ -140,12 +141,14 @@ def node_list_files(data_dir: str) -> dict[str, dict[str, str]]:
     return out
 
 
-def node_find_file(node: str, path_dict: dict[str, dict[str, str]]) -> str:
+def node_find_file(
+    node: str, path_dict: dict[str, dict[str, str]]
+) -> str | None:
     """Return the file path for a node."""
     try:
         available_files = path_dict[node]
     except KeyError:
-        raise FileNotFoundError(f"No file found for node {node}.")
+        return None
 
     ext_preference = ["feather", "tsv", "tsv.gz"]
     for ext in ext_preference:
@@ -306,3 +309,86 @@ def edge_header_parts(header: str) -> tuple[str, str, list[str], bool]:
         if not (feat.startswith(":START") or feat.startswith(":END"))
     ]
     return (start_id, end_id, features, reverse)
+
+
+def select_graph_components(nodes, edges, graph_dir: str) -> tuple[dict, dict]:
+    """Determine which nodes and edges to select.
+
+    If nodes and edges are both "all", return all graph saved components.
+
+    If edges is "all" and nodes is a tuple of nodes, return all graph
+    components which inclusively contain the nodes, i.e. edges where *both*
+    ends of the edge are a provided node type.
+
+    If nodes is "all" and edges is a tuple of tuples, return all edges in
+    `edges` and only the nodes in the edges. If one side of an edge descriptor
+    is "*" match all nodes that are in an edge with the node on the other side
+    of the edge descriptor.
+    """
+    if (not isinstance(nodes, (str, tuple))) or (
+        isinstance(nodes, str) and nodes != "all"
+    ):
+        raise TypeError('Nodes must be a tuple or "all"')
+    if (
+        (not isinstance(edges, str | tuple))
+        or (isinstance(edges, str) and edges != "all")
+        or (isinstance(edges, tuple) and not isinstance(edges[0], tuple))
+    ):
+        raise TypeError('Edges must be a tuple of tuples or "all"')
+
+    def expand_edge(edge, files):
+        n1, n2 = edge_parts(edge)
+        if "*" not in (n1, n2):
+            return (edge,)
+
+        if n1 == "*":
+            n1 = n2
+
+        return tuple(
+            e.groups()[0:2]
+            for e in (re.search(EDGE_PATH_REGEX, f) for f in files)
+            if (e is not None) and (n1 in e.groups()[0:2])
+        )
+
+    def collect_nodes(edges, files):
+        # Relational nodes look like their related edges
+        # ({parent_node}_{child_node}.tsv).
+        all_relational_nodes = [
+            m.groups()
+            for m in (re.search(f"(\w*)_(\w*)_nodes.tsv", f) for f in files)
+            if m is not None
+        ]
+        relational_nodes = {
+            "_".join(m)
+            for n1, n2 in edges
+            for m in all_relational_nodes
+            if (n1 in m) and (n2 in m)
+        }
+        regular_nodes = {
+            n
+            for e in edges
+            if ("_".join(e) not in relational_nodes)
+            and ("_".join(e[::-1]) not in relational_nodes)
+            for n in e
+        }
+        return tuple(relational_nodes.union(regular_nodes))
+
+    files = os.listdir(graph_dir)
+    if edges != "all":
+        edges = sum((expand_edge(e, files) for e in edges), ())
+
+    if (nodes == "all") and (edges != "all"):
+        nodes = collect_nodes(edges, files)
+
+    if edges != "all":
+        all_edge_files = edge_list_files(graph_dir)
+        edge_files = {
+            edge_key(e[0], e[1]): edge_find_file(e[0], e[1], all_edge_files)
+            for e in edges
+        }
+    else:
+        edge_files = edge_files_containing(nodes, graph_dir)
+
+    node_files = node_files_containing(nodes, graph_dir)
+
+    return (node_files, edge_files)

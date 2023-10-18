@@ -235,7 +235,7 @@ class Node:
             )
 
     @classmethod
-    def from_file(cls, file_name, *args):
+    def from_file(cls, file_name: str, *args, **keys):
         """Read a `Node` in from a file.
 
         The node will be saved to a graph (a directory in the `data_dir` where
@@ -274,10 +274,10 @@ class Node:
 
         node_id = data.index.name
 
-        return cls.from_data(data, node_id, name, *args)
+        return cls.from_data(data, node_id, name, *args, **keys)
 
     @classmethod
-    def from_data(cls, data, *args):
+    def from_data(cls, data, *args, **keys):
         """Create a node from a DataFrame.
 
         Paramaters
@@ -299,4 +299,4 @@ class Node:
         `from_file` : read a `Node` from file.
         `Node.to_file` : save a `Node` to file.
         """
-        return Node(data, *args)
+        return Node(data, *args, **keys)

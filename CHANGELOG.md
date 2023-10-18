@@ -10,10 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - From pubnet method.
+- Ability to select graph components with edge wildcard.
 
 ### Changed
 
 - Align sizes in PubNet representation.
+- Don't error if expected node file is missing, instead create empty node.
 
 ### Fixed
 
