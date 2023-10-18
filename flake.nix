@@ -15,11 +15,7 @@
           projectDir = ./.;
           editablePackageSources = { pubnet = ./pubnet; };
           preferWheels = true;
-          groups = [
-            "test"
-            "dev"
-            # "benchmark"
-          ];
+          groups = [ "test" "dev" ];
           extraPackages = (ps: with ps; [ ipdb ]);
         };
         pubnet = pkgs.poetry2nix.mkPoetryPackages { projectDir = ./.; };
