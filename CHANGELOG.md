@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - From pubnet method.
 
+### Changed
+
+- Align sizes in PubNet representation.
+
 ### Fixed
 
 - When slicing a network, only slice edges that are connected to the network's root.

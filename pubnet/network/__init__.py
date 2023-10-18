@@ -293,13 +293,19 @@ class PubNet:
     def __repr__(self):
         setlocale(LC_ALL, "")
 
+        def sep(name, col_len):
+            return " " * (col_len - len(name))
+
+        node_col = max((len(n) for n in self.nodes), default=0) + 4
+        edge_col = max((len(e) for e in self.edges), default=0) + 4
+
         res = f"{self.name} Publication Network\nroot: {self.root}"
         res += "\n\nNode types:"
         for n in self.nodes:
-            res += f"\n\t{n}\t({len(self._node_data[n]):n})"
+            res += f"\n    {n}{sep(n, node_col)}({len(self._node_data[n]):n})"
         res += "\n\nEdge sets:"
         for e in self.edges:
-            res += f"\n\t{e}\t({len(self._edge_data[e]):n})"
+            res += f"\n    {e}{sep(e, edge_col)}({len(self._edge_data[e]):n})"
 
         return res
 
