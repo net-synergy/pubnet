@@ -260,7 +260,7 @@ class PubNet:
 
             self.get_edge(key).set_data(
                 self.get_edge(key)[
-                    self.get_edge(key).isin(self.root, root_ids)
+                    self.get_edge(key).isin(self.root, root_ids), :
                 ]
             )
 
@@ -274,9 +274,6 @@ class PubNet:
                 try:
                     edge = self.get_edge(key, self.root)
                 except KeyError:
-                    continue
-
-                if len(edge) == 0:
                     continue
 
                 node_ids = edge[key]
