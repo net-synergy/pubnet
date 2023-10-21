@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Align sizes in PubNet representation.
 - Don't error if expected node file is missing, instead create empty node.
+- Ensure all nodes have name and ID.
+- Add methods for getting and setting various names associated with a node.
 
 ### Fixed
 

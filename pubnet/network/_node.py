@@ -1,6 +1,7 @@
 """Class for storing node data."""
 
 import os
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -49,14 +50,15 @@ class Node:
     """
 
     def __init__(self, data, node_id=None, name=None, features="all"):
-        self._data = data
-        self.id = node_id
+        self._data = data if data is not None else pd.DataFrame()
         self.name = name
-        if data is None:
-            self._data = pd.DataFrame()
-            self.id = None
-            return
 
+        if not self.name:
+            raise TypeError(
+                "Node not named. Provide a name to the constructor."
+            )
+
+        self.rename_index(node_id or self.name + "ID")
         if features != "all":
             assert isinstance(
                 features, list
@@ -133,6 +135,17 @@ class Node:
         else:
             raise ValueError("New data is not a dataframe")
 
+    def rename_index(self, new_name):
+        self._data.rename_axis(index=new_name, inplace=True)
+
+    def rename_column(self, old_name, new_name):
+        self._data.rename(columns={old_name: new_name}, inplace=True)
+
+    @property
+    def id(self):
+        """Name of the index."""
+        return self._data.index.name
+
     @property
     def features(self):
         """A list of all the node's features."""
@@ -150,12 +163,14 @@ class Node:
 
     @property
     def index(self):
+        """Return index array."""
         return np.asarray(self._data.index)
 
     def iloc(self, indices):
         return self[np.isin(self.index, indices), :]
 
     def feature_vector(self, name):
+        """Get a feature vector associated with the node."""
         if name == self.id:
             return self.index
 
@@ -225,7 +240,9 @@ class Node:
             os.mkdir(data_dir)
 
         if file_format == "binary":
-            self._data.reset_index().to_feather(file_path)
+            with warnings.catch_warnings():
+                warnings.simplefilter(action="ignore", category=FutureWarning)
+                self._data.reset_index().to_feather(file_path)
         else:
             # `to_csv` will infer whether to use gzip based on extension.
             self._data.to_csv(

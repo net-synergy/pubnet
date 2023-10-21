@@ -212,7 +212,7 @@ def edge_find_file(
 
 def node_files_containing(
     nodes: str | tuple[str, ...], data_dir: str
-) -> dict[str, str]:
+) -> dict[str, str | None]:
     r"""Find the preferred node file for the provided nodes in data_dir.
 
     If nodes is "all" find a file for all nodes in the data_dir, otherwise

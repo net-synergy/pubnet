@@ -132,26 +132,18 @@ class PubNet:
         `PubNet.add_edge`
         `PubNet.drop`
         """
-        if isinstance(data, str):
-            data = Node.from_file(data)
-        elif data is None or not isinstance(data, Node):
-            data = Node.from_data(data)
+        if isinstance(data, Node):
+            node = data
+        elif isinstance(data, str):
+            node = Node.from_file(data)
+        else:
+            node = Node.from_data(data, name=name)
 
-        if name is None:
-            try:
-                name = data.name
-            except AttributeError:
-                raise ValueError(
-                    "Data does not provide a name. Name must be supplied."
-                )
-
-        if data.name is None:
-            data.name = name
-
-        if name in self.nodes:
+        node.name = name or node.name
+        if node.name in self.nodes:
             raise ValueError(f"The node type {name} is already in network.")
 
-        self._node_data[name] = data
+        self._node_data[node.name] = node
 
     def add_edge(
         self,
