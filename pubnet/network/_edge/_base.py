@@ -371,7 +371,7 @@ class Edge:
 
         return new_edge
 
-    def _compose_with(self, other, conts: str, mode: str):
+    def _compose_with(self, other, counts: str, mode: str):
         """Use other to create a new edge set that transverses both edges.
 
         Bipartite edge sets can be treated as a mapping between two node types.

@@ -7,11 +7,13 @@ A graph is made up of a list of node and a list of edges.
 
 import copy
 import os
+import re
 from locale import LC_ALL, setlocale
 from typing import Callable, Optional
 from warnings import warn
 
 import numpy as np
+import pandas as pd
 from pandas.core.dtypes.common import is_list_like
 from scipy.sparse import spmatrix
 
@@ -780,6 +782,179 @@ class PubNet:
                 return False
 
         return all(self[e].isequal(other[e]) for e in self.edges)
+
+    def refresh_edges(self):
+        """Recreate edge keys if they get out of sync with edge names."""
+        self._edge_data = {
+            self.get_edge(e).name: self.get_edge(e) for e in self.edges
+        }
+
+    def mutate_node(
+        self,
+        name: str,
+        template_node: str,
+        rule: Callable,
+        feature_name: str = "",
+        discard_used: bool = True,
+    ) -> None:
+        """Produce a new node from a modification of an existing node.
+
+        Parameters
+        ----------
+        name : str
+            The name of the to be created node. Can be the same as
+            `template_node`, in which case, the node gets replaced with it's
+            mutation.
+        template_node : str
+            Name of the node, in self, to mutate.
+        rule : callable
+            A function that takes the template node and returns a mapping from
+            the template node's indices to the new nodes values. This should be
+            a two dimensional array with one row for each new value. If there
+            should be more than one feature, each row will be template node's
+            index, feature 1, feature 2, ...
+        feature_name : str
+            What to name the new feature. If left as an empty list, the feature
+            will be given the same name as the node (i.e. `name`).
+        discard_used : bool, default True
+            Whether the old node and it's edges should be discarded are kept in
+            the PubNet. Cannot be False if `name == template_node`.
+
+        See Also
+        --------
+        `PubNet.mutate_node_re`
+        """
+        if name == template_node:
+            if not discard_used:
+                raise ValueError(
+                    "If new node is the same as template node, the template"
+                    " node must be discarded. Set `discard_used` to True to"
+                    " allow the template node to be discarded."
+                )
+
+            characters = [chr(i) for i in range(ord("a"), ord("z") + 1)]
+            tmp_name = "".join(np.random.choice(characters, 20))
+            self.mutate_node(
+                tmp_name, template_node, rule, feature_name, discard_used
+            )
+
+            node = self._node_data.pop(tmp_name)
+            node.rename_index(name + "ID")
+            node.rename_column(tmp_name, template_node)
+            self.add_node(node, name=name)
+            for e in self.edges:
+                edge = self.get_edge(e)
+                if tmp_name in (edge.start_id, edge.end_id):
+                    other = edge.other_node(tmp_name)
+                    edge.name = edge_key(other, name)
+                    edge.start_id = (
+                        name if edge.start_id == tmp_name else edge.start_id
+                    )
+                    edge.end_id = (
+                        name if edge.end_id == tmp_name else edge.end_id
+                    )
+            self.refresh_edges()
+            return
+
+        feature_name = feature_name or name
+        old_to_new = rule(self.get_node(template_node))
+        new_values, indices = np.unique(old_to_new[:, 1], return_inverse=True)
+        self.add_node(pd.DataFrame({feature_name: new_values}), name=name)
+        new_edge = _edge.from_data(
+            np.concatenate(
+                (
+                    old_to_new[:, 0:1].astype(_edge.id_dtype),
+                    np.expand_dims(indices, axis=1),
+                ),
+                axis=1,
+                dtype=_edge.id_dtype,
+            ),
+            edge_key(template_node, name),
+            start_id=template_node,
+            end_id=name,
+        )
+
+        for e in self.edges:
+            if template_node in edge_parts(e):
+                self.add_edge(
+                    new_edge._compose_with(self.get_edge(e), "drop", "all")
+                )
+                if discard_used:
+                    self.drop(edges=e)
+
+        if discard_used:
+            self.drop(nodes=template_node)
+
+    def mutate_node_re(
+        self,
+        name: str,
+        pattern: str | re.Pattern,
+        template_node: str,
+        feature: str,
+        feature_name: str = "",
+        discard_used: bool = True,
+    ) -> None:
+        """Create new nodes from regex matches of an old node.
+
+        A special case of `PubNet.mutate_node` for creating a new node based on
+        regex matches on an existing node's values.
+
+        Parameters
+        ----------
+        name : str
+            The name of the to be created node.
+        pattern : str
+            A regex pattern that will be matched against the selected feature
+            vector's values. To collect only a group from the pattern, use a
+            named group. Can only have one named group per pattern.
+        template_node : str
+            Name of the node, in self, to mutate from.
+        feature : str
+            Name of the feature in `template_node` the values to match come
+            from. The feature should contain string values.
+        feature_name : str
+            The name for the new feature. If left blank and the pattern
+            contains a named group, the groups name will be used, otherwise the
+            name of the new node will be used.
+        discard_used : bool, default True
+            Whether the template node and it's edges should be discarded after
+            mutating.
+        """
+
+        if isinstance(pattern, str):
+            pattern = re.compile(pattern)
+
+        if pattern.groups > 1:
+            raise ValueError("Cannot handle multiple capturing groups.")
+
+        group_name = (
+            None
+            if not pattern.groupindex
+            else list(pattern.groupindex.keys())[0]
+        )
+        feature_name = feature_name or group_name or name
+
+        def rule(node):
+            strings = node.feature_vector(feature)
+            re_filter = (
+                (i, re.search(pattern, s)) for i, s in zip(node.index, strings)
+            )
+            return np.fromiter(
+                (
+                    (i, m.group(group_name) if group_name else m.group())
+                    for i, m in re_filter
+                    if m is not None
+                ),
+                dtype=np.dtype((object, 2)),
+            )
+
+        self.mutate_node(
+            name,
+            template_node,
+            rule,
+            feature_name=feature_name,
+            discard_used=discard_used,
+        )
 
     def edges_to_igraph(self):
         """Convert all edge sets to the igraph backend."""
