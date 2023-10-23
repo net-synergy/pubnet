@@ -117,10 +117,7 @@ class Edge:
         if last_edges > 0:
             edges += f"\n{align_row(['...'] * len(col_names))}\n"
             edges += "\n".join(
-                align_row(line)
-                for line in self[
-                    len(self) - 1 : len(self) - (last_edges + 1) : -1
-                ].as_array()
+                align_row(line) for line in self[-last_edges:].as_array()
             )
         return "\n".join((n_edges, header, edges))
 
