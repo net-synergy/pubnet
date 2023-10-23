@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - When slicing a network, only slice edges that are connected to the network's root.
 - Handle nodes with no edges after PubNet indexing (return empty node set).
 - Order of the last edges when printing was backward.
+- Missing names in call to `from_data` in `add_edge`
 
 ## [0.8.1] - 2023-10-06
 

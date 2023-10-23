@@ -183,7 +183,9 @@ class PubNet:
         if isinstance(data, str):
             data = _edge.from_file(data, representation)
         elif not isinstance(data, _edge.Edge):
-            data = _edge.from_data(data, **keys, representation=representation)
+            data = _edge.from_data(
+                data, name, **keys, representation=representation
+            )
 
         if name is None:
             try:
