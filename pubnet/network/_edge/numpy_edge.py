@@ -277,13 +277,15 @@ class NumpyEdge(Edge):
         """
         data_type = self._data.dtype
 
-        adj = self.to_sparse_matrix(row=node_type, weights=weights)
-
-        res = adj @ adj.T
-        res = sp.triu(
-            res - sp.diags(res.diagonal(), dtype=data_type, format="csr"),
-            format="csr",
-        ).tocoo()
+        if len(self) == 0:
+            res = sp.coo_matrix(np.array([]))
+        else:
+            adj = self.to_sparse_matrix(row=node_type, weights=weights)
+            res = adj @ adj.T
+            res = sp.triu(
+                res - sp.diags(res.diagonal(), dtype=data_type, format="csr"),
+                format="csr",
+            ).tocoo()
 
         return self.from_sparse_matrix(
             res,
