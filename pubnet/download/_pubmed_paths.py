@@ -43,7 +43,7 @@ _KNOWN_SUBPATHS = {
         "Orcid": "/Author/Identifier/[@Source='ORCID']",
     },
     "Grant": {
-        "Id": "/Grant/GrantId",
+        "Id": "/Grant/GrantID",
         "Acronym": "/Grant/Acronym",
         "Agency": "/Grant/Agency",
         "Country": "/Grant/Country",
