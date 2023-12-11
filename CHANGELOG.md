@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Missing names in call to `from_data` in `add_edge`.
 - Handle empty edges when calculating overlap.
 - Typo in pubmed path for Grant IDs.
+- Protect against overwriting graphs when creating graphs from pubmed.
 
 ## [0.8.1] - 2023-10-06
 

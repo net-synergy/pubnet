@@ -310,6 +310,9 @@ def from_pubmed(
     if _exists_locally(save_dir, node_list, file_numbers):
         return PubNet.load_graph(save_dir) if load_graph else None
 
+    if os.listdir(save_dir):
+        raise FileExistsError("A graph with the given name already exists.")
+
     files = pubmedparser.ftp.download(file_numbers)
     raw_data = pubmedparser.read_xml(files, publication_struct, "pubnet")
     shutil.copy(
