@@ -92,10 +92,42 @@ class _Index:
         return self.ids[value]
 
 
+def _convert_key(
+    key: str,
+    raw_data_dir: str,
+    graph_dir: str,
+    clean_cache: bool,
+) -> _Index:
+    key_index = _Index()
+
+    original_file = os.path.join(raw_data_dir, key + ".tsv")
+    node_file = node_gen_file_name(key, "tsv", graph_dir)
+    with open(original_file, "r") as raw_ptr, open(node_file, "w") as node_ptr:
+        header = raw_ptr.readline()
+        node_ptr.write(node_gen_id_label(key + "ID", key) + "\t" + header)
+        for line in raw_ptr:
+            parts = line.strip().split("\t")
+
+            if parts[0] not in key_index:
+                node_ptr.write(
+                    str(key_index.count)
+                    + "\t"
+                    + "\t".join(parts).lower()
+                    + "\n"
+                )
+                key_index.add(parts[0])
+
+    if clean_cache:
+        os.unlink(original_file)
+
+    return key_index
+
+
 def _convert_relational_group(
     nodes: list[str],
     net_key: str,
     group_key: str,
+    key_index: _Index,
     raw_data_dir: str,
     graph_dir: str,
     clean_cache: bool,
@@ -109,6 +141,7 @@ def _convert_relational_group(
         group_ptr.write(edge_gen_header(net_key, group_key, []) + "\n")
         for n in nodes:
             node_index = _Index()
+            edge_index = _Index()
             name = group_key + "_" + n
             original_file = os.path.join(raw_data_dir, name + ".tsv")
             node_file = node_gen_file_name(name, "tsv", graph_dir)
@@ -134,7 +167,10 @@ def _convert_relational_group(
                     group_label = "-".join(parts[:2])
                     if group_label not in group_index:
                         group_ptr.write(
-                            parts[0] + "\t" + str(group_index.count) + "\n"
+                            str(key_index[parts[0]])
+                            + "\t"
+                            + str(group_index.count)
+                            + "\n"
                         )
                         group_index.add(group_label)
 
@@ -147,17 +183,26 @@ def _convert_relational_group(
                         )
                         node_index.add(parts[2])
 
-                    edge_ptr.write(
-                        f"{group_index[group_label]}\t"
-                        + f"{node_index[parts[2]]}\n"
-                    )
+                    # A given author can somehow have multiple last names and
+                    # other fields that there should only be one of.
+                    if group_label not in edge_index:
+                        edge_ptr.write(
+                            f"{group_index[group_label]}\t"
+                            + f"{node_index[parts[2]]}\n"
+                        )
+                        edge_index.add(group_label)
 
             if clean_cache:
                 os.unlink(original_file)
 
 
 def _convert_file(
-    node: str, key: str, raw_data_dir: str, graph_dir: str, clean_cache: bool
+    node: str,
+    key: str,
+    key_index: _Index,
+    raw_data_dir: str,
+    graph_dir: str,
+    clean_cache: bool,
 ) -> None:
     node_index = _Index()
 
@@ -186,7 +231,7 @@ def _convert_file(
                 )
                 node_index.add(parts[1])
 
-            edge_ptr.write(f"{parts[0]}\t{node_index[parts[1]]}\n")
+            edge_ptr.write(f"{key_index[parts[0]]}\t{node_index[parts[1]]}\n")
 
     if clean_cache:
         os.unlink(original_file)
@@ -199,7 +244,14 @@ def _to_graph(
     graph_dir: str,
     clean_cache: bool,
 ) -> None:
+    key_index = _convert_key(key_node, raw_data_dir, graph_dir, clean_cache)
+
     for node in node_list:
+        if (isinstance(node, dict) and node["name"] == key_node) or (
+            isinstance(node, str) and node == key_node
+        ):
+            continue
+
         if (
             isinstance(node, dict)
             and "grouping" in node
@@ -209,36 +261,20 @@ def _to_graph(
                 node["value"],
                 key_node,
                 node["name"],
+                key_index,
                 raw_data_dir,
                 graph_dir,
                 clean_cache,
             )
-        elif isinstance(node, dict) and node["name"] != key_node:
-            _convert_file(
-                node["name"], key_node, raw_data_dir, graph_dir, clean_cache
-            )
-        elif (
-            isinstance(node, dict)
-            and node["name"] == key_node
-            or isinstance(node, str)
-            and node == key_node
-        ):
-            # Not ideal having to rewrite entire file just to change header.
-            original_file = os.path.join(raw_data_dir, key_node + ".tsv")
-            node_file = node_gen_file_name(key_node, "tsv", graph_dir)
-            with open(original_file, "r") as org_ptr, open(
-                node_file, "w"
-            ) as node_ptr:
-                header = org_ptr.readline().split("\t")
-                header[0] = node_gen_id_label(header[0], key_node)
-                node_ptr.write("\t".join(header))
-                for line in org_ptr:
-                    node_ptr.write(line)
-
-            if clean_cache:
-                os.unlink(original_file)
         else:
-            _convert_file(node, key_node, raw_data_dir, graph_dir, clean_cache)
+            _convert_file(
+                node["name"] if isinstance(node, dict) else node,
+                key_node,
+                key_index,
+                raw_data_dir,
+                graph_dir,
+                clean_cache,
+            )
 
 
 def from_pubmed(
