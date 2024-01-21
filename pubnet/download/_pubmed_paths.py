@@ -21,7 +21,7 @@ _KNOWN_PATHS = {
     "Pmc": "/PubmedArticle/PubmedData/ArticleIdList/ArticleId/[@IdType='pmc']",
     "Mid": "/PubmedArticle/PubmedData/ArticleIdList/ArticleId/[@IdType='mid']",
     "Language": "/PubmedArticle/MedlineCitation/Article/Language",
-    "Date": "/PubmedArticle/MedlineCitation/Article/Journal/JournalIssue/PubDate/Year",
+    "Date": "/PubmedArticle/PubmedData/History/PubMedPubDate/Year",
     "Journal": "/PubmedArticle/MedlineCitation/Article/Journal/Title",
     "Author": "/PubmedArticle/MedlineCitation/Article/AuthorList",
     "Grant": "/PubmedArticle/MedlineCitation/Article/GrantList",
