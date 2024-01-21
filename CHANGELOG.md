@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.9.0] - 2024-01-20
 
 ### Added
 
@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Don't error if expected node file is missing, instead create empty node.
 - Ensure all nodes have name and ID.
 - Add methods for getting and setting various names associated with a node.
+- Default date field in pubmed XML.
+- Create publication indices instead of using PMIDs.
 
 ### Fixed
 
@@ -29,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Handle empty edges when calculating overlap.
 - Typo in pubmed path for Grant IDs.
 - Protect against overwriting graphs when creating graphs from pubmed.
+- Prevent duplicate edges when creating pubmed graphs.
 
 ## [0.8.1] - 2023-10-06
 
