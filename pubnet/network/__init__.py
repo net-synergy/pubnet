@@ -394,7 +394,12 @@ class PubNet:
 
         return root_ids
 
-    def where(self, node_type, func):
+    def where(
+        self,
+        node_type: str,
+        func: Callable[[pd.DataFrame], np.ndarray],
+        in_place: bool = False,
+    ):
         """Filter network to root nodes satisfying a predicate function.
 
         All graphs are reduced to a subset of edges related to those associated
@@ -411,6 +416,10 @@ class PubNet:
         `PubNet.containing`
         """
         root_ids = self.ids_where(node_type, func)
+        if in_place:
+            self._slice(root_ids, mutate=True)
+            return None
+
         return self[root_ids]
 
     def containing(self, node_type, node_feature, value, steps=1):

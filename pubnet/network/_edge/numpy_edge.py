@@ -190,9 +190,9 @@ class NumpyEdge(Edge):
         ).tocsr()
 
     def _compose_with(self, other, counts: str, mode: str):
-        shared_keys = {self.start_id, self.end_id}.intersection(
-            {other.start_id, other.end_id}
-        )
+        shared_keys = {self.start_id, self.end_id}.intersection({
+            other.start_id, other.end_id
+        })
         if not shared_keys:
             raise AssertionError("No key edge between the two edge sets")
 
@@ -388,3 +388,9 @@ class NumpyEdge(Edge):
                     count += 1
 
         return out
+
+    def _duplicates_to_weights(self, weight_name: str) -> None:
+        """Convert the number of occurrences of an edge to weights."""
+        new_data, weights = np.unique(self._data, axis=0, return_counts=True)
+        self.set_data(new_data)
+        self.add_feature(weights, weight_name)

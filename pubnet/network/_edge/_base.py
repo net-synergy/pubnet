@@ -434,6 +434,9 @@ class Edge:
     def _pagerank(self, target_publications):
         raise AbstractMethodError(self)
 
+    def _duplicates_to_weights(self, weight_name: str) -> None:
+        raise AbstractMethodError(self)
+
 
 class AbstractMethodError(NotImplementedError):
     """Error for missing required methods in concrete classes."""
