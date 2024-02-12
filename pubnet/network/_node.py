@@ -47,6 +47,7 @@ class Node:
     features
     columns
     shape
+
     """
 
     def __init__(self, data, node_id=None, name=None, features="all"):
@@ -191,6 +192,7 @@ class Node:
         -------
         nodes : dataframe
             Subset of nodes.
+
         """
         rng = np.random.default_rng(seed=seed)
         return self._data.loc[rng.integers(0, self._data.shape[0], size=(n,))]
@@ -232,6 +234,7 @@ class Node:
         `pubmed.storage.default_data_dir`
         `pubmed.network.pubnet.save_graph`
         `pubmed.network.pubnet.load_graph`
+
         """
         ext = {"binary": "feather", "gzip": "tsv.gz", "tsv": "tsv"}
         file_path = node_gen_file_name(self.name, ext[file_format], data_dir)
@@ -262,7 +265,7 @@ class Node:
         ----------
         file_name : str
            Path to the file containing the node.
-        *args : Any
+        *args, **keys : Any
             All other args are forwarded to the `Node` class.
 
         Returns
@@ -277,6 +280,7 @@ class Node:
         `pubmed.storage.default_data_dir`
         `pubmed.network.pubnet.save_graph`
         `pubmed.network.pubnet.load_graph`
+
         """
         name, ext = node_file_parts(file_name)
         if ext == "feather":
@@ -315,5 +319,6 @@ class Node:
         `Node`
         `from_file` : read a `Node` from file.
         `Node.to_file` : save a `Node` to file.
+
         """
         return Node(data, *args, **keys)

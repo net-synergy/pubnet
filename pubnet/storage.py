@@ -52,6 +52,7 @@ def graph_path(name: str, data_dir: Optional[str] = None) -> str:
     See Also
     --------
     `default_data_dir`
+
     """
     if data_dir is None:
         return default_data_dir(name)
@@ -71,6 +72,7 @@ def set_default_cache_dir(new_path: str = "") -> None:
     --------
     `default_cache_dir`
     `set_default_data_dir`
+
     """
     global _cache_dir
     _cache_dir = new_path
@@ -88,6 +90,7 @@ def set_default_data_dir(new_path: str = "") -> None:
     --------
     `default_data_dir`
     `set_default_cache_dir`
+
     """
     global _data_dir
     _data_dir = new_path
@@ -119,6 +122,7 @@ def default_cache_dir(path: str = "") -> str:
     See Also
     --------
     `set_cache_dir`, `default_data_dir`
+
     """
     if _cache_dir:
         cache_dir = _cache_dir
@@ -159,6 +163,7 @@ def default_data_dir(path: str = "") -> str:
     See Also
     --------
     `set_cache_dir`, `default_data_dir`
+
     """
     if _data_dir:
         data_dir = _data_dir
@@ -210,6 +215,7 @@ def clear_cache(path: str = "") -> None:
     path : str
         If not an empty string (default), clear only the directory PATH
         relative to the default cache.
+
     """
     _clear_dir(default_cache_dir(path))
 
@@ -224,6 +230,7 @@ def clear_data(path: str = "") -> None:
     path : str
         If not an empty string (default), clear only the directory PATH
         relative to the default data directory.
+
     """
     _clear_dir(default_data_dir(path))
 

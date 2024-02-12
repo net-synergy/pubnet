@@ -335,6 +335,7 @@ def from_pubmed(
     network : PubNet, None
         If `load_graph` returns a PubNet network containing the pubmed data. If
         not `load_graph` does not return anything.
+
     """
     if not is_node_list(node_list):
         raise TypeError("Node list does not match expected format.")

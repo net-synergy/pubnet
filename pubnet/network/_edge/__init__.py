@@ -119,6 +119,7 @@ def from_data(
     Returns
     -------
     Edge
+
     """
     if start_id is None or end_id is None:
         try:

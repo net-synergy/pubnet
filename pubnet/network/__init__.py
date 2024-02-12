@@ -59,6 +59,7 @@ class PubNet:
     --------
     `load_graph`
     `from_data`
+
     """
 
     def __init__(
@@ -133,6 +134,7 @@ class PubNet:
         --------
         `PubNet.add_edge`
         `PubNet.drop`
+
         """
         if isinstance(data, Node):
             node = data
@@ -179,6 +181,7 @@ class PubNet:
         --------
         `PubNet.add_node` for analogous node method.
         `PubNet.drop` to remove edges and nodes.
+
         """
         if isinstance(data, str):
             data = _edge.from_file(data, representation)
@@ -325,6 +328,7 @@ class PubNet:
         See Also
         --------
         `PubNet.ids_containing`
+
         """
         nodes = self.get_node(node_type)
         node_idx = func(nodes)
@@ -373,6 +377,7 @@ class PubNet:
         See Also
         --------
         `PubNet.ids_where`
+
         """
         assert (
             isinstance(steps, int) and steps >= 1
@@ -414,6 +419,7 @@ class PubNet:
         --------
         `PubNet.ids_where`
         `PubNet.containing`
+
         """
         root_ids = self.ids_where(node_type, func)
         if in_place:
@@ -429,6 +435,7 @@ class PubNet:
         --------
         `PubNet.ids_containing`
         `PubNet.where`
+
         """
         root_ids = self.ids_containing(node_type, node_feature, value, steps)
         return self[root_ids]
@@ -477,6 +484,7 @@ class PubNet:
         See Also
         --------
         `PubNet.select_root` to change the root without modifying edges.
+
         """
         root_edges = [
             e
@@ -558,6 +566,7 @@ class PubNet:
         --------
         `PubNet.select_root` for changing the network's root node type.
         `PubNet.re_root` for translating the current root edges to a new root.
+
         """
 
         def not_root(edge_key):
@@ -637,6 +646,7 @@ class PubNet:
             An edge whose list of edges is equal to the union of all edge sets
             list of edges. The edge has a single feature with the same name as
             `edge_feature` with the resulting reduced data.
+
         """
         featured_edges = {
             e
@@ -694,6 +704,7 @@ class PubNet:
             The maximum number of bars to plot. If none, plot all.
         fname : str, optional
             The name of the figure.
+
         """
         import matplotlib.pyplot as plt
 
@@ -745,6 +756,7 @@ class PubNet:
         --------
         `PubNet.add_node`
         `PubNet.add_edge`
+
         """
         if isinstance(nodes, str):
             nodes = {nodes}
@@ -834,6 +846,7 @@ class PubNet:
         See Also
         --------
         `PubNet.mutate_node_re`
+
         """
         if name == template_node:
             if not discard_used:
@@ -930,8 +943,8 @@ class PubNet:
         discard_used : bool, default True
             Whether the template node and it's edges should be discarded after
             mutating.
-        """
 
+        """
         if isinstance(pattern, str):
             pattern = re.compile(pattern)
 
@@ -1010,6 +1023,7 @@ class PubNet:
         -------
         missing_edges : list
             Edges not in self.
+
         """
         return self._as_keys(edges) - self.edges
 
@@ -1025,6 +1039,7 @@ class PubNet:
         -------
         missing_nodes : list
             Nodes not in self.
+
         """
         return set(nodes) - self.nodes
 
@@ -1073,6 +1088,7 @@ class PubNet:
         --------
         `pubnet.storage.default_data_dir`
         `load_graph`
+
         """
 
         def all_edges_containing(nodes):
@@ -1200,6 +1216,7 @@ class PubNet:
         `pubnet.network.PubNet`
         `pubnet.storage.default_data_dir`
         `from_data`
+
         """
         graph_dir = graph_path(name, data_dir)
         if not os.path.exists(graph_dir):
@@ -1254,6 +1271,7 @@ class PubNet:
         See Also
         --------
         `load_graph`
+
         """
         for n_name, n in nodes.items():
             nodes[n_name] = Node.from_data(n)

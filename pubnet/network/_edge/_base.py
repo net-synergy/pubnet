@@ -43,6 +43,7 @@ class Edge:
         Which representation the edges are stored as.
     is_weighted : bool
         Whether the edges are weighted.
+
     """
 
     def __init__(
@@ -281,6 +282,7 @@ class Edge:
         `pubnet.storage.default_data_dir`
         `pubnet.network.PubNet.save_graph`
         `pubnet.network.load_graph`
+
         """
         if edge_name is None:
             edge_name = self.name
@@ -323,6 +325,7 @@ class Edge:
         See Also
         --------
         `as_array` to return any features in the edge set along with the edges.
+
         """
         raise AbstractMethodError(self)
 
@@ -394,6 +397,7 @@ class Edge:
         weights : str, optional
             If not none, used to weigh neighbors. Weights should be the name of
             a feature in the edge set.
+
         """
         raise AbstractMethodError(self)
 
@@ -414,6 +418,7 @@ class Edge:
             Listing the similarity (3rd column) between all pairs of
             publications (1st--2nd column) in target_publications. Only
             non-zero similarities are listed.
+
         """
         all_methods = {
             "shortest_path": self._shortest_path,

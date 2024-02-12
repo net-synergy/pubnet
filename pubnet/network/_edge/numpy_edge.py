@@ -81,6 +81,7 @@ class NumpyEdge(Edge):
         isin : np.ndarray
             a boolean array of the same size as self[column], such that all
             elements of self[column][isin] are in the set test_elements.
+
         """
         return np.isin(self[column], test_elements)
 
@@ -190,9 +191,9 @@ class NumpyEdge(Edge):
         ).tocsr()
 
     def _compose_with(self, other, counts: str, mode: str):
-        shared_keys = {self.start_id, self.end_id}.intersection({
-            other.start_id, other.end_id
-        })
+        shared_keys = {self.start_id, self.end_id}.intersection(
+            {other.start_id, other.end_id}
+        )
         if not shared_keys:
             raise AssertionError("No key edge between the two edge sets")
 
@@ -274,6 +275,7 @@ class NumpyEdge(Edge):
             A new edge set with the same representation as self. The edges will
             have edges between all nodes with non-zero overlap and it will
             contain a feature "overlap".
+
         """
         data_type = self._data.dtype
 
@@ -372,12 +374,10 @@ class NumpyEdge(Edge):
             dist[src] = np.Inf
             target_dist[src, :] = dist[0 : target_nodes.shape[0]]
 
-        out = np.zeros(
-            (
-                int((target_dist < np.Inf).sum() / 2),
-                3,
-            )
-        )
+        out = np.zeros((
+            int((target_dist < np.Inf).sum() / 2),
+            3,
+        ))
         count = 0
         for i in range(target_nodes.shape[0]):
             for j in range(i + 1, target_nodes.shape[0]):

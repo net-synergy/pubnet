@@ -35,6 +35,7 @@ def orcid(net: PubNet, remove_bad: bool = True) -> None:
     remove_bad : bool, (default True)
       If true, the ORCIDs will be tested using a checksum. ORCIDs that fail the
       checksum will be removed from the network.
+
     """
 
     def check_sum(orcid: str, tally: int = 0) -> bool:
@@ -92,6 +93,7 @@ def abstract(
       The publication network to process.
     remove_copyrightinformation : bool, (default True)
       Whether to remove the copyrightinformation from the end of an abstract.
+
     """
 
     def clean_abstract(abstract):
@@ -125,6 +127,7 @@ def get_emails_from_affiliation(
     keep_affiliation : bool, (default True)
       Whether the affiliation string should be kept in the publication network
       (True) or discarded (False).
+
     """
     email_re = re.compile(
         r"(?P<Address>[a-zA-Z0-9_\.+-]+\s*@\s*(?:\.?[a-zA-Z0-9-]+)+)"
@@ -150,6 +153,7 @@ def get_first_initials_from_fore_name(
       The publication network to process.
     keep_name : bool, (default True)
       Whether the full fore names should be kept or discarded.
+
     """
 
     def rule(node):
@@ -179,6 +183,7 @@ def drop_missing_last_names(net: PubNet) -> None:
     ----------
     net : PubNet
       The publication network to process.
+
     """
     old_root = net.root
 

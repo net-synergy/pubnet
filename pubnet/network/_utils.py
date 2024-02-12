@@ -42,6 +42,7 @@ def edge_key(node_1: str, node_2: str) -> str:
     See Also
     --------
     `edge_parts` for going in the other direction.
+
     """
     return EDGE_KEY_DELIM.join(sorted((node_1, node_2)))
 
@@ -52,6 +53,7 @@ def edge_parts(key: str | tuple[str, str]) -> tuple[str, str]:
     See Also
     --------
     `edge_key` for going in the other direction.
+
     """
     # Often gets called in places where an edge could be described as a tuple
     # of nodes or a key, so if already in tuple form, harmlessly pass back.
@@ -77,6 +79,7 @@ def edge_file_parts(file_name: str) -> tuple[str, str]:
     ----------
     file_name : str
         The name of the file.
+
     """
     name_matches = re.search(EDGE_PATH_REGEX, file_name)
 
@@ -97,6 +100,7 @@ def node_file_parts(file_name: str):
     ----------
     file_name : str
         The name of the file.
+
     """
     name_parts = re.search(NODE_PATH_REGEX, file_name)
 
@@ -293,6 +297,7 @@ def edge_header_parts(header: str) -> tuple[str, str, list[str], bool]:
     reverse : bool
         Whether the start and end ids have been reversed. That is if the first
         column is end and the second column is start.
+
     """
     ids = re.findall(r":((?:START)|(?:END))_ID\((\w+)\)", header)
     for position, node in ids:
@@ -355,7 +360,7 @@ def select_graph_components(nodes, edges, graph_dir: str) -> tuple[dict, dict]:
         # ({parent_node}_{child_node}.tsv).
         all_relational_nodes = [
             m.groups()
-            for m in (re.search(f"(\w*)_(\w*)_nodes.tsv", f) for f in files)
+            for m in (re.search("(\w*)_(\w*)_nodes.tsv", f) for f in files)
             if m is not None
         ]
         relational_nodes = {
