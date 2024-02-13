@@ -21,6 +21,8 @@ pyarrow = { version = "^10.0", optional = true }
 appdirs = "^1.4.4"
 python = ">=3.10, <3.13"
 pubmedparser2 = "^2.0.5"
+transformers = { version = "^4.37.1", optional = true }
+flax = { version = "^0.8.0", optional = true}
 
 [tool.poetry.group.test]
 optional = true
@@ -47,6 +49,7 @@ isort = "^5.12"
 python-lsp-server = "^1.8"
 pylsp-mypy = "^0.6"
 python-lsp-ruff = "^1.5"
+ipdb = "^0.13.13"
 
 [tool.poetry.group.docs]
 optional = true
@@ -56,7 +59,8 @@ pdoc3 = "^0.10"
 
 [tool.poetry.extras]
 pyarrow = ["pyarrow"]
-all = ["pyarrow"]
+lm = ["transformers", "flax"]
+all = ["pyarrow", "lm"]
 
 [tool.black]
 line-length = 79

@@ -239,6 +239,9 @@ class Edge:
     def add_feature(self, feature, name):
         raise AbstractMethodError(self)
 
+    def drop_feature(self, name: str):
+        raise AbstractMethodError(self)
+
     def _assert_has_feature(self, name: str):
         if name not in self.features():
             raise KeyError(
@@ -440,6 +443,9 @@ class Edge:
         raise AbstractMethodError(self)
 
     def _duplicates_to_weights(self, weight_name: str) -> None:
+        raise AbstractMethodError(self)
+
+    def _reset_index(self, node: str, old_indices: np.ndarray) -> None:
         raise AbstractMethodError(self)
 
 

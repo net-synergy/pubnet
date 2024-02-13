@@ -103,6 +103,10 @@ class PubNet:
         """The set of all edges in the PubNet object."""
         return set(self._edge_data.keys())
 
+    def edges_containing(self, node: str):
+        """Return the set of all edges containing the given node."""
+        return {e for e in self.edges if node in edge_parts(e)}
+
     def select_root(self, new_root) -> None:
         """Switch the graph's root node.
 
@@ -301,16 +305,18 @@ class PubNet:
 
         return res
 
-    def ids_where(self, node_type: str, func):
+    def ids_where(self, node_type: str, func, root: Optional[str] = None):
         """Get a list of the root node's IDs that match a condition.
 
         Parameters
         ----------
         node_type : str
-            Name of the type of nodes to perform the search on.
+          Name of the type of nodes to perform the search on.
         func : function
-            A function that accepts a pandas.dataframe and returns a list of
-            indices.
+          A function that accepts a pandas.dataframe and returns a list of
+          indices.
+        root : str or None
+          The root to use. If None (default) use the networks current root.
 
         Returns
         -------
@@ -332,13 +338,14 @@ class PubNet:
         """
         nodes = self.get_node(node_type)
         node_idx = func(nodes)
+        root = root or self.root
 
         node_ids = nodes.index[node_idx]
-        if node_type == self.root:
+        if node_type == root:
             root_ids = node_ids
         else:
-            root_idx = self[self.root, node_type].isin(node_type, node_ids)
-            root_ids = self[self.root, node_type][self.root][root_idx]
+            root_idx = self[root, node_type].isin(node_type, node_ids)
+            root_ids = self[root, node_type][root][root_idx]
 
         return np.asarray(root_ids, dtype=np.int64)
 
@@ -404,6 +411,7 @@ class PubNet:
         node_type: str,
         func: Callable[[pd.DataFrame], np.ndarray],
         in_place: bool = False,
+        root: Optional[str] = None,
     ):
         """Filter network to root nodes satisfying a predicate function.
 
@@ -421,12 +429,20 @@ class PubNet:
         `PubNet.containing`
 
         """
+        old_root = self.root
+        if root:
+            self.select_root(root)
+
         root_ids = self.ids_where(node_type, func)
         if in_place:
             self._slice(root_ids, mutate=True)
+            self.select_root(old_root)
             return None
 
-        return self[root_ids]
+        new_net = self[root_ids]
+        new_net.select_root(old_root)
+
+        return new_net
 
     def containing(self, node_type, node_feature, value, steps=1):
         """Filter network to root nodes with a given node feature.
@@ -1042,6 +1058,34 @@ class PubNet:
 
         """
         return set(nodes) - self.nodes
+
+    def repack(self, nodes: Optional[str | tuple[str, ...]] = None) -> None:
+        """Repack the graphs indices.
+
+        The indices for the requested nodes will be renumber to sequential
+        values between 0 and node.shape[0]. All edges will be updated with the
+        new indices.
+
+        Parameters
+        ----------
+        nodes : str, tuple(str, ...), None
+          If no nodes are provided (default), repack all nodes in the network.
+          Otherwise repack the explicitly requested node(s).
+
+        """
+
+        def _repack_node(node: str) -> None:
+            old_indices = self.get_node(node).index
+            self.get_node(node)._reset_index()
+            for edge in self.edges_containing(node):
+                self.get_edge(edge)._reset_index(node, old_indices)
+
+        nodes = nodes or tuple(self.nodes)
+        if isinstance(nodes, str):
+            nodes = (nodes,)
+
+        for node in nodes:
+            _repack_node(node)
 
     def save_graph(
         self,

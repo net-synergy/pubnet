@@ -167,6 +167,14 @@ class Node:
         """Return index array."""
         return np.asarray(self._data.index)
 
+    def _reset_index(self) -> None:
+        """Create index with values 0--n_nodes.
+
+        This should not be called without also re-indexing the corresponding
+        edges.
+        """
+        self.set_data(self._data.reset_index(drop=True))
+
     def iloc(self, indices):
         return self[np.isin(self.index, indices), :]
 

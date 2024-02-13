@@ -146,6 +146,10 @@ class NumpyEdge(Edge):
         else:
             self._features[name] = feature
 
+    def drop_feature(self, name):
+        if name in self.features():
+            self._features.pop(name)
+
     def to_sparse_matrix(
         self,
         row: Optional[str] = None,
@@ -394,3 +398,34 @@ class NumpyEdge(Edge):
         new_data, weights = np.unique(self._data, axis=0, return_counts=True)
         self.set_data(new_data)
         self.add_feature(weights, weight_name)
+
+    def _reset_index(self, node: str, old_indices: np.ndarray) -> None:
+        """Replace old IDs with condensed IDs for the given node.
+
+        When filtering / modifying a network, some nodes can get dropped
+        leading to gaps in the node indices. This replaces the old sparse IDs
+        with a dense set IDs (i.e. without any gaps). This should not be called
+        without also re-indexing the nodes.
+
+        Parameters
+        ----------
+        node : str
+          Which node to reindex
+        old_indices : np.ndarray
+          The full set of old indices. This differs from np.unique(self[node])
+          if there are nodes in the node dataframe without any edges in the
+          given edge set.
+
+        """
+        if len(self[node]) == 0:
+            return
+
+        if old_indices.shape[0] == 0:
+            old_indices = np.unique(self[node])
+
+        uniq = np.unique(old_indices)
+        index_map = np.zeros((uniq.max() + 1,))
+        for i, index in enumerate(uniq):
+            index_map[index] = i
+
+        self[node][:] = index_map[self[node]]

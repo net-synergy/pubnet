@@ -1,0 +1,130 @@
+"""Methods for transforming string features to vector representations.
+
+Some of the methods in this module require the language model (LM) dependency
+group to be install.
+"""
+
+__all__ = ["specter", "string_to_vec"]
+
+from typing import Optional
+
+import numpy as np
+from transformers import AutoTokenizer, FlaxAutoModel
+
+from pubnet import PubNet
+from pubnet.network import _utils
+
+
+def specter(
+    net: PubNet,
+    node: str,
+    feature: str,
+    root: Optional[str] = None,
+    weight_name: str = "embedding",
+) -> None:
+    """Create specter text embeddings for the given node type.
+
+    Embeddings are created against the network's root (or the provided root).
+    I.e. if the network's root is Publication, the embeddings are created as
+    edges between publications and their associated text based node.
+
+    Parameters
+    ----------
+    net : PubNet
+      The network to add the embeddings to (modified in place).
+    node : str
+      The name of a node that has edges with the root.
+    feature : str
+      The name of one of the node's text based features.
+    root : str or None
+      If None (default) use the network's default root, otherwise, treat this
+      as the network's root.
+    weight_name: str
+      Name to give the new edge feature (default "embedding").
+
+    """
+    root = root or net.root
+
+    tokenizer = AutoTokenizer.from_pretrained("allenai/specter")
+    model = FlaxAutoModel.from_pretrained("allenai/specter")
+
+    # Ensure node's index is equivalent to node's position.
+    net.repack(node)
+    feature_vec = list(net.get_node(node).feature_vector(feature))
+
+    inputs = tokenizer(feature_vec, return_tensors="jax", padding=True)
+    outputs = model(**inputs)
+
+    weights = np.asarray(outputs.last_hidden_state[:, 0, :])
+    edges = net.get_edge(root, node)
+    weights = weights[edges[node]]
+
+    new_edge_data = np.zeros((weights.shape[0] * weights.shape[1], 2))
+    new_edge_data[:, 0] = edges[root].repeat(weights.shape[1])
+    new_edge_data[:, 1] = np.tile(np.arange(weights.shape[1]), len(edges))
+    weights = weights.reshape((weights.shape[0] * weights.shape[1],))
+
+    net.add_edge(
+        new_edge_data,
+        _utils.edge_key(root, node + "_embedding"),
+        features={weight_name: weights},
+        start_id=root,
+        end_id=node,
+    )
+
+
+def string_to_vec(
+    net: PubNet,
+    node: str,
+    feature: str,
+    weight_name: str = "weight",
+    root: Optional[str] = None,
+):
+    """Convert a string to a sparse vector of the characters it contains.
+
+    The ascii code of the element positions represent the ascii characters and
+    the weights represent the number of times that letter occured. Order of
+    characters is lost, so anagrams are equivalent.
+
+    Parameters
+    ----------
+    net : PubNet
+      The network to modify.
+    node : str
+      Which node to get the feature from.
+    feature : str
+      The feature to convert (must be text based).
+    weight_name : str (default "weight")
+      What to name the resulting edge feature (letter occurrence).
+    root : str, None
+      Whether to use the network's current root (default) or a different node
+      as the root.
+
+    """
+    root = root or net.root
+    net.repack(node)
+    edges = net.get_edge(node, root)
+    if edges.start_id == root:
+        root_pos = 0
+        node_pos = 1
+    else:
+        root_pos = 1
+        node_pos = 0
+
+    feat = net.get_node(node).feature_vector(feature)
+    new_edge_data = np.fromiter(
+        (
+            (edge[root_pos], (ord(letter) - ord("a")))
+            for edge in edges
+            for letter in feat[edge[node_pos]]
+        ),
+        dtype=np.dtype((edges.dtype, 2)),
+    )
+
+    net.add_edge(
+        new_edge_data,
+        _utils.edge_key(root, node + "_letters"),
+        start_id=root,
+        end_id=node,
+    )
+    net.get_edge(root, node + "_letters")._duplicates_to_weights(weight_name)
