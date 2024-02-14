@@ -18,7 +18,7 @@ from pubnet.network import _utils
 def specter(
     net: PubNet,
     node: str,
-    feature: str,
+    feature: Optional[str] = None,
     root: Optional[str] = None,
     weight_name: str = "embedding",
 ) -> None:
@@ -34,8 +34,9 @@ def specter(
       The network to add the embeddings to (modified in place).
     node : str
       The name of a node that has edges with the root.
-    feature : str
-      The name of one of the node's text based features.
+    feature : str or None
+      The name of one of the node's text based features. If None (default) use
+      the node name as the feature name.
     root : str or None
       If None (default) use the network's default root, otherwise, treat this
       as the network's root.
@@ -44,6 +45,7 @@ def specter(
 
     """
     root = root or net.root
+    feature = feature or node
 
     tokenizer = AutoTokenizer.from_pretrained("allenai/specter")
     model = FlaxAutoModel.from_pretrained("allenai/specter")
@@ -76,7 +78,7 @@ def specter(
 def string_to_vec(
     net: PubNet,
     node: str,
-    feature: str,
+    feature: Optional[str] = None,
     weight_name: str = "weight",
     root: Optional[str] = None,
 ):
@@ -92,8 +94,9 @@ def string_to_vec(
       The network to modify.
     node : str
       Which node to get the feature from.
-    feature : str
-      The feature to convert (must be text based).
+    feature : str, None
+      The feature to convert (must be text based). If None (default) use the
+      feature named after the node.
     weight_name : str (default "weight")
       What to name the resulting edge feature (letter occurrence).
     root : str, None
@@ -102,6 +105,8 @@ def string_to_vec(
 
     """
     root = root or net.root
+    feature = feature or node
+
     net.repack(node)
     edges = net.get_edge(node, root)
     if edges.start_id == root:
