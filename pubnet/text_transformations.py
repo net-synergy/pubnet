@@ -9,6 +9,7 @@ __all__ = ["specter", "string_to_vec"]
 from typing import Optional
 
 import numpy as np
+from tqdm import tqdm
 from transformers import AutoTokenizer, FlaxAutoModel
 
 from pubnet import PubNet
@@ -19,6 +20,7 @@ def specter(
     net: PubNet,
     node: str,
     feature: Optional[str] = None,
+    batch_size: Optional[int] = None,
     root: Optional[str] = None,
     weight_name: str = "embedding",
 ) -> None:
@@ -37,6 +39,10 @@ def specter(
     feature : str or None
       The name of one of the node's text based features. If None (default) use
       the node name as the feature name.
+    batch_size : int or None
+      By default (None) transforms all data at once. For a large amount of
+      data, this can use up all available memory. If transforming will be done
+      in batches of at most that size.
     root : str or None
       If None (default) use the network's default root, otherwise, treat this
       as the network's root.
@@ -53,11 +59,26 @@ def specter(
     # Ensure node's index is equivalent to node's position.
     net.repack(node)
     feature_vec = list(net.get_node(node).feature_vector(feature))
+    batch_size = batch_size or len(feature_vec)
 
-    inputs = tokenizer(feature_vec, return_tensors="jax", padding=True)
-    outputs = model(**inputs)
+    batch_weights = []
+    start_idx = 0
+    end_idx = min(batch_size, len(feature_vec))
+    progress = tqdm(total=len(feature_vec))
+    while start_idx < end_idx:
+        inputs = tokenizer(
+            feature_vec[start_idx:end_idx], return_tensors="jax", padding=True
+        )
+        outputs = model(**inputs)
+        batch_weights.append(np.asarray(outputs.last_hidden_state[:, 0, :]))
+        progress.update(end_idx - start_idx)
 
-    weights = np.asarray(outputs.last_hidden_state[:, 0, :])
+        start_idx = end_idx
+        end_idx = min(end_idx + batch_size, len(feature_vec))
+
+    progress.close()
+
+    weights = np.concatenate(batch_weights, axis=0)
     edges = net.get_edge(root, node)
     weights = weights[edges[node]]
 
