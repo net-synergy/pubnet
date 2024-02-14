@@ -121,7 +121,11 @@ def string_to_vec(
         (
             (edge[root_pos], (ord(letter) - ord("a")))
             for edge in edges
+            # Skip NaNs which are type float.
+            if not isinstance(feat[edge[node_pos]], float)
             for letter in feat[edge[node_pos]]
+            # Ignore spaces and special characters
+            if ord(letter) >= ord("a")
         ),
         dtype=np.dtype((edges.dtype, 2)),
     )
