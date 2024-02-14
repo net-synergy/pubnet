@@ -52,16 +52,18 @@ def orcid(net: PubNet, remove_bad: bool = True) -> None:
     orcid_re = re.compile(r"(?P<Identifier>\d{4}-\d{4}-\d{4}-\d{3}[0-9x]$)")
     net.mutate_node_re("Orcid", orcid_re, "Orcid", "Identifier")
 
-    # FIXME: This removes all publications containing at least one bad ORCID
-    # rather than removing the specific ORCIDs.
-    net.where(
-        "Orcid",
-        lambda x: np.fromiter(
-            (check_sum(orc) for orc in x.feature_vector("Orcid")),
-            dtype=net.get_edge("Publication", "Orcid").dtype,
-        ),
-        in_place=True,
-    )
+    if remove_bad:
+        nodes = net.get_node("Orcid")
+        edges = net.get_edge("Author", "Orcid")
+        good_orcids = np.fromiter(
+            (check_sum(orc) for orc in nodes.feature_vector("Identifier")),
+            dtype=np.bool_,
+        )
+        good_edges = np.isin(
+            edges["Author"], np.arange(nodes.shape[0])[good_orcids]
+        )
+        edges.set_data(edges[good_edges, :])
+        nodes.set_data(nodes[good_orcids])
 
 
 def drop_retraction_publications(net: PubNet) -> None:
