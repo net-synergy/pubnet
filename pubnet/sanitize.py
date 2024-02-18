@@ -60,7 +60,7 @@ def orcid(net: PubNet, remove_bad: bool = True) -> None:
             dtype=np.bool_,
         )
         good_edges = np.isin(
-            edges["Author"], np.arange(nodes.shape[0])[good_orcids]
+            edges["Orcid"], np.arange(nodes.shape[0])[good_orcids]
         )
         edges.set_data(edges[good_edges, :])
         nodes.set_data(nodes[good_orcids])
