@@ -23,6 +23,7 @@ def specter(
     batch_size: Optional[int] = None,
     root: Optional[str] = None,
     weight_name: str = "embedding",
+    max_length: int = 512,
 ) -> None:
     """Create specter text embeddings for the given node type.
 
@@ -48,6 +49,9 @@ def specter(
       as the network's root.
     weight_name: str
       Name to give the new edge feature (default "embedding").
+    max_length: int
+      Maximum size of the tokenized abstract. Abstracts larger than this will
+      be truncated.
 
     """
     root = root or net.root
@@ -67,7 +71,11 @@ def specter(
     progress = tqdm(total=len(feature_vec))
     while start_idx < end_idx:
         inputs = tokenizer(
-            feature_vec[start_idx:end_idx], return_tensors="jax", padding=True
+            feature_vec[start_idx:end_idx],
+            return_tensors="jax",
+            padding=True,
+            truncation=True,
+            max_length=max_length,
         )
         outputs = model(**inputs)
         batch_weights.append(np.asarray(outputs.last_hidden_state[:, 0, :]))
