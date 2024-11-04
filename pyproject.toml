@@ -32,12 +32,6 @@ pytest = "^7.1"
 pytest-snapshot = "^0.9"
 lxml = "^4.9"
 
-[tool.poetry.group.benchmark]
-optional = true
-
-[tool.poetry.group.benchmark.dependencies]
-asv = "^0.5.1"
-virtualenv = "^20.22.0"
 
 [tool.poetry.group.dev]
 optional = true
