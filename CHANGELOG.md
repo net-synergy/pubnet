@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sanitize methods.
 - Index repacking methods.
 - Language model methods.
+- Overwrite option to `from_pubmed`.
 
 ## [0.9.0] - 2024-01-20
 

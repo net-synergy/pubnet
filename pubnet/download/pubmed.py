@@ -14,6 +14,7 @@ from typing import Optional
 import pubmedparser
 import pubmedparser.ftp
 
+import pubnet.storage as storage
 from pubnet import PubNet
 from pubnet.network._utils import (
     edge_gen_file_name,
@@ -284,6 +285,7 @@ def from_pubmed(
     data_dir: Optional[str] = None,
     load_graph: bool = True,
     clean_cache: bool = True,
+    overwrite: bool = False,
 ) -> PubNet | None:
     """Create a PubNet object from pubmed data.
 
@@ -329,6 +331,13 @@ def from_pubmed(
        The cleared files are not required for reading the graph later. Should
        leave this True unless there's a good reason to turn it off, left over
        files could mess up future calls to the function.
+    overwrite : bool, default False
+       Whether to write over a preexisting graph with the same name or not. If
+       True, a new graph will always be created. If False, will check if a
+       graph with the requested name already exists, if there is a graph it
+       will check if the graph on disk is the same as that being requested and
+       will return that if so. If there is a graph at the given location and it
+       is not the same as requested, an error will be raised.
 
     Returns
     -------
@@ -344,18 +353,24 @@ def from_pubmed(
     publication_struct = expand_structure_dict(node_list)
     save_dir = graph_path(graph_name)
 
-    if _exists_locally(save_dir, node_list, file_numbers):
-        return PubNet.load_graph(save_dir) if load_graph else None
-
-    if os.listdir(save_dir):
-        raise FileExistsError("A graph with the given name already exists.")
+    if graph_name in storage.list_graphs():
+        if overwrite:
+            storage.delete_graph(graph_name)
+        elif _exists_locally(save_dir, node_list, file_numbers):
+            return PubNet.load_graph(save_dir) if load_graph else None
+        else:
+            raise FileExistsError(
+                "A graph with the requested name already exists."
+            )
 
     files = pubmedparser.ftp.download(file_numbers)
     raw_data = pubmedparser.read_xml(files, publication_struct, "pubnet")
+
     shutil.copy(
         os.path.join(raw_data, "processed.txt"),
         os.path.join(save_dir, "source_files.txt"),
     )
+
     _to_graph(
         "Publication", node_list, raw_data, save_dir, clean_cache=clean_cache
     )
@@ -365,6 +380,6 @@ def from_pubmed(
             os.rmdir(raw_data)
 
     if load_graph:
-        return PubNet.load_graph(save_dir)
+        return PubNet.load_graph(graph_name)
 
     return None
