@@ -48,7 +48,6 @@ ipdb = "^0.13.13"
 optional = true
 
 [tool.poetry.group.docs.dependencies]
-pdoc3 = "^0.10"
 
 [tool.poetry.extras]
 pyarrow = ["pyarrow"]
