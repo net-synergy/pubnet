@@ -1,0 +1,44 @@
+name: Package python packages
+
+on:
+  - workflow_call
+
+jobs:
+  build-packages:
+    runs-on: ubuntu-latest
+    env:
+      python-version: "3.12"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up poetry
+        run: pipx install poetry
+
+      - name: Set up python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "poetry"
+
+      - name: Install package
+        run: poetry install --with=test --extras=pyarrow
+
+      - name: Run tests
+        run: poetry run pytest --junitxml=junit/test-results-${{ github.sha }}.xml
+
+      - name: Upload test results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-results-${{ matrix.python-version }}
+          path: junit/test-results-${{ github.sha }}.xml
+
+      - name: Build wheel and sdist
+        run: poetry build
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: pubnet-${{ github.sha }}
+          path: dist/*
