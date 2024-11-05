@@ -360,7 +360,7 @@ def select_graph_components(nodes, edges, graph_dir: str) -> tuple[dict, dict]:
         # ({parent_node}_{child_node}.tsv).
         all_relational_nodes = [
             m.groups()
-            for m in (re.search("(\w*)_(\w*)_nodes.tsv", f) for f in files)
+            for m in (re.search(r"(\w*)_(\w*)_nodes.tsv", f) for f in files)
             if m is not None
         ]
         relational_nodes = {
