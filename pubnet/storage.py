@@ -180,7 +180,7 @@ def default_data_dir(path: str = "") -> str:
 def _dir_exists(path: str) -> bool:
     """Test if provided path exists and is not empty.
 
-    default directory commands create a directory so they directory may exist
+    default directory commands create a directory so the directory may exist
     even if it's unused (empty). If empty delete and return non-existent.
     """
     try:
@@ -240,7 +240,12 @@ def list_graphs(data_dir: Optional[str] = None) -> List[str]:
     if not data_dir:
         data_dir = default_data_dir()
 
-    return os.listdir(data_dir)
+    return [
+        d
+        for d in os.listdir(data_dir)
+        if (not os.path.isdir(graph_path(d, data_dir)))  # For tar archives
+        or (os.listdir(graph_path(d, data_dir)))  # Exclude empty dirs
+    ]
 
 
 def delete_graph(name: str, data_dir: Optional[str] = None) -> None:
