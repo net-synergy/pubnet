@@ -63,6 +63,9 @@ def node_list_to_file_names(
     node_list, key_node: str, data_dir: str = "", prefix: str = ""
 ) -> list[str]:
     """Return a list of all files needed to represent the graph."""
+    # FIXME: Node list contains dictionaries, which are not handled.
+    # Additionally I don't think "root" or "key" exist anymore. So need another
+    # method to test for "root".
     files = [
         node_gen_file_name(f + "_" + prefix if prefix else f, "tsv", data_dir)
         for f in node_list

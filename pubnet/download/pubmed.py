@@ -46,15 +46,32 @@ def _exists_locally(
     Tests if a graph exists at the path that meets the specifications based on
     the desired pubmed files and path structure.
     """
+    # TODO: Intend to change how pubmedparser returns results to make it easier
+    # to distinguish which pubmed xml files data came from to allow reusing
+    # network data for creating pubnets with different subsets of the original
+    # data. Should also be able to determine if the correct data was collected.
+    # And be able to parse only files that haven't yet been parsed and then
+    # update the given network with that new data.
+    #
+    # Until then use `from_pubnet` to generate the graph then
+    # `PubNet.load_graph` to read that graph from disk later.
+    return False
+
     if not os.path.exists(graph_path):
         return False
 
-    previous_source_files = os.path.join(graph_path, "source_files.txt")
-    if not os.path.exists(previous_source_files):
+    previous_source_list = os.path.join(graph_path, "source_files.txt")
+    if not os.path.exists(previous_source_list):
         return False
 
+    with open(previous_source_list, "r") as f:
+        previous_source_files = "".join(f.readlines())
+
     pubmed_file_regex = re.compile(r"pubmed\d{2}n(\d{4})\.xml\.gz")
-    saved_file_numbers = re.findall(pubmed_file_regex, previous_source_files)
+    saved_file_numbers = {
+        int(n) for n in re.findall(pubmed_file_regex, previous_source_files)
+    }
+
     if (
         # Consider adding update logic later instead recreating the graph from
         # scratch.
@@ -70,11 +87,11 @@ def _exists_locally(
     ):
         return False
 
-    expceted_files = node_list_to_file_names(node_list, "Publication", "")
-    if set(expceted_files) != set(os.listdir(graph_path)):
-        return False
+    # FIXME: node_list_to_file_names is broken.
+    # expceted_files = node_list_to_file_names(node_list, "Publication", "")
+    expected_files = {}
 
-    return True
+    return set(expected_files) != set(os.listdir(graph_path))
 
 
 class _Index:
