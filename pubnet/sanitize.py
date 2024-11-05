@@ -101,12 +101,12 @@ def abstract(
     def clean_abstract(abstract):
         if remove_copyrightinformation:
             abstract = re.sub(
-                "\<copyrightinformation\>.*?\</copyrightinformation\>",
+                r"\<copyrightinformation\>.*?\</copyrightinformation\>",
                 "",
                 abstract,
             )
 
-        return re.sub("\<.*?\>", "", abstract).strip()
+        return re.sub(r"\<.*?\>", "", abstract).strip()
 
     net.get_node("Abstract")._data["Abstract"] = np.fromiter(
         (

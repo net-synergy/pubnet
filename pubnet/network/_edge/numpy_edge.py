@@ -378,10 +378,12 @@ class NumpyEdge(Edge):
             dist[src] = np.Inf
             target_dist[src, :] = dist[0 : target_nodes.shape[0]]
 
-        out = np.zeros((
-            int((target_dist < np.Inf).sum() / 2),
-            3,
-        ))
+        out = np.zeros(
+            (
+                int((target_dist < np.Inf).sum() / 2),
+                3,
+            )
+        )
         count = 0
         for i in range(target_nodes.shape[0]):
             for j in range(i + 1, target_nodes.shape[0]):

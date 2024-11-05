@@ -12,7 +12,6 @@ and edge types), selecting a node or edge from a graph, and running graph
 algorithms on selected edges or nodes.
 """
 
-
 import importlib.metadata
 
 from pubnet import __package__

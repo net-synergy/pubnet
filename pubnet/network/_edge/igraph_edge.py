@@ -1,6 +1,5 @@
 """Implementation of the Edge class storing edges in a compressed form."""
 
-
 import igraph as ig
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
