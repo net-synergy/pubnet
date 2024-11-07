@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Don't count empty directories when listing saved graphs.
 - Rename specter argument.
+- JIT compile specter model for performance improvement.
 
 ## [0.9.0] - 2024-11-05
 

@@ -8,6 +8,7 @@ __all__ = ["specter", "string_to_vec"]
 
 from typing import Optional
 
+import jax
 import numpy as np
 from tqdm import tqdm
 from transformers import AutoTokenizer, FlaxAutoModel
@@ -58,7 +59,7 @@ def specter(
     feature = feature or node
 
     tokenizer = AutoTokenizer.from_pretrained("allenai/specter")
-    model = FlaxAutoModel.from_pretrained("allenai/specter")
+    model = jax.jit(FlaxAutoModel.from_pretrained("allenai/specter"))
 
     # Ensure node's index is equivalent to node's position.
     net.repack(node)
