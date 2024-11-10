@@ -285,7 +285,9 @@ def edge_gen_header(start_id: str, end_id: str, features: list[str]) -> str:
     return f":START_ID({start_id})\t:END_ID({end_id}){feat_header}"
 
 
-def edge_header_parts(header: str) -> tuple[str, str, list[str], bool]:
+def edge_header_parts(
+    header: str,
+) -> tuple[str, str, list[str], tuple[int, ...]]:
     """Parse the header for column names.
 
     Returns
@@ -294,26 +296,29 @@ def edge_header_parts(header: str) -> tuple[str, str, list[str], bool]:
         The node namespace for the start and end of the edges.
     features : list[str]
         A (possibly empty) list of feature names.
-    reverse : bool
-        Whether the start and end ids have been reversed. That is if the first
-        column is end and the second column is start.
+    col_indices : tuple[int]
+        The indices to sort columns into start id, end id, *features
 
     """
     ids = re.findall(r":((?:START)|(?:END))_ID\((\w+)\)", header)
-    for position, node in ids:
+    for idx, (position, node) in enumerate(ids):
         if position == "START":
-            start_id = node
+            start_id: str = node
+            start_idx = idx
         elif position == "END":
-            end_id = node
+            end_id: str = node
+            end_idx = idx
 
-    reverse = ids[0][0] == "END"
-
-    features = [
+    features: list[str] = [
         feat
         for feat in re.findall(r"([\w:()]+)", header)
         if not (feat.startswith(":START") or feat.startswith(":END"))
     ]
-    return (start_id, end_id, features, reverse)
+    col_indices = (start_idx, end_idx) + tuple(
+        i for i in range(len(features) + 2) if i not in (start_idx, end_idx)
+    )
+
+    return (start_id, end_id, features, col_indices)
 
 
 def select_graph_components(nodes, edges, graph_dir: str) -> tuple[dict, dict]:

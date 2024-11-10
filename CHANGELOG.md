@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Ability to save and restore numpy edge features.
+
 ### Changed
 
 - Don't count empty directories when listing saved graphs.

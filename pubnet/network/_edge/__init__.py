@@ -55,7 +55,7 @@ def from_file(file_name: str, representation: str) -> Edge:
     else:
         raise ValueError(f"Extension {ext} not supported")
 
-    start_id, end_id, feature_ids, flip = edge_header_parts(header_line)
+    start_id, end_id, feature_ids, col_idx = edge_header_parts(header_line)
 
     if ext == "npy":
         data = np.load(file_name, allow_pickle=True)
@@ -68,12 +68,12 @@ def from_file(file_name: str, representation: str) -> Edge:
             skip_header=1,
         )
 
-    # FIXME: Does not handle if start and end ids are not the first two columns
-    if flip:
-        data = data[:, [1, 0]]
+        data = data[:, col_idx]
 
     if isinstance(data, np.ndarray) and data.shape[1] > 2:
-        features = {feat: data[:, col] for col, feat in enumerate(feature_ids)}
+        features = {
+            feat: data[:, col + 2] for col, feat in enumerate(feature_ids)
+        }
         data = data[:, :2]
     elif isinstance(data, ig.Graph) and representation == "numpy":
         features = {feat: data.es[feat] for feat in feature_ids}

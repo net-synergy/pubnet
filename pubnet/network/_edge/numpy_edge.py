@@ -98,18 +98,18 @@ class NumpyEdge(Edge):
         return np.unique(self[column], return_counts=True)
 
     def _to_binary(self, file_name, header_name, header):
-        np.save(file_name, self._data)
+        np.save(file_name, self.as_array())
         with open(header_name, "wt") as header_file:
             header_file.write(header)
 
     def _to_tsv(self, file_name, header):
-        # NOTE: IDs should be ints so select integer fmt string but this will
-        # need modification if we add weighted edges as the weight column(s)
-        # are likely going to be floats.
+        fmt = ["%d", "%d"]
+        fmt.extend(["%f"] * len(self.features()))
+
         np.savetxt(
             file_name,
-            self._data,
-            fmt="%d",
+            self.as_array(),
+            fmt=fmt,
             delimiter="\t",
             header=header,
             comments="",
