@@ -76,7 +76,7 @@ def specter(
             return_tensors="jax",
             padding=True,
             truncation=True,
-            max_tokens=max_tokens,
+            max_length=max_tokens,
         )
         outputs = model(**inputs)
 
