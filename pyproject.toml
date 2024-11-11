@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pubnet"
-version = "0.9.1a0"
+version = "0.9.1a1"
 description = "A python package for storing and working with publication data in graph form."
 license = "MIT"
 keywords = ["publication", "network", "MEDLINE", "PubMed", "references"]

@@ -157,7 +157,7 @@ def default_data_dir(path: str = "") -> str:
 
     Returns
     -------
-    cache_dir : str
+    data_dir : str
         The path to the directory to store data.
 
     See Also
@@ -243,8 +243,8 @@ def list_graphs(data_dir: Optional[str] = None) -> List[str]:
     return [
         d
         for d in os.listdir(data_dir)
-        if (not os.path.isdir(graph_path(d, data_dir)))  # For tar archives
-        or (os.listdir(graph_path(d, data_dir)))  # Exclude empty dirs
+        if (os.path.isdir(graph_path(d, data_dir)))
+        and (os.listdir(graph_path(d, data_dir)))  # Exclude empty dirs
     ]
 
 

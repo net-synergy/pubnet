@@ -1269,18 +1269,15 @@ class PubNet:
                 % "\n\t".join(g for g in list_graphs(data_dir))
             )
 
+        if len(os.listdir(graph_dir)) == 0:
+            raise RuntimeError(f'Graph "{name}" is empty.')
+
         node_files, edge_files = select_graph_components(
             nodes, edges, graph_dir
         )
-        net_nodes = [
-            Node.from_file(file)
-            for file in node_files.values()
-            if file is not None
-        ]
-        net_edges = [
-            _edge.from_file(file, representation)
-            for file in edge_files.values()
-        ]
+
+        net_nodes = Node.from_dir(graph_dir, files=node_files)
+        net_edges = _edge.from_dir(graph_dir, representation, files=edge_files)
 
         return PubNet(root=root, nodes=net_nodes, edges=net_edges, name=name)
 

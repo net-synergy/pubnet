@@ -11,6 +11,7 @@ from pubnet.network._utils import (
     node_gen_file_name,
     node_gen_id_label,
     node_id_label_parts,
+    node_list_files,
 )
 
 __all__ = ["Node"]
@@ -304,6 +305,19 @@ class Node:
         node_id = data.index.name
 
         return cls.from_data(data, node_id, name, *args, **keys)
+
+    @classmethod
+    def from_dir(
+        cls, graph_dir: str, *args, files: list[str] | None = None, **keys
+    ):
+        """Load node files from graph_dir.
+
+        If files is provided, load only those files. Otherwise loads all files.
+        The remaining args and keyword args are passed to the Node constructor.
+        """
+        files = files or node_list_files(graph_dir)
+
+        return [cls.from_file(f, *args, **keys) for f in files]
 
     @classmethod
     def from_data(cls, data, *args, **keys):

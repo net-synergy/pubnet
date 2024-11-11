@@ -12,16 +12,36 @@ from pubnet.network._utils import (
     edge_file_parts,
     edge_gen_file_name,
     edge_header_parts,
+    edge_list_files,
 )
 
 from ._base import Edge
 from .igraph_edge import IgraphEdge
 from .numpy_edge import NumpyEdge
 
-__all__ = ["from_file", "from_data", "from_edge", "Edge", "id_dtype"]
+__all__ = [
+    "from_file",
+    "from_dir",
+    "from_data",
+    "from_edge",
+    "Edge",
+    "id_dtype",
+]
 
 _edge_class = {"numpy": NumpyEdge, "igraph": IgraphEdge}
 id_dtype = np.int64
+
+
+def from_dir(
+    graph_dir: str, representation: str, files: Optional[list[str]] = None
+) -> list[Edge]:
+    """Load the edges in graph_dir.
+
+    If files is None, read all edges otherwise read only the edges in files.
+    """
+    files = files or edge_list_files(graph_dir)
+
+    return [from_file(file, representation) for file in files]
 
 
 def from_file(file_name: str, representation: str) -> Edge:
@@ -53,10 +73,9 @@ def from_file(file_name: str, representation: str) -> Edge:
         with gzip.open(header_file, "rt") as f:
             header_line = f.readline()
     else:
-        raise ValueError(f"Extension {ext} not supported")
+        raise ValueError(f'Extension "{ext}" not supported')
 
     start_id, end_id, feature_ids, col_idx = edge_header_parts(header_line)
-
     if ext == "npy":
         data = np.load(file_name, allow_pickle=True)
     elif ext == "pickle":

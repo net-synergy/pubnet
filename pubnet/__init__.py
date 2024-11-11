@@ -16,6 +16,9 @@ import importlib.metadata
 
 from pubnet import __package__
 from pubnet.network import PubNet
+from pubnet.storage import delete_graph, list_graphs
 
-__all__ = ["PubNet"]
+__all__ = ["PubNet", "load_graph", "list_graphs", "delete_graph"]
 __version__ = importlib.metadata.version(__package__)
+
+load_graph = PubNet.load_graph

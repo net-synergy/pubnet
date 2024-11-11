@@ -7,25 +7,32 @@ from typing import cast
 __all__ = [
     "node_file_parts",
     "node_gen_file_name",
-    "node_find_file",
     "node_list_files",
-    "node_files_containing",
     "node_gen_id_label",
     "node_id_label_parts",
     "edge_gen_file_name",
     "edge_key",
     "edge_parts",
+    "edge_list_files",
     "edge_file_parts",
-    "edge_find_file",
-    "edge_files_containing",
     "edge_gen_header",
     "edge_header_parts",
+    "is_node_file",
+    "is_edge_file",
     "select_graph_components",
 ]
 
 NODE_PATH_REGEX = re.compile(r"(?P<node>\w+)_nodes.(?P<ext>[\w\.]+)")
 EDGE_PATH_REGEX = re.compile(r"(?P<n1>\w+)_(?P<n2>\w+)_edges.(?P<ext>[\w\.]+)")
 EDGE_KEY_DELIM = "-"
+
+
+def is_node_file(file_name: str) -> bool:
+    return re.search(NODE_PATH_REGEX, file_name) is not None
+
+
+def is_edge_file(file_name: str) -> bool:
+    return re.search(EDGE_PATH_REGEX, file_name) is not None
 
 
 def edge_key(node_1: str, node_2: str) -> str:
@@ -123,143 +130,143 @@ def edge_gen_file_name(edge: str, ext: str, data_dir: str) -> tuple[str, str]:
     return (data_path, header_path)
 
 
-def node_list_files(data_dir: str) -> dict[str, dict[str, str]]:
-    """Return all node files in the data_dir.
+def node_list_files(
+    graph_dir: str, nodes: list[str] | None = None
+) -> list[str]:
+    """Return preferred node files in the graph_dir.
 
-    Returns a dictionary with nodes as keys and a dictionary with extension as
-    keys and file paths as values as values.
+    Generally lists all node files in a graph. If multiple files contain the
+    same node type, only one file is added to the list. Preference is given by
+    file type. Binary (feather) is given top priority since it is the fastest
+    to read.
 
-    example: path_dict['Author']['tsv'] = file_path
+    If nodes is provided, only return files for the nodes in the list.
+    Otherwise, return all node files.
     """
-    files = os.listdir(data_dir)
+
+    def node_find_file(
+        node: str, path_dict: dict[str, dict[str, str]]
+    ) -> str | None:
+        """Return the file path for a node."""
+        try:
+            available_files = path_dict[node]
+        except KeyError:
+            return None
+
+        ext_preference = ["feather", "tsv", "tsv.gz"]
+        for ext in ext_preference:
+            try:
+                return available_files[ext]
+            except KeyError:
+                continue
+
+        raise FileNotFoundError(
+            f'No file found for node "{node}" with a supported file extension.'
+        )
+
+    files = os.listdir(graph_dir)
     node_files = [
-        (m.groupdict(), os.path.join(data_dir, m.group()))
+        (m.groupdict(), os.path.join(graph_dir, m.group()))
         for m in (re.search(NODE_PATH_REGEX, f) for f in files)
         if m is not None
     ]
-    nodes = {n[0]["node"] for n in node_files}
-    out: dict[str, dict[str, str]] = {}
+    nodes = nodes or list({n[0]["node"] for n in node_files})
+    path_dict: dict[str, dict[str, str]] = {}
     for n in nodes:
-        out[n] = {f[0]["ext"]: f[1] for f in node_files if f[0]["node"] == n}
-
-    return out
-
-
-def node_find_file(
-    node: str, path_dict: dict[str, dict[str, str]]
-) -> str | None:
-    """Return the file path for a node."""
-    try:
-        available_files = path_dict[node]
-    except KeyError:
-        return None
-
-    ext_preference = ["feather", "tsv", "tsv.gz"]
-    for ext in ext_preference:
-        try:
-            return available_files[ext]
-        except KeyError:
-            continue
-
-    raise FileNotFoundError(
-        f"No file found for node {node} with a supported file extension."
-    )
+        path_dict[n] = {
+            f[0]["ext"]: f[1] for f in node_files if f[0]["node"] == n
+        }
+    return [
+        file
+        for file in (node_find_file(n, path_dict) for n in path_dict)
+        if file
+    ]
 
 
-def edge_list_files(data_dir: str) -> dict[str, dict[str, str]]:
-    """Return a dictionary of dictionaries of files paths for each edge.
+def edge_list_files(
+    graph_dir: str,
+    nodes: tuple[tuple[str, str], ...] | tuple[str, ...] | None = None,
+) -> list[str]:
+    """List all edge files in graph.
 
-    Outer dictionary has edge keys as keys and inner dictionary has extension
-    as keys.
-
-    Example: path_dict['Author-Publication']['tsv'] = file_path
+    If nodes is provided, only return edges between node types that are both in
+    nodes list.
     """
-    files = os.listdir(data_dir)
+
+    def edge_find_file(
+        n1: str, n2: str, path_dict: dict[str, dict[str, str]]
+    ) -> str:
+        """Find the edge file in data_dir for the provided node types."""
+        edge = edge_key(n1, n2)
+        try:
+            available_files = path_dict[edge]
+        except KeyError:
+            raise FileNotFoundError(
+                f'No edge file found for nodes "{n1}", "{n2}".'
+            )
+
+        ext_preference = ["npy", "tsv", "tsv.gz", "pickle"]
+        for ext in ext_preference:
+            try:
+                return available_files[ext]
+            except KeyError:
+                continue
+
+        raise FileNotFoundError(
+            f'No file found for nodes "{n1}", "{n2}" with a'
+            + " supported file extension."
+        )
+
+    def edge_files_containing(
+        nodes: tuple[tuple[str, str], ...] | tuple[str, ...] | None,
+        edge_files: dict[str, dict[str, str]],
+    ) -> list[str]:
+        r"""Find the preferred edge file for the provided nodes in data_dir.
+
+        If nodes is "all" find a file for all nodes in the data_dir, otherwise
+        only find files for nodes in the requested list. This means all edge
+        files linking pairs of node types, where both node types are in the
+        supplied list.
+
+        Preferred file is based on the extension. Extension preference can be
+        seen in `edge_find_file`.
+        """
+        assert (not nodes) or isinstance(nodes, tuple)
+
+        if not nodes:
+            edges = tuple(edge_files.keys())
+        elif isinstance(nodes[0], str):
+            edges = tuple(
+                edge_key(n1, n2)
+                for i, n1 in enumerate(nodes)
+                for n2 in nodes[i:]
+                if edge_key(n1, n2) in edge_files
+            )
+        else:
+            edges = tuple(
+                edge_key(e[0], e[1])
+                for e in nodes
+                if edge_key(e[0], e[1]) in edge_files
+            )
+
+        return [edge_find_file(*edge_parts(e), edge_files) for e in edges]
+
+    files = os.listdir(graph_dir)
     edge_files = [
-        (m.groupdict(), os.path.join(data_dir, m.group()))
+        (m.groupdict(), os.path.join(graph_dir, m.group()))
         for m in (re.search(EDGE_PATH_REGEX, f) for f in files)
         if m is not None
     ]
     edges = {edge_key(e[0]["n1"], e[0]["n2"]) for e in edge_files}
-    out: dict[str, dict[str, str]] = {}
+    path_dict: dict[str, dict[str, str]] = {}
     for e in edges:
-        out[e] = {
+        path_dict[e] = {
             f[0]["ext"]: f[1]
             for f in edge_files
             if edge_key(f[0]["n1"], f[0]["n2"]) == e
         }
 
-    return out
-
-
-def edge_find_file(
-    n1: str, n2: str, path_dict: dict[str, dict[str, str]]
-) -> str:
-    """Find the edge file in data_dir for the provided node types."""
-    edge = edge_key(n1, n2)
-    try:
-        available_files = path_dict[edge]
-    except KeyError:
-        raise FileNotFoundError(f"No edge file found for nodes {n1}, {n2}.")
-
-    ext_preference = ["npy", "tsv", "tsv.gz", "pickle"]
-    for ext in ext_preference:
-        try:
-            return available_files[ext]
-        except KeyError:
-            continue
-
-    raise FileNotFoundError(
-        f"No file found for nodes {n1}, {n2} with a supported file extension."
-    )
-
-
-def node_files_containing(
-    nodes: str | tuple[str, ...], data_dir: str
-) -> dict[str, str | None]:
-    r"""Find the preferred node file for the provided nodes in data_dir.
-
-    If nodes is "all" find a file for all nodes in the data_dir, otherwise
-    only find files for nodes in the requested list.
-
-    If a node is requested but no file is found, an error will be raised.
-
-    Preferred file is based on the extension. Extension preference can be seen
-    in `node_find_file`.
-    """
-    all_node_files = node_list_files(data_dir)
-    if nodes == "all":
-        nodes = tuple(all_node_files.keys())
-
-    return {n: node_find_file(n, all_node_files) for n in nodes}
-
-
-def edge_files_containing(
-    nodes: str | tuple[str, ...], data_dir: str
-) -> dict[str, str]:
-    r"""Find the preferred edge file for the provided nodes in data_dir.
-
-    If nodes is "all" find a file for all nodes in the data_dir, otherwise
-    only find files for nodes in the requested list. This means all edge files
-    linking pairs of node types, where both node types are in the supplied
-    list.
-
-    Preferred file is based on the extension. Extension preference can be seen
-    in `edge_find_file`.
-    """
-    all_edge_files = edge_list_files(data_dir)
-    if isinstance(nodes, str):
-        assert nodes == "all", ValueError(nodes)
-        edges = tuple(all_edge_files.keys())
-    else:
-        edges = tuple(
-            edge_key(n1, n2)
-            for i, n1 in enumerate(nodes)
-            for n2 in nodes[i:]
-            if edge_key(n1, n2) in all_edge_files
-        )
-
-    return {e: edge_find_file(*edge_parts(e), all_edge_files) for e in edges}
+    return edge_files_containing(nodes, path_dict)
 
 
 def node_gen_id_label(name: str, namespace: str) -> str:
@@ -321,7 +328,9 @@ def edge_header_parts(
     return (start_id, end_id, features, col_indices)
 
 
-def select_graph_components(nodes, edges, graph_dir: str) -> tuple[dict, dict]:
+def select_graph_components(
+    nodes, edges, graph_dir: str
+) -> tuple[list[str], list[str]]:
     """Determine which nodes and edges to select.
 
     If nodes and edges are both "all", return all graph saved components.
@@ -384,6 +393,7 @@ def select_graph_components(nodes, edges, graph_dir: str) -> tuple[dict, dict]:
         return tuple(relational_nodes.union(regular_nodes))
 
     files = os.listdir(graph_dir)
+
     if edges != "all":
         edges = sum((expand_edge(e, files) for e in edges), ())
 
@@ -391,14 +401,15 @@ def select_graph_components(nodes, edges, graph_dir: str) -> tuple[dict, dict]:
         nodes = collect_nodes(edges, files)
 
     if edges != "all":
-        all_edge_files = edge_list_files(graph_dir)
-        edge_files = {
-            edge_key(e[0], e[1]): edge_find_file(e[0], e[1], all_edge_files)
-            for e in edges
-        }
+        edge_files = edge_list_files(graph_dir, edges)
+    elif nodes == "all":
+        edge_files = edge_list_files(graph_dir)
     else:
-        edge_files = edge_files_containing(nodes, graph_dir)
+        edge_files = edge_list_files(graph_dir, nodes)
 
-    node_files = node_files_containing(nodes, graph_dir)
+    if nodes == "all":
+        node_files = node_list_files(graph_dir)
+    else:
+        node_files = node_list_files(graph_dir, nodes)
 
     return (node_files, edge_files)
