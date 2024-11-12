@@ -380,6 +380,9 @@ def from_pubmed(
                 "A graph with the requested name already exists."
             )
 
+    if not os.path.exists(save_dir):
+        os.mkdir(save_dir, mode=0o755)
+
     files = pubmedparser.ftp.download(file_numbers)
     raw_data = pubmedparser.read_xml(files, publication_struct, "pubnet")
 
