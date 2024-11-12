@@ -12,6 +12,7 @@ from pubnet.network._utils import (
     edge_file_parts,
     edge_gen_file_name,
     edge_header_parts,
+    edge_key,
     edge_list_files,
 )
 
@@ -107,7 +108,7 @@ def from_file(file_name: str, representation: str) -> Edge:
 
 def from_data(
     data,
-    name: str,
+    name: Optional[str] = None,
     features: dict[str, NDArray[Any]] = {},
     start_id: Optional[str] = None,
     end_id: Optional[str] = None,
@@ -120,8 +121,9 @@ def from_data(
     ----------
     data : numpy.ndarray, igraph.Graph, pandas.DataFrame
         Data to convert to an Edge.
-    name : str
-        Name of the Edge.
+    name : optional str
+        Name of the Edge. If not specified, the start and end IDs will be used
+        to calculate the name.
     features : dict
         A dictionary of features to add to the edge set. Defaults to no
         features.
@@ -140,7 +142,7 @@ def from_data(
     Edge
 
     """
-    if start_id is None or end_id is None:
+    if (start_id is None) or (end_id is None):
         try:
             columns = data.columns
             start_id_i, end_id_i, _, _ = edge_header_parts("\t".join(columns))
@@ -150,11 +152,9 @@ def from_data(
                 " inferred by column names."
             )
 
-    if start_id is None:
-        start_id = start_id_i
-
-    if end_id is None:
-        end_id = end_id_i
+    start_id = start_id or start_id_i
+    end_id = end_id or end_id_i
+    name = name or edge_key(start_id, end_id)
 
     return _edge_class[representation](
         data, name, start_id, end_id, dtype, features=features
