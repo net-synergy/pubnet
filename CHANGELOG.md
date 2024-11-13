@@ -11,12 +11,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Ability to save and restore numpy edge features.
 - Generate edge name from node type if name not explicitly passed.
+- Method to reset all node indices in the network.
 
 ### Changed
 
 - Don't count empty directories when listing saved graphs.
 - Rename specter argument.
 - JIT compile specter model for performance improvement.
+- Default to resetting the indices before saving the network.
+- Add option to explicitly set whether edge is directed or not when creating it.
+
+### Fixed
+
+- Test for if graph exists when loading was using `os.path.exists` which would always succeed since `graph_path` creates an empty directory.
+- Set the directed flag when creating igraph graphs.
+- Was assuming edges are undirected when start id differs from end id when that guarantees they are directed.
 
 ## [0.9.0] - 2024-11-05
 

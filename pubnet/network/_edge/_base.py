@@ -30,6 +30,10 @@ class Edge:
         Name of edge end node type.
     dtype : type
         The type for storing the edge ids.
+    isdirected : bool
+        Whether the graph's edges are directed or not. By default assumes the
+        edges are directed if start id differs from end id (i.e. bipartite
+        graph) and undirected otherwise (may not be a good guess).
 
     Attributes
     ----------
@@ -54,6 +58,7 @@ class Edge:
         end_id: str,
         dtype: type,
         features: dict[str, NDArray[Any]] = {},
+        isdirected: bool | None = None,
     ) -> None:
         self.dtype = dtype
         self.set_data(data)
@@ -66,9 +71,7 @@ class Edge:
         self.start_id = start_id
         self.end_id = end_id
         self.representation = "Generic"
-        # Just assume it's directed if the two ids are the same. May not be a
-        # great decision, but useful for now.
-        self.isdirected = start_id == end_id
+        self.isdirected = isdirected or start_id != end_id
 
     def set_data(self, new_data) -> None:
         """Replace the edge's data with a new array."""
@@ -316,6 +319,10 @@ class Edge:
 
     def _to_binary(self, file_name, header_name, header):
         """Save an edge to a binary file type."""
+        raise AbstractMethodError(self)
+
+    def _renumber_column(self, col: str, id_map: dict[int, int]) -> None:
+        """Renumber column based on map: old_index -> new_index."""
         raise AbstractMethodError(self)
 
     def _to_tsv(self, file_name, header):

@@ -127,6 +127,18 @@ class IgraphEdge(Edge):
             comments="",
         )
 
+    def _renumber_column(self, col: str, id_map: dict[int, int]):
+        if self.start_id == self.end_id:
+            remove = self._data.vs(_degree=0)
+            self._data.delete_vertices(remove)
+        else:
+            idx = int(self.end_id == col)  # 0 if col is start_id 1 otherwise.
+            edges = self.get_edgelist()
+            edges[:, idx] = np.fromiter(
+                (id_map[i] for i in edges[:, idx]), dtype=self.dtype
+            )
+            self._data = ig.Graph(edges, directed=self.isdirected)
+
     def get_edgelist(self):
         return np.asarray(self._data.get_edgelist())
 

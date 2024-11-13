@@ -543,6 +543,29 @@ class PubNet:
 
         self.select_root(new_root)
 
+    def reset_index(self) -> None:
+        """Recreate the index for each node to be sequential.
+
+        Updates all edges to reflect the new node indices.
+        """
+
+        def _reset_node_index(net, node_name):
+            node = net.get_node(node_name)
+            node_id = node.id
+            old_index = node.index
+            node._data.reset_index(drop=True, inplace=True)
+            node.rename_index(node_id)
+
+            if np.all(old_index == node.index):
+                return
+
+            index_map = dict(zip(old_index, node.index))
+            for edge in net.edges_containing(node_name):
+                net.get_edge(edge)._renumber_column(node_name, index_map)
+
+        for node in self.nodes:
+            _reset_node_index(self, node)
+
     def overlap(
         self,
         node_type: str | set[str] = "all",
@@ -1094,8 +1117,9 @@ class PubNet:
         edges="all",
         data_dir=None,
         file_format="tsv",
+        keep_index=False,
         overwrite=False,
-    ):
+    ) -> None:
         """Save a graph to disk.
 
         Parameters
@@ -1110,6 +1134,10 @@ class PubNet:
             Where to save the graph, defaults to the default data directory.
         file_format : {"tsv", "gzip", "binary"}, default "tsv"
             How to store the files.
+        keep_index : bool, default False
+            Whether to keep the current node indices or reset them (default)
+            before saving. Resetting the index ensures the node IDs are
+            sequential.
         overwrite : bool, default False
             If true delete the current graph on disk. This may be useful for
             replacing a plain text representation with a binary representation
@@ -1132,6 +1160,7 @@ class PubNet:
         --------
         `pubnet.storage.default_data_dir`
         `load_graph`
+        `PubNet.reset_index`
 
         """
 
@@ -1183,6 +1212,9 @@ class PubNet:
             )
 
         save_dir = graph_path(name, data_dir)
+
+        if not keep_index:
+            self.reset_index()
 
         if overwrite:
             delete_graph(name, data_dir)
@@ -1263,10 +1295,10 @@ class PubNet:
 
         """
         graph_dir = graph_path(name, data_dir)
-        if not os.path.exists(graph_dir):
+        if name not in list_graphs(data_dir):
             raise FileNotFoundError(
-                f'Graph "{name}" not found. Available graphs are: \n\t%s'
-                % "\n\t".join(g for g in list_graphs(data_dir))
+                f'Graph "{name}" not found. Available graphs are: \n\n  %s'
+                % "\n  ".join(g for g in list_graphs(data_dir))
             )
 
         if len(os.listdir(graph_dir)) == 0:
