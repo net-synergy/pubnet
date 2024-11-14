@@ -18,7 +18,7 @@ jobs:
       - name: Set up python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ env.python-version }}
           cache: "poetry"
 
       - name: Install package
@@ -31,7 +31,7 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
-          name: pytest-results-${{ matrix.python-version }}
+          name: pytest-results-${{ env.python-version }}
           path: junit/test-results-${{ github.sha }}.xml
 
       - name: Build wheel and sdist
