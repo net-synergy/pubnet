@@ -30,10 +30,13 @@ class Edge:
         Name of edge end node type.
     dtype : type
         The type for storing the edge ids.
+    isbipartite : bool
+        Whether the node types for both columns differ.
     isdirected : bool
         Whether the graph's edges are directed or not. By default assumes the
         edges are directed if start id differs from end id (i.e. bipartite
-        graph) and undirected otherwise (may not be a good guess).
+        graph) and undirected otherwise (may not be a good guess). If graph is
+        bipartite, `isdirected` will always be true.
 
     Attributes
     ----------
@@ -71,7 +74,8 @@ class Edge:
         self.start_id = start_id
         self.end_id = end_id
         self.representation = "Generic"
-        self.isdirected = isdirected or start_id != end_id
+        self.isbipartite = start_id != end_id
+        self.isdirected = isdirected or self.isbipartite
 
     def set_data(self, new_data) -> None:
         """Replace the edge's data with a new array."""

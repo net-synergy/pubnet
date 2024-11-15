@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ability to save and restore numpy edge features.
 - Generate edge name from node type if name not explicitly passed.
 - Method to reset all node indices in the network.
+- Edge attribute for `isbipartite`.
 
 ### Changed
 
@@ -26,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Test for if graph exists when loading was using `os.path.exists` which would always succeed since `graph_path` creates an empty directory.
 - Set the directed flag when creating igraph graphs.
 - Was assuming edges are undirected when start id differs from end id when that guarantees they are directed.
+- Compose should only require mode if node type's are the same not if the graph is directed.
 
 ## [0.9.0] - 2024-11-05
 

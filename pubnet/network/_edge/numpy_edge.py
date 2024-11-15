@@ -227,7 +227,7 @@ class NumpyEdge(Edge):
         ):
             raise ValueError(counts)
 
-        if other.isdirected:
+        if not other.isbipartite:
             if mode not in ("in", "out"):
                 raise KeyError(f'mode {mode} not one of "in" or "out".')
             key = "to" if mode == "in" else "from"
@@ -253,7 +253,7 @@ class NumpyEdge(Edge):
             res = res.multiply(1 / weights)
 
         name = edge_key(self.other_node(key), other.other_node(key))
-        if other.isdirected:
+        if not other.isdirected:
             name += mode.title()
 
         feature_name = "counts" if counts != "drop" else None
