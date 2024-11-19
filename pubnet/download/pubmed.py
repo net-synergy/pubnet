@@ -151,12 +151,18 @@ def _convert_relational_group(
     clean_cache: bool,
 ) -> None:
     group_index = _Index()
-    group_file = edge_gen_file_name(
+    group_node_file = node_gen_file_name(group_key, "tsv", graph_dir)
+    group_edge_file = edge_gen_file_name(
         edge_key(net_key, group_key), "tsv", graph_dir
     )[0]
 
-    with open(group_file, "w") as group_ptr:
-        group_ptr.write(edge_gen_header(net_key, group_key, []) + "\n")
+    with open(group_edge_file, "w") as group_edge_ptr, open(
+        group_node_file, "w"
+    ) as group_node_ptr:
+        group_node_ptr.write(
+            node_gen_id_label(group_key + "ID", group_key) + "\n"
+        )
+        group_edge_ptr.write(edge_gen_header(net_key, group_key, []) + "\n")
         for n in nodes:
             node_index = _Index()
             edge_index = _Index()
@@ -184,12 +190,13 @@ def _convert_relational_group(
 
                     group_label = "-".join(parts[:2])
                     if group_label not in group_index:
-                        group_ptr.write(
+                        group_edge_ptr.write(
                             str(key_index[parts[0]])
                             + "\t"
                             + str(group_index.count)
                             + "\n"
                         )
+                        group_node_ptr.write(str(group_index.count) + "\n")
                         group_index.add(group_label)
 
                     if parts[2] not in node_index:

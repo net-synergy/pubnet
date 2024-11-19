@@ -246,43 +246,47 @@ class PubNet:
 
         return self._slice(np.asarray(args))
 
-    def _slice(self, root_ids, mutate=False):
+    def _slice(self, root_ids, mutate=False, root=None, exclude=set()):
         """Filter the PubNet object's edges to those connected to root_ids.
+
+        This is the method called when indexing a PubNet object.
 
         If mutate is False return a new `PubNet` object otherwise
         return self after mutating the edges.
+
+        If root is None, defaults to self.root.
         """
+        root = root or self.root
+        exclude.add(root)
+
         if not mutate:
             new_pubnet = copy.deepcopy(self)
-            new_pubnet._slice(root_ids, mutate=True)
+            new_pubnet._slice(
+                root_ids, mutate=True, root=root, exclude=exclude
+            )
             return new_pubnet
 
+        if (root not in self.nodes) or (len(self.get_node(root)) == 0):
+            return self
+
+        node_locs = np.isin(self.get_node(root).index, root_ids)
+        if node_locs.sum() == node_locs.shape[0]:
+            return self
+
+        self.get_node(root).set_data(self.get_node(root)[node_locs])
+
         for key in self.edges:
-            if self.root not in edge_parts(key):
+            if (root not in edge_parts(key)) or (
+                self.get_edge(key).other_node(root) in exclude
+            ):
                 continue
 
-            self.get_edge(key).set_data(
-                self.get_edge(key)[
-                    self.get_edge(key).isin(self.root, root_ids), :
-                ]
-            )
+            edge = self.get_edge(key)
+            edge.set_data(edge[edge.isin(root, root_ids), :])
 
-        for key in self.nodes:
-            if len(self[key]) == 0:
-                continue
-
-            if key == self.root:
-                node_ids = root_ids
-            else:
-                try:
-                    edge = self.get_edge(key, self.root)
-                except KeyError:
-                    continue
-
-                node_ids = edge[key]
-
-            node_locs = np.isin(self.get_node(key).index, node_ids)
-            self.get_node(key).set_data(self.get_node(key)[node_locs])
+            other = edge.other_node(root)
+            other_ids = np.unique(edge[other])
+            self._slice(other_ids, mutate=True, root=other, exclude=exclude)
 
         return self
 
@@ -560,7 +564,9 @@ class PubNet:
                 return
 
             index_map = dict(zip(old_index, node.index))
+            print(node_name)
             for edge in net.edges_containing(node_name):
+                print(edge)
                 net.get_edge(edge)._renumber_column(node_name, index_map)
 
         for node in self.nodes:
@@ -1081,6 +1087,16 @@ class PubNet:
 
         """
         return set(nodes) - self.nodes
+
+    def copy(self):
+        """Return a copy of the network.
+
+        PubNet's are mutable so assigning a PubNet to a new variable name does
+        not create a copy. This creates a deep copy so the nodes and edges are
+        also copies. Changes to the new PubNet object will not effect the old
+        object.
+        """
+        return copy.deepcopy(self)
 
     def repack(self, nodes: Optional[str | tuple[str, ...]] = None) -> None:
         """Repack the graphs indices.

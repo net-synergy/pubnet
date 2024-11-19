@@ -176,7 +176,7 @@ def get_first_initials_from_fore_name(
 def drop_missing_last_names(net: PubNet) -> None:
     """Remove authors without a last name.
 
-    In the pubmed data set, some none human's are added to the author list such
+    In the pubmed data set, some non-human's are added to the author list such
     as collaboratives. These tend to have different metadata associated with
     them then human authors do and can cause assumptions to fail (such as the
     assumption all author's have a last name).
@@ -187,20 +187,8 @@ def drop_missing_last_names(net: PubNet) -> None:
       The publication network to process.
 
     """
-    old_root = net.root
-
     valid_authors = np.unique(net.get_edge("Author", "LastName")["Author"])
-    valid_publications = np.unique(
-        net.get_edge("Author", "Publication")["Publication"]
-    )
-
-    net.select_root("Author")
-    net._slice(valid_authors, mutate=True)
-
-    net.select_root("Publication")
-    net._slice(valid_publications, mutate=True)
-
-    net.select_root(old_root)
+    net._slice(valid_authors, mutate=True, root="Author")
 
 
 def duplicates_to_weights(net: PubNet, weight_name: str = "weights"):

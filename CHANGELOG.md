@@ -51,6 +51,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add methods for getting and setting various names associated with a node.
 - Default date field in pubmed XML.
 - Create publication indices instead of using PMIDs.
+- Make slicing (used for indexing) recursive so entire network is filter if there is a path between the root type and an edge as opposed to only filtering edges that are directly connected to the root node type.
+- In pubmed networks, add a node for group keys even though they are only an index. This ensures the group key's edges have a node table to re_index against.
 
 ### Fixed
 
