@@ -1134,7 +1134,7 @@ class PubNet:
         edges="all",
         data_dir=None,
         file_format="tsv",
-        keep_index=False,
+        keep_index=True,
         overwrite=False,
     ) -> None:
         """Save a graph to disk.
@@ -1151,7 +1151,7 @@ class PubNet:
             Where to save the graph, defaults to the default data directory.
         file_format : {"tsv", "gzip", "binary"}, default "tsv"
             How to store the files.
-        keep_index : bool, default False
+        keep_index : bool, default True
             Whether to keep the current node indices or reset them (default)
             before saving. Resetting the index ensures the node IDs are
             sequential.

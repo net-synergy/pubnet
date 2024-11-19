@@ -19,7 +19,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Don't count empty directories when listing saved graphs.
 - Rename specter argument.
 - JIT compile specter model for performance improvement.
-- Default to resetting the indices before saving the network.
 - Add option to explicitly set whether edge is directed or not when creating it.
 
 ### Fixed
