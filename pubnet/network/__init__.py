@@ -246,7 +246,7 @@ class PubNet:
 
         return self._slice(np.asarray(args))
 
-    def _slice(self, root_ids, mutate=False, root=None, exclude=set()):
+    def _slice(self, root_ids, mutate=False, root=None, exclude=None):
         """Filter the PubNet object's edges to those connected to root_ids.
 
         This is the method called when indexing a PubNet object.
@@ -257,6 +257,7 @@ class PubNet:
         If root is None, defaults to self.root.
         """
         root = root or self.root
+        exclude = exclude or set()
         exclude.add(root)
 
         if not mutate:
