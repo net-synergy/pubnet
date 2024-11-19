@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Set the directed flag when creating igraph graphs.
 - Was assuming edges are undirected when start id differs from end id when that guarantees they are directed.
 - Compose should only require mode if node type's are the same not if the graph is directed.
+- Prevent unmatched quotation marks from messing up reading in tables.
 
 ## [0.9.0] - 2024-11-05
 
@@ -40,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Index repacking methods.
 - Language model methods.
 - Overwrite option to `from_pubmed`.
+- To pandas method for nodes.
 
 ### Changed
 

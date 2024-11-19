@@ -2,6 +2,7 @@
 
 import os
 import warnings
+from csv import QUOTE_NONE
 
 import numpy as np
 import pandas as pd
@@ -186,6 +187,10 @@ class Node:
 
         return self._data[name].values
 
+    def as_pandas(self) -> pd.DataFrame:
+        """Return the node table as pandas dataframe."""
+        return self._data
+
     def get_random(self, n=1, seed=None):
         """Sample rows in `Node`.
 
@@ -296,7 +301,17 @@ class Node:
             data = pd.read_feather(file_name)
             data.set_index(data.columns[0], inplace=True)
         else:
-            data = pd.read_table(file_name, index_col=0, memory_map=True)
+            # Turn off quoting because occasional unmatched quotes causes
+            # issues reading in data otherwise. In the case of pubmed data,
+            # pubmedparser converts all sequential whitespace to a single
+            # space, guerenteeing there won't be a tab in a data field so
+            # quotes are needed (it also doesn't attempt to quote data anyway.)
+            #
+            # This could however be an issue for data from other sources.
+            # Revisit as needed.
+            data = pd.read_table(
+                file_name, index_col=0, memory_map=True, quoting=QUOTE_NONE
+            )
             # Prefer name in header to that in filename if available (but they
             # *should* be the same).
             node_id, name = node_id_label_parts(data.index.name)
