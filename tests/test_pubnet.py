@@ -224,14 +224,14 @@ class TestNetwork:
 
     def test_drops_node(self, simple_pubnet):
         node = "Author"
-        simple_pubnet.drop(node)
+        simple_pubnet.drop_node(node)
 
         assert node not in simple_pubnet.nodes
         assert node not in simple_pubnet._node_data.keys()
 
     def test_drops_nodes(self, simple_pubnet):
         nodes = ["Author", "Chemical"]
-        simple_pubnet.drop(nodes)
+        simple_pubnet.drop_node(nodes)
 
         assert np.isin(nodes, simple_pubnet.nodes, invert=True).all()
         assert np.isin(
@@ -240,15 +240,15 @@ class TestNetwork:
 
     def test_drops_edge(self, simple_pubnet):
         edge = ("Author", "Publication")
-        simple_pubnet.drop(edges=edge)
+        simple_pubnet.drop_edge(edge)
 
         edge = pubnet.network.edge_key(*edge)
         assert edge not in simple_pubnet.edges
-        assert edge not in simple_pubnet._edge_data.keys()
+        assert edge not in simple_pubnet._edge_data
 
     def test_drops_edges(self, simple_pubnet):
         edges = (("Author", "Publication"), ("Chemical", "Publication"))
-        simple_pubnet.drop(edges=edges)
+        simple_pubnet.drop_edge(edges)
 
         edges = simple_pubnet._as_keys(edges)
         assert np.isin(
@@ -271,7 +271,7 @@ class TestNetwork:
         )
         print(expected_edges)
 
-        other_pubnet.drop("Publication")
+        other_pubnet.drop_node("Publication")
         simple_pubnet.update(other_pubnet)
         assert set(simple_pubnet.nodes) == expected_nodes
         assert set(simple_pubnet.edges) == expected_edges

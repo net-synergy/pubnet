@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rename specter argument.
 - JIT compile specter model for performance improvement.
 - Add option to explicitly set whether edge is directed or not when creating it.
+- (Breaking) replace PubNet's generic drop with node and edge specific methods.
 
 ### Fixed
 

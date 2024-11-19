@@ -137,7 +137,7 @@ class PubNet:
         See Also
         --------
         `PubNet.add_edge`
-        `PubNet.drop`
+        `PubNet.drop_node`
 
         """
         if isinstance(data, Node):
@@ -184,7 +184,7 @@ class PubNet:
         See Also
         --------
         `PubNet.add_node` for analogous node method.
-        `PubNet.drop` to remove edges and nodes.
+        `PubNet.drop_edge` to remove edges and nodes.
 
         """
         if isinstance(data, str):
@@ -515,7 +515,7 @@ class PubNet:
         ]
 
         if drop_unused:
-            self.drop(edges=self.edges.difference(root_edges))
+            self.drop_edge(self.edges.difference(root_edges))
 
         if new_root == self.root:
             return
@@ -544,7 +544,7 @@ class PubNet:
                     self.get_edge(e)._compose_with(map_edge, counts, "in")
                 )
 
-            self.drop(edges=e)
+            self.drop_edge(e)
 
         self.select_root(new_root)
 
@@ -718,7 +718,7 @@ class PubNet:
         acc = to_sparse(base_edge)
         for e in featured_edges:
             acc = func(to_sparse(self.get_edge(e)), acc)
-            self.drop(edges=e)
+            self.drop_edge(edges=e)
 
         if normalize:
             acc = acc / n_edges
@@ -788,39 +788,65 @@ class PubNet:
         else:
             plt.show()
 
-    def drop(self, nodes=set(), edges=set()):
+    def drop_node(self, nodes, edges: bool = False):
         """Drop given nodes and edges from the network.
 
         Parameters
         ----------
-        nodes : str or tuple of str, optional
+        nodes : str or tuple of str
             Drop the provided nodes.
-        edges : tuple of tuples of str, optional
-            Drop the provided edges.
+        edges : bool, default False
+            Whether to drop the edges containing the node as well (default
+            False).
 
         See Also
         --------
         `PubNet.add_node`
-        `PubNet.add_edge`
+        `PubNet.drop_edge`
 
         """
         if isinstance(nodes, str):
             nodes = {nodes}
-        if isinstance(edges, str):
-            edges = {edges}
 
         assert len(self._missing_nodes(nodes)) == 0, (
             f"Node(s) {self._missing_nodes(nodes)} is not in network",
             f"\n\nNetwork's nodes are {self.nodes}.",
         )
 
+        for node in nodes:
+            self._node_data.pop(node)
+
+        if edges:
+            for node in nodes:
+                for edge in self.edges_containing(node):
+                    self.drop_edge(edge)
+
+    def drop_edge(self, edges, node_2: str | None = None):
+        """Drop given edges from the network.
+
+        Parameters
+        ----------
+        edges : str or tuple of tuples of str
+            Drop the provided edges.
+        node_2 : str, optional
+            If node_2 is provided both node_2 should be the name of one node
+            type and edges should be the name of the other node type that make
+            up the edge. Example: `net.drop_edge("Author", "Publication")`.
+
+        See Also
+        --------
+        `PubNet.add_edge`
+        `PubNet.drop_node`
+
+        """
+        edges = (node_2 and edge_key(edges, node_2)) or edges
+        if isinstance(edges, str):
+            edges = {edges}
+
         assert len(self._missing_edges(edges)) == 0, (
             f"Edge(s) {self._missing_edges(edges)} is not in network",
             f"\n\nNetwork's edges are {self.edges}.",
         )
-
-        for node in nodes:
-            self._node_data.pop(node)
 
         edges = self._as_keys(edges)
 
@@ -950,10 +976,10 @@ class PubNet:
                     new_edge._compose_with(self.get_edge(e), "drop", "all")
                 )
                 if discard_used:
-                    self.drop(edges=e)
+                    self.drop_edge(e)
 
         if discard_used:
-            self.drop(nodes=template_node)
+            self.drop_node(template_node)
 
     def mutate_node_re(
         self,
