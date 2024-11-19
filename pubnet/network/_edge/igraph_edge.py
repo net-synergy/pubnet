@@ -128,7 +128,7 @@ class IgraphEdge(Edge):
         )
 
     def _renumber_column(self, col: str, id_map: dict[int, int]):
-        if self.start_id == self.end_id:
+        if (not self.isbipartite) and (not self.isdirected):
             remove = self._data.vs(_degree=0)
             self._data.delete_vertices(remove)
         else:
