@@ -565,9 +565,7 @@ class PubNet:
                 return
 
             index_map = dict(zip(old_index, node.index))
-            print(node_name)
             for edge in net.edges_containing(node_name):
-                print(edge)
                 net.get_edge(edge)._renumber_column(node_name, index_map)
 
         for node in self.nodes:
