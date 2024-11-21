@@ -11,7 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Ability to save and restore numpy edge features.
 - Generate edge name from node type if name not explicitly passed.
-- Method to reset all node indices in the network.
 - Edge attribute for `isbipartite`.
 
 ### Changed

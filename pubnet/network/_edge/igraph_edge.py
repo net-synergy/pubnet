@@ -127,17 +127,30 @@ class IgraphEdge(Edge):
             comments="",
         )
 
-    def _renumber_column(self, col: str, id_map: dict[int, int]):
-        if (not self.isbipartite) and (not self.isdirected):
-            remove = self._data.vs(_degree=0)
-            self._data.delete_vertices(remove)
-        else:
-            idx = int(self.end_id == col)  # 0 if col is start_id 1 otherwise.
-            edges = self.get_edgelist()
-            edges[:, idx] = np.fromiter(
-                (id_map[i] for i in edges[:, idx]), dtype=self.dtype
+    def _reset_index(self, node: str, old_indices: np.ndarray) -> None:
+        # TODO: Does not handle case where both node types are the same.
+        # i.e. non bipartite case.
+        if len(self[node]) == 0:
+            return
+
+        if old_indices.shape[0] == 0:
+            old_indices = np.unique(self[node])
+
+        uniq = np.unique(old_indices)
+        index_map = np.zeros((uniq.max() + 1,)) - 1
+        for i, index in enumerate(uniq):
+            index_map[index] = i
+
+        self[node][:] = index_map[self[node]]
+
+        if (self[node] == -1).any():
+            RuntimeWarning(
+                f"One or more edges contain a {node}ID not in {node}'s "
+                + "node table. This may be a pubnet bug. Missing IDs replaced "
+                + "with -1s. This may cause unintended behavior."
             )
-            self._data = ig.Graph(edges, directed=self.isdirected)
+
+        self._data = ig.Graph(self.get_edgelist(), directed=self.isdirected)
 
     def get_edgelist(self):
         return np.asarray(self._data.get_edgelist())

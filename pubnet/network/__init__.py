@@ -561,29 +561,6 @@ class PubNet:
 
         self.select_root(new_root)
 
-    def reset_index(self, nodes: str | tuple[str, ...] | None = None) -> None:
-        """Recreate the index for each node to be sequential.
-
-        Updates all edges to reflect the new node indices.
-        """
-
-        def _reset_node_index(net, node_name):
-            node = net.get_node(node_name)
-            node_id = node.id
-            old_index = node.index
-            node._data.reset_index(drop=True, inplace=True)
-            node.rename_index(node_id)
-
-            if np.all(old_index == node.index):
-                return
-
-            index_map = dict(zip(old_index, node.index))
-            for edge in net.edges_containing(node_name):
-                net.get_edge(edge)._renumber_column(node_name, index_map)
-
-        for node in self.nodes:
-            _reset_node_index(self, node)
-
     def overlap(
         self,
         node_type: str | set[str] = "all",
@@ -1226,7 +1203,7 @@ class PubNet:
         --------
         `pubnet.storage.default_data_dir`
         `load_graph`
-        `PubNet.reset_index`
+        `PubNet.repack`
 
         """
 
@@ -1280,7 +1257,7 @@ class PubNet:
         save_dir = graph_path(name, data_dir)
 
         if not keep_index:
-            self.reset_index()
+            self.repack()
 
         if overwrite:
             delete_graph(name, data_dir)

@@ -102,19 +102,6 @@ class NumpyEdge(Edge):
         with open(header_name, "wt") as header_file:
             header_file.write(header)
 
-    def _renumber_column(self, col: str, id_map: dict[int, int]):
-        if self.start_id == self.end_id:
-            self._data = np.fromiter(
-                ((id_map[row[0]], id_map[row[1]]) for row in self._data),
-                dtype=(self.dtype, 2),
-            )
-        else:
-            idx = int(self.end_id == col)  # 0 if col is start_id 1 otherwise.
-            self._data[:, idx] = np.fromiter(
-                (id_map[i] for i in self._data[:, idx]),
-                dtype=self.dtype,
-            )
-
     def _to_tsv(self, file_name, header):
         fmt = ["%d", "%d"]
         fmt.extend(["%f"] * len(self.features()))
@@ -439,8 +426,15 @@ class NumpyEdge(Edge):
             old_indices = np.unique(self[node])
 
         uniq = np.unique(old_indices)
-        index_map = np.zeros((uniq.max() + 1,))
+        index_map = np.zeros((uniq.max() + 1,)) - 1
         for i, index in enumerate(uniq):
             index_map[index] = i
 
         self[node][:] = index_map[self[node]]
+
+        if (self[node] == -1).any():
+            RuntimeWarning(
+                f"One or more edges contain a {node}ID not in {node}'s "
+                + "node table. This may be a pubnet bug. Missing IDs replaced "
+                + "with -1s. This may cause unintended behavior."
+            )
