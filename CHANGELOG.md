@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Set the directed flag when creating igraph graphs.
 - Prevent unmatched quotation marks from messing up reading in tables.
 - Handle missing values as equivalent when comparing Nodes (and by extension PubNets).
+- Swap use of iloc and loc
 
 ## [0.9.0] - 2024-11-05
 

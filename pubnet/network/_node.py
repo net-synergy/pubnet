@@ -177,7 +177,7 @@ class Node:
         """
         self.set_data(self._data.reset_index(drop=True))
 
-    def iloc(self, indices):
+    def loc(self, indices):
         return self[np.isin(self.index, indices), :]
 
     def feature_vector(self, name):
@@ -209,7 +209,7 @@ class Node:
 
         """
         rng = np.random.default_rng(seed=seed)
-        return self._data.loc[rng.integers(0, self._data.shape[0], size=(n,))]
+        return self._data.iloc[rng.integers(0, self._data.shape[0], size=(n,))]
 
     def isequal(self, node_2):
         """Test if two `Node`s have the same values in all their columns."""
