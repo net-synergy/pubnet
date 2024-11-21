@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Test for if graph exists when loading was using `os.path.exists` which would always succeed since `graph_path` creates an empty directory.
 - Set the directed flag when creating igraph graphs.
 - Prevent unmatched quotation marks from messing up reading in tables.
+- Handle missing values as equivalent when comparing Nodes (and by extension PubNets).
 
 ## [0.9.0] - 2024-11-05
 

@@ -217,8 +217,11 @@ class Node:
             return False
 
         for feature in self.features:
+            filled_self = self._data[feature].notna()
+            filled_other = node_2._data[feature].notna()
             if not (
-                self.feature_vector(feature) == node_2.feature_vector(feature)
+                self._data[feature][filled_self].array
+                == node_2._data[feature][filled_other].array
             ).all():
                 return False
 

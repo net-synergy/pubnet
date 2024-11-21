@@ -889,10 +889,10 @@ class PubNet:
 
     def isequal(self, other: PubNet) -> bool:
         """Compare if two PubNet objects are equivalent."""
-        if set(self.nodes).symmetric_difference(set(other.nodes)):
+        if self.nodes.symmetric_difference(other.nodes):
             return False
 
-        if set(self.edges).symmetric_difference(set(other.edges)):
+        if self.edges.symmetric_difference(other.edges):
             return False
 
         for n in self.nodes:
