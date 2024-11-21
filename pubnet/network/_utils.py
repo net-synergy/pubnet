@@ -2,7 +2,7 @@
 
 import os
 import re
-from typing import cast
+from typing import Sequence, cast
 
 __all__ = [
     "node_file_parts",
@@ -218,7 +218,7 @@ def edge_list_files(
         )
 
     def edge_files_containing(
-        nodes: tuple[tuple[str, str], ...] | tuple[str, ...] | None,
+        nodes: Sequence[tuple[str, str]] | Sequence[str] | None,
         edge_files: dict[str, dict[str, str]],
     ) -> list[str]:
         r"""Find the preferred edge file for the provided nodes in data_dir.
@@ -237,10 +237,10 @@ def edge_list_files(
             edges = tuple(edge_files.keys())
         elif isinstance(nodes[0], str):
             edges = tuple(
-                edge_key(n1, n2)
+                edge_key(n1, n2)  # type: ignore[arg-type]
                 for i, n1 in enumerate(nodes)
                 for n2 in nodes[i:]
-                if edge_key(n1, n2) in edge_files
+                if edge_key(n1, n2) in edge_files  # type: ignore[arg-type]
             )
         else:
             edges = tuple(

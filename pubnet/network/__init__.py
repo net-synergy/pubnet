@@ -5,11 +5,13 @@ Components
 A graph is made up of a list of node and a list of edges.
 """
 
+from __future__ import annotations
+
 import copy
 import os
 import re
 from locale import LC_ALL, setlocale
-from typing import Callable, Optional
+from typing import Callable, Iterable, Optional, TypeAlias
 from warnings import warn
 
 import numpy as np
@@ -24,6 +26,8 @@ from pubnet.network._utils import edge_key, edge_parts, select_graph_components
 from pubnet.storage import delete_graph, graph_path, list_graphs
 
 __all__ = ["edge_key", "PubNet", "Edge", "Node"]
+
+EdgeName: TypeAlias = str | tuple[str, str]
 
 
 class PubNet:
@@ -41,11 +45,11 @@ class PubNet:
 
     Attributes
     ----------
-    nodes : list
+    nodes : set
         Names of nodes in the network, both from nodes argument and edges. If
         an edge has a node type not provided, a placeholder node of shape (0,0)
         will be added to the node list.
-    edges : list
+    edges : set
         nodes.
     id_dtype: Datatype
         Datatype used to store id values (edge data).
@@ -63,16 +67,23 @@ class PubNet:
     """
 
     def __init__(
-        self, nodes=set(), edges=set(), root="Publication", name=None
+        self,
+        nodes: Iterable[Node] | dict[str, Node] | None = None,
+        edges: Iterable[Edge] | dict[str, Edge] | None = None,
+        root: str = "Publication",
+        name: str | None = None,
     ):
         self.root = root
         self.name = name
 
+        nodes = nodes or set()
+        edges = edges or set()
+
         if isinstance(nodes, str):
             nodes = {nodes}
 
-        self._node_data = {}
-        self._edge_data = {}
+        self._node_data: dict[str, Node] = {}
+        self._edge_data: dict[str, Edge] = {}
 
         for node in nodes:
             self.add_node(node)
@@ -94,20 +105,20 @@ class PubNet:
         self.id_dtype = _edge.id_dtype
 
     @property
-    def nodes(self) -> set:
+    def nodes(self) -> set[str]:
         """The set of all nodes in the PubNet object."""
         return set(self._node_data.keys())
 
     @property
-    def edges(self) -> set:
+    def edges(self) -> set[str]:
         """The set of all edges in the PubNet object."""
         return set(self._edge_data.keys())
 
-    def edges_containing(self, node: str):
+    def edges_containing(self, node: str) -> set[str]:
         """Return the set of all edges containing the given node."""
         return {e for e in self.edges if node in edge_parts(e)}
 
-    def select_root(self, new_root) -> None:
+    def select_root(self, new_root: str) -> None:
         """Switch the graph's root node.
 
         See `re_root` for modifying edges to reflect the new root.
@@ -122,7 +133,9 @@ class PubNet:
             f"\n\t{available_nodes}"
         )
 
-    def add_node(self, data, name=None):
+    def add_node(
+        self, data: str | pd.DataFrame | Node, name: str | None = None
+    ) -> None:
         """Add a new node to the network.
 
         Parameters
@@ -155,9 +168,9 @@ class PubNet:
 
     def add_edge(
         self,
-        data,
-        name=None,
-        representation="numpy",
+        data: str | Edge | np.ndarray,
+        name: str | None = None,
+        representation: str = "numpy",
         **keys,
     ) -> None:
         """Add a new edge set to the network.
@@ -209,11 +222,11 @@ class PubNet:
 
         self._edge_data[name] = data
 
-    def get_node(self, name) -> Node:
+    def get_node(self, name: str) -> Node:
         """Retrieve the Node in the PubNet object with the given name."""
         return self._node_data[name]
 
-    def get_edge(self, name, node_2=None) -> Edge:
+    def get_edge(self, name: str, node_2: str | None = None) -> Edge:
         """Retrieve the Edge in the PubNet object with the given name."""
         if isinstance(name, tuple):
             if len(name) > 2 or node_2 is not None:
@@ -291,7 +304,7 @@ class PubNet:
 
         return self
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         setlocale(LC_ALL, "")
 
         def sep(name, col_len):
@@ -417,7 +430,7 @@ class PubNet:
         func: Callable[[pd.DataFrame], np.ndarray],
         in_place: bool = False,
         root: Optional[str] = None,
-    ):
+    ) -> PubNet | None:
         """Filter network to root nodes satisfying a predicate function.
 
         All graphs are reduced to a subset of edges related to those associated
@@ -548,7 +561,7 @@ class PubNet:
 
         self.select_root(new_root)
 
-    def reset_index(self) -> None:
+    def reset_index(self, nodes: str | tuple[str, ...] | None = None) -> None:
         """Recreate the index for each node to be sequential.
 
         Updates all edges to reflect the new node indices.
@@ -576,7 +589,7 @@ class PubNet:
         node_type: str | set[str] = "all",
         weights: Optional[str] = None,
         mutate: bool = True,
-    ):
+    ) -> PubNet | None:
         r"""Calculate the overlap in neighbors between nodes.
 
         Creates new overlap edges with an overlap feature that contains the
@@ -786,12 +799,14 @@ class PubNet:
         else:
             plt.show()
 
-    def drop_node(self, nodes, edges: bool = False):
+    def drop_node(
+        self, nodes: str | Iterable[str], edges: bool = False
+    ) -> None:
         """Drop given nodes and edges from the network.
 
         Parameters
         ----------
-        nodes : str or tuple of str
+        nodes : str or Iterable[str]
             Drop the provided nodes.
         edges : bool, default False
             Whether to drop the edges containing the node as well (default
@@ -819,7 +834,11 @@ class PubNet:
                 for edge in self.edges_containing(node):
                     self.drop_edge(edge)
 
-    def drop_edge(self, edges, node_2: str | None = None):
+    def drop_edge(
+        self,
+        edges: EdgeName | Iterable[EdgeName],
+        node_2: str | None = None,
+    ) -> None:
         """Drop given edges from the network.
 
         Parameters
@@ -837,7 +856,14 @@ class PubNet:
         `PubNet.drop_node`
 
         """
-        edges = (node_2 and edge_key(edges, node_2)) or edges
+        if node_2:
+            if not isinstance(edges, str):
+                raise TypeError(
+                    'Argument "edges" must be a string if a '
+                    + '"node_2" is specified.'
+                )
+            edges = edge_key(edges, node_2)
+
         if isinstance(edges, str):
             edges = {edges}
 
@@ -847,11 +873,10 @@ class PubNet:
         )
 
         edges = self._as_keys(edges)
-
         for edge in edges:
             self._edge_data.pop(edge)
 
-    def update(self, other):
+    def update(self, other: PubNet):
         """Add the data from other to the current network.
 
         Behaves similar to Dict.update(), if other contains nodes or edges in
@@ -862,7 +887,7 @@ class PubNet:
         self._node_data.update(other._node_data)
         self._edge_data.update(other._edge_data)
 
-    def isequal(self, other):
+    def isequal(self, other: PubNet) -> bool:
         """Compare if two PubNet objects are equivalent."""
         if set(self.nodes).symmetric_difference(set(other.nodes)):
             return False
@@ -876,7 +901,7 @@ class PubNet:
 
         return all(self[e].isequal(other[e]) for e in self.edges)
 
-    def refresh_edges(self):
+    def refresh_edges(self) -> None:
         """Recreate edge keys if they get out of sync with edge names."""
         self._edge_data = {
             self.get_edge(e).name: self.get_edge(e) for e in self.edges
@@ -1050,21 +1075,21 @@ class PubNet:
             discard_used=discard_used,
         )
 
-    def edges_to_igraph(self):
+    def edges_to_igraph(self) -> None:
         """Convert all edge sets to the igraph backend."""
         for e in self.edges:
             self._edge_data[e] = _edge.from_edge(
                 self.get_edge(e), representation="igraph"
             )
 
-    def edges_to_numpy(self):
+    def edges_to_numpy(self) -> None:
         """Convert all edge sets to the numpy backend."""
         for e in self.edges:
             self._edge_data[e] = _edge.from_edge(
                 self.get_edge(e), representation="numpy"
             )
 
-    def _as_keys(self, edges):
+    def _as_keys(self, edges) -> set[str]:
         """Convert a list of edges to their keys."""
         # A tuple of 2 strings is likely two edge parts that need to be
         # converted to an edge key, but it could also be two edge keys that
@@ -1081,7 +1106,7 @@ class PubNet:
 
         return {edge_key(*e) if len(e) == 2 else e for e in edges}
 
-    def _missing_edges(self, edges):
+    def _missing_edges(self, edges=Iterable[EdgeName]) -> set[str]:
         """Find all edges not in self.
 
         Parameters
@@ -1097,7 +1122,7 @@ class PubNet:
         """
         return self._as_keys(edges) - self.edges
 
-    def _missing_nodes(self, nodes):
+    def _missing_nodes(self, nodes: Iterable[str]) -> set[str]:
         """Find all node names in a list not in self.nodes.
 
         Parameters
@@ -1113,7 +1138,7 @@ class PubNet:
         """
         return set(nodes) - self.nodes
 
-    def copy(self):
+    def copy(self) -> PubNet:
         """Return a copy of the network.
 
         PubNet's are mutable so assigning a PubNet to a new variable name does
@@ -1275,7 +1300,7 @@ class PubNet:
         root: str = "Publication",
         data_dir: Optional[str] = None,
         representation: str = "numpy",
-    ):
+    ) -> PubNet:
         """Load a graph as a PubNet object.
 
         See `PubNet` for more information about parameters.
@@ -1362,7 +1387,7 @@ class PubNet:
         edges: dict[str, Edge] = {},
         root: str = "Publication",
         representation: str = "numpy",
-    ):
+    ) -> PubNet:
         """Make PubNet object from given nodes and edges.
 
         Parameters
