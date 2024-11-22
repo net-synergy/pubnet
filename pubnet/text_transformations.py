@@ -97,12 +97,13 @@ def specter(
     new_edge_data[:, 1] = np.tile(np.arange(weights.shape[1]), len(edges))
     weights = weights.reshape((weights.shape[0] * weights.shape[1],))
 
+    new_node_name = node + "_embedding"
     net.add_edge(
         new_edge_data,
-        _utils.edge_key(root, node + "_embedding"),
+        _utils.edge_key(root, new_node_name),
         features={weight_name: weights},
         start_id=root,
-        end_id=node,
+        end_id=new_node_name,
     )
 
 
@@ -162,10 +163,11 @@ def string_to_vec(
         dtype=np.dtype((edges.dtype, 2)),
     )
 
+    new_node_name = node + "_letters"
     net.add_edge(
         new_edge_data,
-        _utils.edge_key(root, node + "_letters"),
+        _utils.edge_key(root, new_node_name),
         start_id=root,
-        end_id=node,
+        end_id=new_node_name,
     )
-    net.get_edge(root, node + "_letters")._duplicates_to_weights(weight_name)
+    net.get_edge(root, new_node_name)._duplicates_to_weights(weight_name)
