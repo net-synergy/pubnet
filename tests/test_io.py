@@ -17,15 +17,17 @@ class TestIO:
             file_format=file_format,
         )
 
-        representation = simple_pubnet["Author", "Publication"].representation
+        representation = simple_pubnet.get_edge(
+            "Author", "Publication"
+        ).representation
         new = PubNet.load_graph(
             "edge",
             data_dir=tmp_path,
             representation=representation,
         )
 
-        assert simple_pubnet["Author", "Publication"].isequal(
-            new["Author", "Publication"]
+        assert simple_pubnet.get_edge("Author", "Publication").isequal(
+            new.get_edge("Author", "Publication")
         )
 
     @pytest.mark.parametrize("file_format", ["tsv", "gzip", "binary"])
@@ -40,8 +42,10 @@ class TestIO:
 
         new = PubNet.load_graph("node", data_dir=tmp_path)
 
-        assert simple_pubnet["Publication"].isequal(new["Publication"])
-        assert simple_pubnet["Author"].isequal(new["Author"])
+        assert simple_pubnet.get_node("Publication").isequal(
+            new.get_node("Publication")
+        )
+        assert simple_pubnet.get_node("Author").isequal(new.get_node("Author"))
 
     @pytest.mark.parametrize("file_format", ["tsv", "gzip", "binary"])
     def test_graph_io(self, simple_pubnet, tmp_path, file_format):
@@ -49,7 +53,9 @@ class TestIO:
             "graph", data_dir=tmp_path, file_format=file_format
         )
 
-        representation = simple_pubnet["Author", "Publication"].representation
+        representation = simple_pubnet.get_edge(
+            "Author", "Publication"
+        ).representation
         new = PubNet.load_graph(
             "graph",
             data_dir=tmp_path,
@@ -63,7 +69,9 @@ class TestIO:
         self, simple_pubnet, tmp_path, file_format
     ):
         simple_pubnet.add_edge(
-            simple_pubnet["Author", "Publication"].overlap("Publication")
+            simple_pubnet.get_edge("Author", "Publication").overlap(
+                "Publication"
+            )
         )
         simple_pubnet.save_graph(
             "graph",
@@ -72,11 +80,13 @@ class TestIO:
             file_format=file_format,
         )
 
-        representation = simple_pubnet["Author", "Publication"].representation
+        representation = simple_pubnet.get_edge(
+            "Author", "Publication"
+        ).representation
         new = PubNet.load_graph(
             "graph", data_dir=tmp_path, representation=representation
         )
 
-        assert simple_pubnet["Publication", "AuthorOverlap"].isequal(
-            new["Publication", "AuthorOverlap"]
+        assert simple_pubnet.get_edge("Publication", "AuthorOverlap").isequal(
+            new.get_edge("Publication", "AuthorOverlap")
         )

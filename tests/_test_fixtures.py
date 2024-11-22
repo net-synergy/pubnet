@@ -31,4 +31,4 @@ def other_pubnet():
 
 @pytest.fixture
 def author_node(simple_pubnet):
-    return simple_pubnet["Author"]
+    return simple_pubnet.get_node("Author")

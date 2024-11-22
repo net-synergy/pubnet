@@ -11,7 +11,7 @@ import copy
 import os
 import re
 from locale import LC_ALL, setlocale
-from typing import Callable, Iterable, Optional, TypeAlias
+from typing import Callable, Iterable, Optional, Sequence, TypeAlias
 from warnings import warn
 
 import numpy as np
@@ -240,23 +240,9 @@ class PubNet:
 
         return self._edge_data[name]
 
-    def __getitem__(self, args):
-        if isinstance(args, str):
-            if args in self.nodes:
-                return self.get_node(args)
-
-            if args in self.edges:
-                return self.get_edge(args)
-
-            raise KeyError(args)
-
-        try:
-            element = args[0]
-        except TypeError:
+    def __getitem__(self, args: Sequence[int] | int) -> PubNet:
+        if isinstance(args, int):
             return self._slice(np.asarray([args]))
-
-        if isinstance(element, str):
-            return self.get_edge(*args)
 
         return self._slice(np.asarray(args))
 
@@ -372,8 +358,8 @@ class PubNet:
         if node_type == root:
             root_ids = node_ids
         else:
-            root_idx = self[root, node_type].isin(node_type, node_ids)
-            root_ids = self[root, node_type][root][root_idx]
+            root_idx = self.get_edge(root, node_type).isin(node_type, node_ids)
+            root_ids = self.get_edge(root, node_type)[root][root_idx]
 
         return np.asarray(root_ids, dtype=np.int64)
 
@@ -425,8 +411,8 @@ class PubNet:
 
         root_ids = self.ids_where(node_type, func)
         while steps > 1:
-            node_ids = self[self.root, node_type][node_type][
-                self[self.root, node_type].isin(self.root, root_ids)
+            node_ids = self.get_edge(self.root, node_type)[node_type][
+                self.get_edge(self.root, node_type).isin(self.root, root_ids)
             ]
             func = lambda x: np.isin(x.index, node_ids)
             root_ids = self.ids_where(node_type, func)
@@ -641,7 +627,9 @@ class PubNet:
             new_pubnet = self
         else:
             new_pubnet = PubNet(
-                nodes={self[self.root]}, root=self.root, name="overlap"
+                nodes={self.get_node(self.root)},
+                root=self.root,
+                name="overlap",
             )
 
         for e in root_edges:
@@ -752,9 +740,9 @@ class PubNet:
         """
         import matplotlib.pyplot as plt
 
-        node_ids, distribution = self[self.root, node_type].distribution(
-            node_type
-        )
+        node_ids, distribution = self.get_edge(
+            self.root, node_type
+        ).distribution(node_type)
         retain = distribution >= threshold
         distribution = distribution[retain]
         node_ids = node_ids[retain]
@@ -883,10 +871,12 @@ class PubNet:
             return False
 
         for n in self.nodes:
-            if not self[n].isequal(other[n]):
+            if not self.get_node(n).isequal(other.get_node(n)):
                 return False
 
-        return all(self[e].isequal(other[e]) for e in self.edges)
+        return all(
+            self.get_edge(e).isequal(other.get_edge(e)) for e in self.edges
+        )
 
     def refresh_edges(self) -> None:
         """Recreate edge keys if they get out of sync with edge names."""
@@ -1252,8 +1242,8 @@ class PubNet:
         if edges is None:
             edges = []
 
-        nodes = [n for n in nodes if self[n].shape[0] > 0]
-        edges = [e for e in edges if len(self[e]) > 0]
+        nodes = [n for n in nodes if self.get_node(n).shape[0] > 0]
+        edges = [e for e in edges if len(self.get_edge(e)) > 0]
 
         if name is None:
             name = self.name

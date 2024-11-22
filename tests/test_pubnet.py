@@ -13,12 +13,12 @@ from ._test_fixtures import author_node, other_pubnet, simple_pubnet
 class TestEdges:
     def test_finds_start_id(self, simple_pubnet):
         for e in simple_pubnet.edges:
-            assert simple_pubnet[e].start_id == "Publication"
+            assert simple_pubnet.get_edge(e).start_id == "Publication"
 
     def test_finds_end_id(self, simple_pubnet):
         expected = ["Author", "Chemical"]
         for e in simple_pubnet.edges:
-            assert simple_pubnet[e].end_id in expected
+            assert simple_pubnet.get_edge(e).end_id in expected
 
     def test_handles_swapped_start_and_close_id(self):
         net = PubNet.load_graph(
@@ -27,13 +27,13 @@ class TestEdges:
             (("Publication", "Flippedheader"),),
             data_dir="tests/data",
         )
-        edges = net["Publication", "Flippedheader"]
+        edges = net.get_edge("Publication", "Flippedheader")
         assert edges[edges.start_id][0] == 2
         assert edges[edges.end_id][0] == 1
 
     def test_shape(self, simple_pubnet):
-        assert len(simple_pubnet["Author", "Publication"]) == 12
-        assert len(simple_pubnet["Chemical", "Publication"]) == 10
+        assert len(simple_pubnet.get_edge("Author", "Publication")) == 12
+        assert len(simple_pubnet.get_edge("Chemical", "Publication")) == 10
 
     def test_overlap(self, simple_pubnet):
         expected = np.array(
@@ -51,9 +51,9 @@ class TestEdges:
                 [5, 6, 1],
             ]
         )
-        publication_overlap = simple_pubnet["Author", "Publication"].overlap(
-            "Publication"
-        )
+        publication_overlap = simple_pubnet.get_edge(
+            "Author", "Publication"
+        ).overlap("Publication")
         actual = np.stack(
             (
                 publication_overlap.as_array()[:, 0],
@@ -134,7 +134,7 @@ class TestNodes:
 
 class TestNetwork:
     def test_creates_empty_nodes_for_missing_edge_nodes(self, simple_pubnet):
-        assert len(simple_pubnet["Chemical"]) == 0
+        assert len(simple_pubnet.get_node("Chemical")) == 0
 
     def test_filter_to_single_publication_id(self, simple_pubnet):
         publication_id = 1
@@ -142,8 +142,8 @@ class TestNetwork:
 
         expected_authors = np.asarray([1, 2, 3])
 
-        assert len(subnet["Author", "Publication"]) == 3
-        assert len(subnet["Chemical", "Publication"]) == 2
+        assert len(subnet.get_edge("Author", "Publication")) == 3
+        assert len(subnet.get_edge("Chemical", "Publication")) == 2
         assert np.array_equal(
             np.unique(subnet.get_node("Author").index), expected_authors
         )
@@ -158,8 +158,8 @@ class TestNetwork:
 
         expected_authors = np.asarray([1, 2, 3])
 
-        assert len(subnet["Author", "Publication"]) == 5
-        assert len(subnet["Chemical", "Publication"]) == 4
+        assert len(subnet.get_edge("Author", "Publication")) == 5
+        assert len(subnet.get_edge("Chemical", "Publication")) == 4
         assert np.array_equal(
             np.unique(subnet.get_node("Author").index), expected_authors
         )
@@ -191,11 +191,13 @@ class TestNetwork:
         expected_publication_ids = np.asarray([1, 2, 3, 5])
 
         assert np.array_equal(
-            np.unique(subnet["Author", "Publication"]["Publication"]),
+            np.unique(subnet.get_edge("Author", "Publication")["Publication"]),
             expected_publication_ids,
         )
         assert np.array_equal(
-            np.unique(subnet["Chemical", "Publication"]["Publication"]),
+            np.unique(
+                subnet.get_edge("Chemical", "Publication")["Publication"]
+            ),
             expected_publication_ids,
         )
 
@@ -214,11 +216,13 @@ class TestNetwork:
         expected_publication_ids = np.asarray([1, 2, 3, 4, 5, 6])
 
         assert np.array_equal(
-            np.unique(subnet["Author", "Publication"]["Publication"]),
+            np.unique(subnet.get_edge("Author", "Publication")["Publication"]),
             expected_publication_ids,
         )
         assert np.array_equal(
-            np.unique(subnet["Chemical", "Publication"]["Publication"]),
+            np.unique(
+                subnet.get_edge("Chemical", "Publication")["Publication"]
+            ),
             expected_publication_ids,
         )
 
@@ -276,8 +280,8 @@ class TestNetwork:
         assert set(simple_pubnet.nodes) == expected_nodes
         assert set(simple_pubnet.edges) == expected_edges
         # Assert other's Chemical-Publication edge shadowed simple_pubnet's.
-        assert simple_pubnet["Chemical", "Publication"].isequal(
-            other_pubnet["Chemical", "Publication"]
+        assert simple_pubnet.get_edge("Chemical", "Publication").isequal(
+            other_pubnet.get_edge("Chemical", "Publication")
         )
 
 
@@ -293,7 +297,7 @@ class TestSnapshots:
         )
         snapshot.assert_match(
             str(
-                simple_pubnet["Author", "Publication"].similarity(
+                simple_pubnet.get_edge("Author", "Publication").similarity(
                     publication_ids, method
                 )
             ),
@@ -310,13 +314,13 @@ class TestSnapshots:
         )
 
         t_start = time.time()
-        sim_1 = simple_pubnet["Author", "Publication"].similarity(
+        sim_1 = simple_pubnet.get_edge("Author", "Publication").similarity(
             publication_ids, method
         )
         t_1 = time.time() - t_start
 
         t_start = time.time()
-        sim_2 = simple_pubnet["Author", "Publication"].similarity(
+        sim_2 = simple_pubnet.get_edge("Author", "Publication").similarity(
             publication_ids, method
         )
         t_2 = time.time() - t_start
