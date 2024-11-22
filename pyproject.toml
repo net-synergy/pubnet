@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pubnet"
-version = "0.9.1a7"
+version = "0.9.1a8"
 description = "A python package for storing and working with publication data in graph form."
 license = "MIT"
 keywords = ["publication", "network", "MEDLINE", "PubMed", "references"]
@@ -72,6 +72,7 @@ profile = "black"
 
 [tool.mypy]
 ignore_missing_imports = true
+plugins = ["numpy.typing.mypy_plugin"]
 
 [tool.pylsp-mypy]
 enabled = true

@@ -16,6 +16,7 @@ from warnings import warn
 
 import numpy as np
 import pandas as pd
+from numpy.typing import NDArray
 from pandas.core.dtypes.common import is_list_like
 from scipy.sparse import spmatrix
 
@@ -202,7 +203,7 @@ class PubNet:
         """
         if isinstance(data, str):
             data = _edge.from_file(data, representation)
-        elif not isinstance(data, _edge.Edge):
+        elif not isinstance(data, Edge):
             data = _edge.from_data(
                 data, name, **keys, representation=representation
             )
@@ -259,7 +260,13 @@ class PubNet:
 
         return self._slice(np.asarray(args))
 
-    def _slice(self, root_ids, mutate=False, root=None, exclude=None):
+    def _slice(
+        self,
+        root_ids: NDArray[np.int_],
+        mutate: bool = False,
+        root: str | None = None,
+        exclude: set[str] | None = None,
+    ) -> PubNet:
         """Filter the PubNet object's edges to those connected to root_ids.
 
         This is the method called when indexing a PubNet object.
@@ -290,13 +297,16 @@ class PubNet:
         self.get_node(root).set_data(self.get_node(root)[node_locs])
 
         for key in self.edges:
+            # FIXME: If there are multiple edges with the same pair of node
+            # types, only the first is sliced.
             if (root not in edge_parts(key)) or (
                 self.get_edge(key).other_node(root) in exclude
             ):
                 continue
 
             edge = self.get_edge(key)
-            edge.set_data(edge[edge.isin(root, root_ids), :])
+            edge = edge[edge.isin(root, root_ids)]
+            self._edge_data[edge.name] = edge
 
             other = edge.other_node(root)
             other_ids = np.unique(edge[other])
