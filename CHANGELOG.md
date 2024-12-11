@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - (Breaking) replace PubNet's generic drop with node and edge specific methods.
 - Give edges created by transforming other edges new node names for the transformed node since this shouldn't be interchangeable with the original node.
 - (Breaking) remove getting node and edge's with PubNet's `__getitem__` method. Instead use explicit `get_node` and `get_edge`.
+- Consistently use title case for node and edge names
+- Case insensitive node and edge names for getting and setting.
 
 ### Fixed
 

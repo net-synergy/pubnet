@@ -54,7 +54,7 @@ class Node:
 
     def __init__(self, data, node_id=None, name=None, features="all"):
         self._data = data if data is not None else pd.DataFrame()
-        self.name = name
+        self.name = name.title()
 
         if not self.name:
             raise TypeError(

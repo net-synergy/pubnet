@@ -67,7 +67,7 @@ class Edge:
         for feat_name, feat in features.items():
             self.add_feature(feat, feat_name)
 
-        self.name = name
+        self.name = name.title()
         self._n_iter = 0
         self.start_id = start_id
         self.end_id = end_id
@@ -161,10 +161,11 @@ class Edge:
                     "Index out of range. Column index must be 0 or 1."
                 )
         elif isinstance(key, str):
-            if key == self.start_id or key == "from":
+            key = key.title()
+            if key == self.start_id.title() or key == "From":
                 primary = 0
                 secondary = 1
-            elif key == self.end_id or key == "to":
+            elif key == self.end_id.title() or key == "To":
                 primary = 1
                 secondary = 0
             else:

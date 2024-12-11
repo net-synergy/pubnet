@@ -154,6 +154,7 @@ class PubNet:
         `PubNet.drop_node`
 
         """
+        name = name.title() if name else None
         if isinstance(data, Node):
             node = data
         elif isinstance(data, str):
@@ -163,7 +164,7 @@ class PubNet:
 
         node.name = name or node.name
         if node.name in self.nodes:
-            raise ValueError(f"The node type {name} is already in network.")
+            raise ValueError(f'The node type "{name}" is already in network.')
 
         self._node_data[node.name] = node
 
@@ -201,6 +202,7 @@ class PubNet:
         `PubNet.drop_edge` to remove edges and nodes.
 
         """
+        name = name.title() if name else None
         if isinstance(data, str):
             data = _edge.from_file(data, representation)
         elif not isinstance(data, Edge):
@@ -225,7 +227,7 @@ class PubNet:
 
     def get_node(self, name: str) -> Node:
         """Retrieve the Node in the PubNet object with the given name."""
-        return self._node_data[name]
+        return self._node_data[name.title()]
 
     def get_edge(self, name: str, node_2: str | None = None) -> Edge:
         """Retrieve the Edge in the PubNet object with the given name."""
@@ -238,7 +240,7 @@ class PubNet:
         if node_2 is not None:
             name = edge_key(name, node_2)
 
-        return self._edge_data[name]
+        return self._edge_data[name.title()]
 
     def __getitem__(self, args: Sequence[int] | int) -> PubNet:
         if isinstance(args, int):
@@ -796,6 +798,7 @@ class PubNet:
         if isinstance(nodes, str):
             nodes = {nodes}
 
+        nodes = {n.title() for n in nodes}
         assert len(self._missing_nodes(nodes)) == 0, (
             f"Node(s) {self._missing_nodes(nodes)} is not in network",
             f"\n\nNetwork's nodes are {self.nodes}.",
@@ -849,7 +852,7 @@ class PubNet:
 
         edges = self._as_keys(edges)
         for edge in edges:
-            self._edge_data.pop(edge)
+            self._edge_data.pop(edge.title())
 
     def update(self, other: PubNet):
         """Add the data from other to the current network.
